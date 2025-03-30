@@ -1,0 +1,29 @@
+service: fastify-typescript-api
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1 # or your preferred region
+  memorySize: 256
+#  timeout: 180
+
+functions:
+  api:
+    handler: dist/index.handler
+    events:
+      - httpApi: '*'
+      # If you need more specific route configuration:
+      # - httpApi:
+      #     path: /users
+      #     method: GET
+
+plugins:
+  - serverless-offline
+
+package:
+  exclude:
+    - .git/**
+    - src/**
+    - node_modules/.pnpm
+    - node_modules/@types
+    - node_modules/dotenv
