@@ -1,10 +1,10 @@
+// src/index.ts
 import Fastify from "fastify";
 import "dotenv/config";
 import { whatsappWebhook } from "./webhook";
 import { sendWhatsAppMessage } from "./sendMessage";
 import formBody from "@fastify/formbody";
 import fastifyStatic from "@fastify/static";
-import awsLambdaFastify from "@fastify/aws-lambda";
 
 // Create Fastify app
 const app = Fastify();
@@ -30,4 +30,24 @@ if (process.env.IS_OFFLINE) {
   });
 }
 
-export const handler = awsLambdaFastify(app);
+// Export for Cloudflare Workers/Pages
+export default {
+  async fetch(request: Request, env: any, ctx: any): Promise<Response> {
+    // Convert the Cloudflare request to a Node.js-like request
+    const url = new URL(request.url);
+
+    // Handle the request with Fastify
+    const response = await app.inject({
+      method: request.method,
+      url: url.pathname + url.search,
+      headers: Object.fromEntries(request.headers),
+      payload: request.body ? await request.text() : undefined,
+    });
+
+    // Convert Fastify's response to a Cloudflare Response
+    return new Response(response.body, {
+      status: response.statusCode,
+      headers: response.headers as HeadersInit,
+    });
+  },
+};

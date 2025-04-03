@@ -1,0 +1,16 @@
+name = "fastify-typescript-api"
+main = "dist/index.js"
+compatibility_date = "2023-10-30"
+
+[build]
+command = "pnpm run build" # Adjust to your build script
+
+[build.upload]
+format = "modules"
+dir = "dist"
+
+[env.production]
+# Production-specific variables
+
+[env.development]
+# Development-specific variables
