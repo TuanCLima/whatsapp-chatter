@@ -10,7 +10,7 @@
     "dev-1": "wrangler dev",
     "dev": "miniflare --watch",
     "deploy": "wrangler publish",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "serve": "node dist/index.js"
   },
   "keywords": [],
   "author": "",

@@ -1,7 +1,6 @@
 import OpenAI from "openai";
 import Twilio from "twilio";
 import dotenv from "dotenv";
-import { PROMPT } from "./prompt";
 import { Context } from "hono";
 
 dotenv.config();
@@ -84,7 +83,7 @@ export async function whatsappHonoWebhook(c: Context) {
   const messages = history[from] || [
     {
       role: "system",
-      content: PROMPT,
+      content: process.env.PROMPT,
     },
   ];
 
