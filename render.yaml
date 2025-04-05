@@ -3,8 +3,8 @@ services:
     name: hono-api
     env: node
     plan: free
-    buildCommand: pnpm install && pnpm build
-    startCommand: pnpm start
+    buildCommand: pnpm install && pnpm build && pnpm predeploy
+    startCommand: pnpm serve
     envVars:
       - key: TWILIO_ACCOUNT_SID
         sync: false
