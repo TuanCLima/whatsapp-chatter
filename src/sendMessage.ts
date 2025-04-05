@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+/* import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import Twilio from "twilio";
 import dotenv from "dotenv";
 import { queryDeepSeek } from "./promptDeepSeek";
@@ -45,3 +45,4 @@ export async function sendWhatsAppMessage(fastify: FastifyInstance) {
     }
   );
 }
+ */

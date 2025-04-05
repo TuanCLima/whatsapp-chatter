@@ -1,8 +1,8 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import OpenAI from "openai";
 import Twilio from "twilio";
 import dotenv from "dotenv";
 import { PROMPT } from "./prompt";
+import { Context } from "hono";
 
 dotenv.config();
 
@@ -71,7 +71,68 @@ function getMessages(text: string): Message[] {
   return messages;
 }
 
-export async function whatsappWebhook(fastify: FastifyInstance) {
+type TwilioFormData = {
+  From: string;
+  Body: string;
+};
+
+export async function whatsappHonoWebhook(c: Context) {
+  console.log("###", "whatsappHonoWebhook");
+  const body = await c.req.parseBody<TwilioFormData>();
+  const { From: from, Body: message } = body;
+
+  const messages = history[from] || [
+    {
+      role: "system",
+      content: PROMPT,
+    },
+  ];
+
+  messages.push({ role: "user", content: message });
+
+  try {
+    console.log("###", { messages });
+    const completion = await openai.chat.completions.create({
+      model: "deepseek-chat", // Specify the model
+      messages: messages,
+    });
+
+    let apiResponse = completion.choices[0].message.content;
+
+    if (!apiResponse) {
+      return c.json({ error: "No response from DeepSeek" }, 400);
+    }
+
+    const toSendMessages = getMessages(apiResponse);
+    console.log("DeepSeek Response:", completion.choices[0].message.content, {
+      toSendMessages,
+    });
+
+    history[from] = [...messages, { role: "assistant", content: apiResponse }];
+
+    for (const toSendMessage of toSendMessages) {
+      if (toSendMessage.isContactLink) {
+        await client.messages.create({
+          from: fromNumber, // Your Twilio WhatsApp number
+          to: from, // Recipient's WhatsApp number
+          mediaUrl: [toSendMessage.text],
+        });
+      } else {
+        await client.messages.create({
+          from: fromNumber, // Your Twilio WhatsApp number
+          to: from, // Recipient's WhatsApp number
+          body: toSendMessage.text,
+        });
+      }
+    }
+    return c.json({ status: "Received", from, message });
+  } catch (error) {
+    console.error("Error calling DeepSeek API:", error);
+    return c.json({ error: "Failed to process message" }, 500);
+  }
+}
+
+/* export async function whatsappWebhook(fastify: FastifyInstance) {
   fastify.post(
     "/webhook",
     async (request: FastifyRequest, reply: FastifyReply) => {
@@ -137,4 +198,4 @@ export async function whatsappWebhook(fastify: FastifyInstance) {
       }
     }
   );
-}
+} */

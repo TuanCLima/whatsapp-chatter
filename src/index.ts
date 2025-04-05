@@ -1,53 +1,22 @@
-// src/index.ts
-import Fastify from "fastify";
+import { Hono } from "hono";
+import { serveStatic } from "@hono/node-server/serve-static";
 import "dotenv/config";
-import { whatsappWebhook } from "./webhook";
-import { sendWhatsAppMessage } from "./sendMessage";
-import formBody from "@fastify/formbody";
-import fastifyStatic from "@fastify/static";
+import { whatsappHonoWebhook } from "./webhook";
 
-// Create Fastify app
-const app = Fastify();
+const app = new Hono();
+app.use("/public/*", serveStatic({ root: "./src" }));
 
-// Register plugins
-app.register(formBody);
-app.register(whatsappWebhook);
-app.register(sendWhatsAppMessage);
-app.register(fastifyStatic, {
-  root: `${__dirname}/public`, // Adjust the path to your static files
-  prefix: "/", // Optional: prefix for the static files
-});
+app.post("/webhook", whatsappHonoWebhook);
 
-// For local development only
-if (process.env.IS_OFFLINE) {
-  const PORT = process.env.PORT || 3000;
-  app.listen({ port: Number(PORT), host: "0.0.0.0" }, (err) => {
-    if (err) {
-      console.error(err);
-      process.exit(1);
-    }
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-  });
+// Only start a local server if running in Node.js (not Cloudflare)
+if (typeof process !== "undefined") {
+  if (process.env.NODE_ENV !== "production") {
+    import("@hono/node-server").then(({ serve }) => {
+      const port = process.env.PORT || 3000;
+      serve({ fetch: app.fetch, port: Number(port) });
+      console.log(`🚀 Server running at http://localhost:${port}`);
+    });
+  }
 }
 
-// Export for Cloudflare Workers/Pages
-export default {
-  async fetch(request: Request, env: any, ctx: any): Promise<Response> {
-    // Convert the Cloudflare request to a Node.js-like request
-    const url = new URL(request.url);
-
-    // Handle the request with Fastify
-    const response = await app.inject({
-      method: request.method,
-      url: url.pathname + url.search,
-      headers: Object.fromEntries(request.headers),
-      payload: request.body ? await request.text() : undefined,
-    });
-
-    // Convert Fastify's response to a Cloudflare Response
-    return new Response(response.body, {
-      status: response.statusCode,
-      headers: response.headers as HeadersInit,
-    });
-  },
-};
+export default app;

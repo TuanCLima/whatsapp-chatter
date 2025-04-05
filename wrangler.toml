@@ -3,7 +3,7 @@ main = "dist/index.js"
 compatibility_date = "2023-10-30"
 
 [build]
-command = "pnpm run build" # Adjust to your build script
+command = "pnpm run build"
 
 [build.upload]
 format = "modules"

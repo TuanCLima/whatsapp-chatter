@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+/* import dotenv from "dotenv";
 dotenv.config();
 
 const DEEPSEEK_API_URL = "https://api.deepseek.com/v1/query";
@@ -35,3 +35,4 @@ export async function queryDeepSeek(prompt: string) {
     console.error("Error calling DeepSeek API:", error);
   }
 }
+ */
