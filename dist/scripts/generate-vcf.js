@@ -33,17 +33,20 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-const hono_1 = require("hono");
-const serve_static_1 = require("@hono/node-server/serve-static");
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 require("dotenv/config");
-const webhook_1 = require("./webhook");
-const app = new hono_1.Hono();
-app.use("/public/*", (0, serve_static_1.serveStatic)({ root: "./src" }));
-app.post("/webhook", webhook_1.whatsappHonoWebhook);
-// Start the server and bind to the correct port
-Promise.resolve().then(() => __importStar(require("@hono/node-server"))).then(({ serve }) => {
-    const port = process.env.PORT || 3000; // Use the PORT environment variable or default to 3000
-    serve({ fetch: app.fetch, port: Number(port) });
-    console.log(`🚀 Server running at http://localhost:${port}`);
-});
-exports.default = app;
+const distPublicPath = path.join(__dirname, "../../dist/public");
+// Ensure the dist/public directory exists
+fs.mkdirSync(distPublicPath, { recursive: true });
+// Read vCard contents from environment variables
+const contact1 = process.env.CONTACT_1;
+const contact2 = process.env.CONTACT_2;
+if (!contact1 || !contact2) {
+    console.error("Error: CONTACT_1 and CONTACT_2 environment variables must be set.");
+    process.exit(1);
+}
+// Write the vCard files
+fs.writeFileSync(path.join(distPublicPath, "gabe_contact.vcf"), contact1);
+fs.writeFileSync(path.join(distPublicPath, "rafa_contact.vcf"), contact2);
+console.log("✅ vCard files generated successfully in dist/public.");
