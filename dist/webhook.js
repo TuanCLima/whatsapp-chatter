@@ -7,7 +7,6 @@ exports.whatsappHonoWebhook = whatsappHonoWebhook;
 const openai_1 = __importDefault(require("openai"));
 const twilio_1 = __importDefault(require("twilio"));
 const dotenv_1 = __importDefault(require("dotenv"));
-const prompt_1 = require("./prompt");
 dotenv_1.default.config();
 const API_KEY = process.env.LLM_API_KEY;
 const DEEPSEEK_API_URL = "https://api.deepseek.com";
@@ -63,7 +62,7 @@ async function whatsappHonoWebhook(c) {
     const messages = history[from] || [
         {
             role: "system",
-            content: prompt_1.PROMPT,
+            content: process.env.PROMPT,
         },
     ];
     messages.push({ role: "user", content: message });

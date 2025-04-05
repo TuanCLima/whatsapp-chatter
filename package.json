@@ -10,7 +10,8 @@
     "dev-1": "wrangler dev",
     "dev": "miniflare --watch",
     "deploy": "wrangler publish",
-    "serve": "node dist/index.js"
+    "serve": "node dist/index.js",
+    "predeploy": "tsx src/scripts/generate-vcf.ts"
   },
   "keywords": [],
   "author": "",
