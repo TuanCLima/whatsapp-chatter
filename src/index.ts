@@ -4,7 +4,7 @@ import "dotenv/config";
 import { whatsappHonoWebhook } from "./webhook";
 
 const app = new Hono();
-app.use("/public/*", serveStatic({ root: "./src" }));
+app.use("/public/*", serveStatic({ root: "./dist/public" }));
 
 app.post("/webhook", whatsappHonoWebhook);
 
