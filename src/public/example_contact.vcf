@@ -1,8 +1,0 @@
-BEGIN:VCARD
-VERSION:3.0
-FN:Example Name
-TEL:+55119999999
-EMAIL:example.ctt@email.com
-END:VCARD
-
-# Refer to this file's url in your prompt
