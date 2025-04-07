@@ -1,9 +1,7 @@
 import OpenAI from "openai";
 import Twilio from "twilio";
-import dotenv from "dotenv";
-import { Context } from "hono";
-
-dotenv.config();
+import "dotenv/config";
+import { Request, Response } from "express";
 
 const API_KEY = process.env.LLM_API_KEY;
 const DEEPSEEK_API_URL = "https://api.deepseek.com";
@@ -75,15 +73,25 @@ type TwilioFormData = {
   Body: string;
 };
 
-export async function whatsappHonoWebhook(c: Context) {
-  console.log("###", "whatsappHonoWebhook");
-  const body = await c.req.parseBody<TwilioFormData>();
+export async function whatsappHonoWebhook(
+  req: Request<{}, {}, TwilioFormData>,
+  res: Response
+) {
+  console.log(
+    "###",
+    "whatsappHonoWebhook",
+    req.body,
+    process.env.MYPROMPT,
+    process.env.CONTACT_1,
+    process.env.CONTACT_2
+  );
+  const body = req.body; // Parse the request body
   const { From: from, Body: message } = body;
 
   const messages = history[from] || [
     {
       role: "system",
-      content: process.env.PROMPT,
+      content: process.env.MYPROMPT,
     },
   ];
 
@@ -99,7 +107,8 @@ export async function whatsappHonoWebhook(c: Context) {
     let apiResponse = completion.choices[0].message.content;
 
     if (!apiResponse) {
-      return c.json({ error: "No response from DeepSeek" }, 400);
+      res.status(400).json({ error: "No response from DeepSeek" });
+      return;
     }
 
     const toSendMessages = getMessages(apiResponse);
@@ -124,10 +133,12 @@ export async function whatsappHonoWebhook(c: Context) {
         });
       }
     }
-    return c.json({ status: "Received", from, message });
+
+    res.json({ status: "Received", from, message });
+    return;
   } catch (error) {
-    console.error("Error calling DeepSeek API:", error);
-    return c.json({ error: "Failed to process message" }, 500);
+    res.status(500).json({ Error: "Catch" });
+    console.error("Error:", error);
   }
 }
 

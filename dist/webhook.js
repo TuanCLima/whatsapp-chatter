@@ -6,8 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.whatsappHonoWebhook = whatsappHonoWebhook;
 const openai_1 = __importDefault(require("openai"));
 const twilio_1 = __importDefault(require("twilio"));
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
+require("dotenv/config");
 const API_KEY = process.env.LLM_API_KEY;
 const DEEPSEEK_API_URL = "https://api.deepseek.com";
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -55,14 +54,14 @@ function getMessages(text) {
     }
     return messages;
 }
-async function whatsappHonoWebhook(c) {
-    console.log("###", "whatsappHonoWebhook");
-    const body = await c.req.parseBody();
+async function whatsappHonoWebhook(req, res) {
+    console.log("###", "whatsappHonoWebhook", req.body, process.env.MYPROMPT, process.env.CONTACT_1, process.env.CONTACT_2);
+    const body = req.body; // Parse the request body
     const { From: from, Body: message } = body;
     const messages = history[from] || [
         {
             role: "system",
-            content: process.env.PROMPT,
+            content: process.env.MYPROMPT,
         },
     ];
     messages.push({ role: "user", content: message });
@@ -74,7 +73,8 @@ async function whatsappHonoWebhook(c) {
         });
         let apiResponse = completion.choices[0].message.content;
         if (!apiResponse) {
-            return c.json({ error: "No response from DeepSeek" }, 400);
+            res.status(400).json({ error: "No response from DeepSeek" });
+            return;
         }
         const toSendMessages = getMessages(apiResponse);
         console.log("DeepSeek Response:", completion.choices[0].message.content, {
@@ -97,11 +97,12 @@ async function whatsappHonoWebhook(c) {
                 });
             }
         }
-        return c.json({ status: "Received", from, message });
+        res.json({ status: "Received", from, message });
+        return;
     }
     catch (error) {
-        console.error("Error calling DeepSeek API:", error);
-        return c.json({ error: "Failed to process message" }, 500);
+        res.status(500).json({ Error: "Catch" });
+        console.error("Error:", error);
     }
 }
 /* export async function whatsappWebhook(fastify: FastifyInstance) {
