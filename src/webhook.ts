@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import Twilio from "twilio";
 import "dotenv/config";
 import { Request, Response } from "express";
+import { parseLLMMessages } from "./utils/parseLLMMessages";
 
 const API_KEY = process.env.LLM_API_KEY;
 const DEEPSEEK_API_URL = "https://api.deepseek.com";
@@ -20,53 +21,6 @@ const history: Record<
 > = {};
 
 const client = Twilio(accountSid, authToken);
-
-type Message = { text: string; isContactLink: boolean };
-
-function getMessages(text: string): Message[] {
-  const matches = [
-    ...text.matchAll(/<MediaUrl>(https?:\/\/[^<]+)<\/MediaUrl>/g),
-  ];
-
-  const parts = text
-    .split(/<MediaUrl>https?:\/\/[^<]+<\/MediaUrl>/g)
-    .filter((s) => !!s.replace(/[\s\uFEFF\u200B]+/, ""));
-
-  const mediaUrls = matches.map((match) => match[1]);
-
-  const messages: Message[] = [];
-
-  console.log({ parts });
-
-  for (let i = 0; i < parts.length; i++) {
-    if (parts[i].trim()) {
-      messages.push({
-        text: parts[i].trim(),
-        isContactLink: false,
-      });
-
-      if (mediaUrls[i]) {
-        messages.push({
-          text: mediaUrls[i].trim(),
-          isContactLink: true,
-        });
-      }
-    }
-  }
-
-  if (parts.length === 0) {
-    for (const mediaUrl of mediaUrls) {
-      if (mediaUrl.trim()) {
-        messages.push({
-          text: mediaUrl.trim(),
-          isContactLink: true,
-        });
-      }
-    }
-  }
-
-  return messages;
-}
 
 type TwilioFormData = {
   From: string;
@@ -102,7 +56,7 @@ export async function whatsappHonoWebhook(
       return;
     }
 
-    const toSendMessages = getMessages(apiResponse);
+    const toSendMessages = parseLLMMessages(apiResponse);
     console.log("DeepSeek Response:", completion.choices[0].message.content, {
       toSendMessages,
     });
