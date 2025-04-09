@@ -70,6 +70,7 @@ export async function whatsappHonoWebhook(
           to: from, // Recipient's WhatsApp number
           mediaUrl: [toSendMessage.text],
         });
+        await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for 1 second before sending the next message
       } else {
         await client.messages.create({
           from: fromNumber, // Your Twilio WhatsApp number
