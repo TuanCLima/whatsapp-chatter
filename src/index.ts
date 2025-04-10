@@ -4,8 +4,8 @@ import { whatsappHonoWebhook } from "./webhook";
 import path from "path";
 import mcpRouter from "./server/mcpServer";
 
+export const PORT = process.env.PORT ?? 3000;
 const app = express();
-const port = process.env.PORT ?? 3000;
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -16,8 +16,8 @@ app.use("/api/mcp", mcpRouter);
 
 app.post("/webhook", whatsappHonoWebhook);
 
-app.listen(port, () => {
-  console.log(`🚀 Server running at port: ${port}`);
+app.listen(PORT, () => {
+  console.log(`🚀 Server running at port: ${PORT}`);
 });
 
 export default app;

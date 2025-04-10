@@ -5,6 +5,7 @@ import "dotenv/config";
 import { Request, Response } from "express";
 import { parseLLMMessages } from "./utils/parseLLMMessages";
 import { getSaoPauloDate } from "./mcp/mcpService";
+import { PORT } from ".";
 
 const API_KEY = process.env.LLM_API_KEY;
 const DEEPSEEK_API_URL = "https://api.deepseek.com";
@@ -89,31 +90,37 @@ export async function whatsappHonoWebhook(
         const { name } = functionCall;
         if (name === "getSaoPauloDate") {
           // Call our MCP server
-          const mcpResponse = await axios.post(
-            "http://localhost:3000/api/mcp/execute",
-            {
-              functionName: "getSaoPauloDate",
-              parameters: {},
-            }
-          );
+          try {
+            const mcpResponse = await axios.post(
+              `http://localhost:${PORT}/api/mcp/execute`,
+              {
+                functionName: "getSaoPauloDate",
+                parameters: {},
+              }
+            );
 
-          const dateInfo = mcpResponse.data;
+            const dateInfo = mcpResponse.data;
 
-          // Add the function response to messages
-          messages.push({
-            role: "tool",
-            tool_call_id: toolCall.id,
-            name: "getSaoPauloDate",
-            content: JSON.stringify(dateInfo),
-          });
+            // Add the function response to messages
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              name: "getSaoPauloDate",
+              content: JSON.stringify(dateInfo),
+            });
 
-          // Get a new completion with the function result
-          const secondCompletion = await openai.chat.completions.create({
-            model: "deepseek-chat",
-            messages: messages,
-          });
+            // Get a new completion with the function result
+            const secondCompletion = await openai.chat.completions.create({
+              model: "deepseek-chat",
+              messages: messages,
+            });
 
-          apiResponse = secondCompletion.choices[0].message.content ?? "";
+            apiResponse = secondCompletion.choices[0].message.content ?? "";
+          } catch (error) {
+            console.error("Error calling MCP server:", error);
+            res.status(500).json({ error: "Error calling MCP server" });
+            return;
+          }
         }
       }
     }
