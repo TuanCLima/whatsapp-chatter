@@ -3,3 +3,4 @@ node_modules
 PROMPT.txt
 dist
 *.ipynb
+backlog_notes.txt
