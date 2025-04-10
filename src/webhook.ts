@@ -26,8 +26,13 @@ type ChatMessage =
       name: string;
     }
   | {
-      role: "user" | "assistant" | "system";
+      role: "user" | "system";
       content: string;
+    }
+  | {
+      role: "assistant";
+      content: string | null;
+      tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
     };
 
 const history: Record<string, ChatMessage[]> = {};
@@ -102,6 +107,21 @@ export async function whatsappHonoWebhook(
             );
 
             const dateInfo = mcpResponse.data;
+
+            messages.push({
+              role: "assistant",
+              content: null,
+              tool_calls: [
+                {
+                  id: toolCall.id, // This ID will be referenced in the tool response
+                  type: "function",
+                  function: {
+                    name: "getSaoPauloDate",
+                    arguments: JSON.stringify({}),
+                  },
+                },
+              ],
+            });
 
             // Add the function response to messages
             messages.push({
