@@ -5,11 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "tsx src/index.ts",
-    "dev-local": "tsx watch src/index.ts",
+    "dev": "tsx watch src/index.ts",
     "build": "npx tsc",
-    "dev-1": "wrangler dev",
-    "dev": "miniflare --watch",
-    "deploy": "wrangler publish",
     "serve": "node dist/index.js",
     "predeploy": "tsx src/scripts/generate-vcf.ts"
   },
@@ -17,6 +14,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/node": "^22.14.0",
     "tsx": "^4.19.3",
@@ -26,8 +24,10 @@
   "dependencies": {
     "@cloudflare/workers-types": "^4.20250403.0",
     "axios": "^1.8.4",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
+    "moment-timezone": "^0.5.48",
     "openai": "^4.90.0",
     "twilio": "^5.5.1"
   }

@@ -12,5 +12,27 @@ Content-Type: application/json
   "message": "Hello from Twilio WhatsApp API!"
 }
 
+###
+// url encoded webhook post
+POST http://localhost:3000/webhook
+Content-Type: application/x-www-form-urlencoded
+
+From=whatsapp%3A%2B14155239999&To=whatsapp%3A%2B5511999999999&Body=Hello%20from%20Twilio%20WhatsApp%20API%21
+
+
+
 ### contact card
-GET http://localhost:3000/gabe_contact.vcf
+GET http://localhost:3000/CONTACT_1.vcf
+
+
+### get mcp functions
+GET http://localhost:3000/api/mcp/functions
+
+### get mcp date
+POST http://localhost:3000/api/mcp/execute
+Content-Type: application/json
+
+{
+  "functionName": "getSaoPauloDate",
+  "parameters": {}
+}
