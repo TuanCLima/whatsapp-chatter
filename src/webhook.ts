@@ -155,7 +155,7 @@ export async function whatsappHonoWebhook(
     const toSendMessages = parseLLMMessages(apiResponse);
     console.log(
       "History:",
-      history[from].filter((m) => m.role !== "system")
+      history[from]?.filter((m) => m.role !== "system")
     );
 
     history[from] = [...messages, { role: "assistant", content: apiResponse }];
