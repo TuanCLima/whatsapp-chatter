@@ -124,9 +124,7 @@ export async function whatsappHonoWebhook(
     }
 
     const toSendMessages = parseLLMMessages(apiResponse);
-    console.log("DeepSeek Response:", completion.choices[0].message.content, {
-      toSendMessages,
-    });
+    console.log("History:", history[from]);
 
     history[from] = [...messages, { role: "assistant", content: apiResponse }];
 
@@ -137,7 +135,7 @@ export async function whatsappHonoWebhook(
           to: from, // Recipient's WhatsApp number
           mediaUrl: [toSendMessage.text],
         });
-        await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for 1 second before sending the next message
+        await new Promise((resolve) => setTimeout(resolve, 700)); // Wait for 1 second before sending the next message
       } else {
         await client.messages.create({
           from: fromNumber, // Your Twilio WhatsApp number
