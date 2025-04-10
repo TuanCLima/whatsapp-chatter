@@ -84,6 +84,8 @@ export async function whatsappHonoWebhook(
     let apiResponse = completion.choices[0].message.content;
     const toolCalls = completion.choices[0].message.tool_calls;
 
+    console.log("###", toolCalls);
+
     if (toolCalls && toolCalls.length > 0) {
       for (const toolCall of toolCalls) {
         const { function: functionCall } = toolCall;
@@ -131,7 +133,10 @@ export async function whatsappHonoWebhook(
     }
 
     const toSendMessages = parseLLMMessages(apiResponse);
-    console.log("History:", history[from]);
+    console.log(
+      "History:",
+      history[from].filter((m) => m.role !== "system")
+    );
 
     history[from] = [...messages, { role: "assistant", content: apiResponse }];
 
