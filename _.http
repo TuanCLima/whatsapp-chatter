@@ -37,6 +37,21 @@ Content-Type: application/json
   "parameters": {}
 }
 
+### get events through execute
+POST http://localhost:3000/api/mcp/execute
+Content-Type: application/json
+
+{
+  "functionName": "fetchCalendarEvents",
+  "parameters": {
+    "timeMin": "2024-01-01T00:00:00Z",
+    "timeMax": "2025-12-31T23:59:59Z",
+    "maxResults": 10,
+    "singleEvents": true,
+    "orderBy": "startTime"
+  }
+}
+
 ### Test fetch events
 POST http://localhost:3000/api/mcp/fetch-events
 Content-Type: application/json

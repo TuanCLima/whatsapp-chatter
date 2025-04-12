@@ -3,8 +3,8 @@ import Twilio from "twilio";
 import "dotenv/config";
 import { Request, Response } from "express";
 import { parseLLMMessages } from "./utils/parseLLMMessages";
-import { getSaoPauloDate } from "./mcp/mcpService";
-import { dateTool } from "./mcp/toolConfig/toolConfig";
+import { FetchCalendarEventsProps, getSaoPauloDate } from "./mcp/mcpService";
+import { dateTool, fetchEventsTool } from "./mcp/toolConfig/toolConfig";
 import { handleLLMDateRequest } from "./mcp/chatHandlers";
 import { ChatMessage } from "./types/types";
 
@@ -53,26 +53,85 @@ export async function whatsappHonoWebhook(
     const completion = await openai.chat.completions.create({
       model: "deepseek-chat",
       messages: messages,
-      tools: [dateTool],
+      tools: [dateTool, fetchEventsTool],
       tool_choice: "auto",
     });
 
     let apiResponse = completion.choices[0].message.content;
     const toolCalls = completion.choices[0].message.tool_calls;
 
-    console.log("###", toolCalls);
-
     if (toolCalls && toolCalls.length > 0) {
       for (const toolCall of toolCalls) {
         const { function: functionCall } = toolCall;
-        const { name } = functionCall;
+        const { name, arguments: _arguments } = functionCall;
         if (name === "getSaoPauloDate") {
           try {
-            apiResponse = await handleLLMDateRequest(
+            apiResponse = await handleLLMDateRequest({
               messages,
               apiResponse,
-              toolCall.id
-            );
+              toolCallId: toolCall.id,
+              functionName: name,
+              parameters: {
+                timeMin: "2025-01-01T00:00:00Z",
+                timeMax: "2025-12-31T23:59:59Z",
+                maxResults: 10,
+                singleEvents: true,
+                orderBy: "startTime",
+              },
+              dataToContentCB: (data) => data,
+            });
+          } catch (error) {
+            console.error("Error calling MCP server:", error);
+            res.status(500).json({ error: "Error calling MCP server" });
+            return;
+          }
+        }
+
+        if (name === "fetchCalendarEvents") {
+          const parameters = JSON.parse(_arguments) as FetchCalendarEventsProps;
+          try {
+            apiResponse = await handleLLMDateRequest({
+              messages,
+              apiResponse,
+              toolCallId: toolCall.id,
+              functionName: name,
+              parameters,
+              dataToContentCB: (data: any[]) => {
+                const events = data.map((event) => {
+                  const {
+                    id,
+                    status,
+                    created,
+                    summary,
+                    // description,
+                    creator,
+                    organizer,
+                    start,
+                    end,
+                    sequence,
+                    attendees,
+                    eventType,
+                  } = event;
+
+                  return {
+                    id,
+                    status,
+                    created,
+                    summary,
+                    // description,
+                    creator,
+                    organizer,
+                    start,
+                    end,
+                    sequence,
+                    attendees,
+                    eventType,
+                  };
+                });
+
+                return events;
+              },
+            });
           } catch (error) {
             console.error("Error calling MCP server:", error);
             res.status(500).json({ error: "Error calling MCP server" });

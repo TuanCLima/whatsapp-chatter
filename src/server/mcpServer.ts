@@ -16,7 +16,6 @@ router.use(cors());
 router.use(express.json());
 
 router.get("/functions", (_, res) => {
-  console.log("#### MCP functions list requested");
   const functionsList = (
     Object.keys(mcpFunctions) as (keyof MCPFunctions)[]
   ).map((functionName) => ({
@@ -35,7 +34,7 @@ router.post(
     res: Response
   ) => {
     const body = req.body;
-    const { functionName, parameters: _ } = body;
+    const { functionName, parameters } = body;
     if (!functionName) {
       res.status(400).json({ error: "Function name is required" });
       return;
@@ -46,8 +45,16 @@ router.post(
       return;
     }
 
+    let result: any;
     try {
-      const result = mcpFunctions[functionName].function();
+      switch (functionName) {
+        case "getSaoPauloDate":
+          result = mcpFunctions[functionName].function();
+          break;
+        case "fetchCalendarEvents":
+          result = await mcpFunctions[functionName].function(parameters);
+      }
+
       res.json(result);
       return;
     } catch (error) {

@@ -1,5 +1,7 @@
 import moment from "moment-timezone";
 import { Maybe } from "../types/types";
+import { authorize } from "../googleCalendar/googleAuth";
+import { getGoogleCalendarEvents } from "../googleCalendar/googleCalendar";
 
 export function getSaoPauloDate() {
   try {
@@ -29,9 +31,22 @@ export function getSaoPauloDate() {
   }
 }
 
+export type FetchCalendarEventsProps = {
+  timeMin: string;
+  timeMax: string;
+  maxResults?: number;
+  singleEvents?: boolean;
+  orderBy?: "startTime" | "updated";
+};
+
 export type MCPFunctions = {
   getSaoPauloDate: {
     function: () => { currentDate: string; timezone: string; iso8601: string };
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+  fetchCalendarEvents: {
+    function: (params: FetchCalendarEventsProps) => Promise<any>;
     description: string;
     parameters: Record<string, unknown>;
   };
@@ -44,19 +59,52 @@ export const mcpFunctions: MCPFunctions = {
     description: "Get the current date and time in São Paulo, Brazil",
     parameters: {},
   },
+  fetchCalendarEvents: {
+    function: async (params) => {
+      return new Promise((resolve, reject) => {
+        authorize(async (auth) => {
+          try {
+            const events = await getGoogleCalendarEvents({
+              ...params,
+              auth,
+            });
+            resolve(events);
+          } catch (error) {
+            reject(error as Error);
+          }
+        });
+      });
+    },
+    description:
+      "Fetch events from the Google Calendar within a specified time range.",
+    parameters: {
+      timeMin: "string",
+      timeMax: "string",
+      maxResults: "number",
+      singleEvents: "boolean",
+      orderBy: "string",
+    },
+  },
 };
 
 // MCP function call
 export async function handlerMPCRequest(
   functionName: keyof MCPFunctions,
-  parameters: Maybe<Record<string, unknown>>
+  parameters: Maybe<Record<string, unknown>> | FetchCalendarEventsProps
 ) {
   if (!mcpFunctions[functionName]) {
     throw new Error(`Function ${functionName} not found`);
   }
 
   try {
-    return mcpFunctions[functionName].function();
+    switch (functionName) {
+      case "getSaoPauloDate":
+        return mcpFunctions[functionName].function();
+      case "fetchCalendarEvents":
+        return mcpFunctions[functionName].function(
+          parameters as FetchCalendarEventsProps
+        );
+    }
   } catch (error) {
     console.error(`Error executing function ${functionName}:`, error);
     throw error;

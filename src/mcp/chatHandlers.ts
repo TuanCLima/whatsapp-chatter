@@ -1,18 +1,29 @@
 import axios from "axios";
 import { PORT } from "..";
 import { openai } from "../webhook";
-import { ChatMessage } from "../types/types";
+import { ChatMessage, Maybe } from "../types/types";
+import { FetchCalendarEventsProps } from "./mcpService";
 
-export async function handleLLMDateRequest(
-  messages: ChatMessage[],
-  apiResponse: string | null,
-  toolCallId: string
-) {
+export async function handleLLMDateRequest({
+  messages,
+  apiResponse,
+  toolCallId,
+  functionName,
+  parameters,
+  dataToContentCB,
+}: {
+  messages: ChatMessage[];
+  apiResponse: string | null;
+  toolCallId: string;
+  functionName: string;
+  parameters: Maybe<Record<string, unknown>> | FetchCalendarEventsProps;
+  dataToContentCB: (_: any) => any;
+}) {
   const mcpResponse = await axios.post(
     `http://localhost:${PORT}/api/mcp/execute`,
     {
-      functionName: "getSaoPauloDate",
-      parameters: {},
+      functionName,
+      parameters,
     }
   );
 
@@ -26,8 +37,8 @@ export async function handleLLMDateRequest(
         id: toolCallId, // This ID will be referenced in the tool response
         type: "function",
         function: {
-          name: "getSaoPauloDate",
-          arguments: JSON.stringify({}),
+          name: functionName,
+          arguments: JSON.stringify(parameters),
         },
       },
     ],
@@ -37,8 +48,8 @@ export async function handleLLMDateRequest(
   messages.push({
     role: "tool",
     tool_call_id: toolCallId,
-    name: "getSaoPauloDate",
-    content: JSON.stringify(dateInfo),
+    name: functionName,
+    content: JSON.stringify(dataToContentCB(dateInfo)),
   });
 
   // Get a new completion with the function result
