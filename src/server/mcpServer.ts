@@ -1,7 +1,10 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
 import { MCPFunctions, mcpFunctions } from "../mcp/mcpService";
-import { getGoogleCalendarEvents } from "../googleCalendar/googleCalendar";
+import {
+  createGoogleCalendarEvent,
+  getGoogleCalendarEvents,
+} from "../googleCalendar/googleCalendar";
 import { authorize } from "../googleCalendar/googleAuth";
 import path from "path";
 import fs from "fs";
@@ -72,6 +75,31 @@ router.post("/fetch-events", async (req, res) => {
       return;
     } catch (error) {
       res.status(500).send("Error fetching events");
+      return;
+    }
+  });
+});
+
+router.post("/create-event", async (req, res) => {
+  authorize(async (auth) => {
+    try {
+      const event = req.body.event; // Expect the event details in the request body
+      if (!event) {
+        res.status(400).send("Event details are required");
+        return;
+      }
+
+      const createdEvent = await createGoogleCalendarEvent({
+        calendarId: "primary",
+        event,
+        auth,
+      });
+
+      res.json(createdEvent);
+      return;
+    } catch (error) {
+      console.error("Error creating event:", error);
+      res.status(500).send("Error creating event");
       return;
     }
   });

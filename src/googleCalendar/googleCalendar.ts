@@ -42,4 +42,28 @@ async function getGoogleCalendarEvents({
   }
 }
 
-export { getGoogleCalendarEvents };
+async function createGoogleCalendarEvent({
+  calendarId = "primary",
+  event,
+  auth,
+}: {
+  calendarId?: string;
+  event: calendar_v3.Schema$Event;
+  auth: OAuth2Client | string;
+}): Promise<calendar_v3.Schema$Event> {
+  const calendar = google.calendar({ version: "v3", auth });
+
+  try {
+    const response = await calendar.events.insert({
+      calendarId,
+      requestBody: event,
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("Error creating Google Calendar event:", error);
+    throw error;
+  }
+}
+
+export { getGoogleCalendarEvents, createGoogleCalendarEvent };

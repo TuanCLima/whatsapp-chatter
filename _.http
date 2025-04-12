@@ -49,3 +49,28 @@ Content-Type: application/json
     "singleEvents": true,
     "orderBy": "startTime"
   }
+
+
+### Test creating an event
+POST http://localhost:3000/api/mcp/create-event
+Content-Type: application/json
+
+{
+  "event": {
+    "summary": "Meeting with Team",
+    "location": "123 Main St",
+    "description": "Discuss project updates",
+    "start": {
+      "dateTime": "2025-04-12T13:00:00-03:00",
+      "timeZone": "America/Sao_Paulo"
+    },
+    "end": {
+      "dateTime": "2025-04-12T14:00:00-03:00",
+      "timeZone": "America/Sao_Paulo"
+    },
+    "attendees": [
+      { "email": "example1@gmail.com" },
+      { "email": "example2@gmail.com" }
+    ]
+  }
+}

@@ -52,7 +52,7 @@ function getAccessToken(
 ) {
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: "offline",
-    scope: ["https://www.googleapis.com/auth/calendar.readonly"],
+    scope: ["https://www.googleapis.com/auth/calendar"], // Updated scope
   });
   console.log("Authorize this app by visiting this URL:", authUrl);
 
