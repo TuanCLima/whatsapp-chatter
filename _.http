@@ -36,3 +36,16 @@ Content-Type: application/json
   "functionName": "getSaoPauloDate",
   "parameters": {}
 }
+
+### Test fetch events
+POST http://localhost:3000/api/mcp/fetch-events
+Content-Type: application/json
+
+{
+    "calendarId": "primary",
+    "timeMin": "2025-01-01T00:00:00Z",
+    "timeMax": "2025-12-31T23:59:59Z",
+    "maxResults": 10,
+    "singleEvents": true,
+    "orderBy": "startTime"
+  }

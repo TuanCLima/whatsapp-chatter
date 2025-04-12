@@ -1,11 +1,12 @@
 import OpenAI from "openai";
 import Twilio from "twilio";
-import axios from "axios";
 import "dotenv/config";
 import { Request, Response } from "express";
 import { parseLLMMessages } from "./utils/parseLLMMessages";
 import { getSaoPauloDate } from "./mcp/mcpService";
-import { PORT } from ".";
+import { dateTool } from "./mcp/toolConfig/toolConfig";
+import { handleLLMDateRequest } from "./mcp/chatHandlers";
+import { ChatMessage } from "./types/types";
 
 const API_KEY = process.env.LLM_API_KEY;
 const DEEPSEEK_API_URL = "https://api.deepseek.com";
@@ -13,27 +14,10 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
 
-const openai = new OpenAI({
+export const openai = new OpenAI({
   baseURL: DEEPSEEK_API_URL,
   apiKey: API_KEY,
 });
-
-type ChatMessage =
-  | {
-      role: "tool";
-      content: string;
-      tool_call_id: string;
-      name: string;
-    }
-  | {
-      role: "user" | "system";
-      content: string;
-    }
-  | {
-      role: "assistant";
-      content: string | null;
-      tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
-    };
 
 const history: Record<string, ChatMessage[]> = {};
 
@@ -69,20 +53,7 @@ export async function whatsappHonoWebhook(
     const completion = await openai.chat.completions.create({
       model: "deepseek-chat",
       messages: messages,
-      tools: [
-        {
-          type: "function",
-          function: {
-            name: "getSaoPauloDate",
-            description: "Get the current date and time in São Paulo, Brazil",
-            parameters: {
-              type: "object",
-              properties: {},
-              required: [],
-            },
-          },
-        },
-      ],
+      tools: [dateTool],
       tool_choice: "auto",
     });
 
@@ -96,48 +67,12 @@ export async function whatsappHonoWebhook(
         const { function: functionCall } = toolCall;
         const { name } = functionCall;
         if (name === "getSaoPauloDate") {
-          // Call our MCP server
           try {
-            const mcpResponse = await axios.post(
-              `http://localhost:${PORT}/api/mcp/execute`,
-              {
-                functionName: "getSaoPauloDate",
-                parameters: {},
-              }
+            apiResponse = await handleLLMDateRequest(
+              messages,
+              apiResponse,
+              toolCall.id
             );
-
-            const dateInfo = mcpResponse.data;
-
-            messages.push({
-              role: "assistant",
-              content: null,
-              tool_calls: [
-                {
-                  id: toolCall.id, // This ID will be referenced in the tool response
-                  type: "function",
-                  function: {
-                    name: "getSaoPauloDate",
-                    arguments: JSON.stringify({}),
-                  },
-                },
-              ],
-            });
-
-            // Add the function response to messages
-            messages.push({
-              role: "tool",
-              tool_call_id: toolCall.id,
-              name: "getSaoPauloDate",
-              content: JSON.stringify(dateInfo),
-            });
-
-            // Get a new completion with the function result
-            const secondCompletion = await openai.chat.completions.create({
-              model: "deepseek-chat",
-              messages: messages,
-            });
-
-            apiResponse = secondCompletion.choices[0].message.content ?? "";
           } catch (error) {
             console.error("Error calling MCP server:", error);
             res.status(500).json({ error: "Error calling MCP server" });

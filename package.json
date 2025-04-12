@@ -27,6 +27,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
+    "google-auth-library": "^9.15.1",
+    "googleapis": "^148.0.0",
     "moment-timezone": "^0.5.48",
     "openai": "^4.90.0",
     "twilio": "^5.5.1"
