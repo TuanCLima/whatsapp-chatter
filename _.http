@@ -89,3 +89,15 @@ Content-Type: application/json
     ]
   }
 }
+
+### Test creating a calendar
+POST http://localhost:3000/api/mcp/create-calendar
+Content-Type: application/json
+
+{
+  "calendar": {
+    "summary": "Gabe",
+    "description": "Calendário da Gabe",
+    "timeZone": "America/Sao_Paulo"
+  }
+}

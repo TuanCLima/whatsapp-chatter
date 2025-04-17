@@ -4,18 +4,24 @@ import "dotenv/config";
 import { Request, Response } from "express";
 import { parseLLMMessages } from "./utils/parseLLMMessages";
 import { FetchCalendarEventsProps, getSaoPauloDate } from "./mcp/mcpService";
-import { dateTool, fetchEventsTool } from "./mcp/toolConfig/toolConfig";
+import {
+  createEventTool,
+  dateTool,
+  fetchEventsTool,
+  servicesTool,
+} from "./mcp/toolConfig/toolConfig";
 import { handleLLMDateRequest } from "./mcp/chatHandlers";
 import { ChatMessage } from "./types/types";
 
 const API_KEY = process.env.LLM_API_KEY;
-const DEEPSEEK_API_URL = "https://api.deepseek.com";
+const LLM_BASE_URL = process.env.LLM_BASE_URL;
+const LLM_MODEL = process.env.LLM_MODEL;
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
 
 export const openai = new OpenAI({
-  baseURL: DEEPSEEK_API_URL,
+  baseURL: LLM_BASE_URL,
   apiKey: API_KEY,
 });
 
@@ -26,6 +32,7 @@ const client = Twilio(accountSid, authToken);
 type TwilioFormData = {
   From: string;
   Body: string;
+  ProfileName: string;
 };
 
 export async function whatsappHonoWebhook(
@@ -33,8 +40,11 @@ export async function whatsappHonoWebhook(
   res: Response
 ) {
   const body = req.body;
-  const { From: from, Body: message } = body;
+  const { From: from, Body: message, ProfileName } = body;
 
+  console.log("###", { body: JSON.stringify(body) });
+
+  const profileNameTag = `<ProfileName>${ProfileName}</ProfileName>`;
   const messages = history[from] || [
     {
       role: "system",
@@ -46,38 +56,34 @@ export async function whatsappHonoWebhook(
     role: "user",
     content: `${message}\n<Timestamp>${
       getSaoPauloDate().currentDate
-    }</Timestamp>`,
+    }</Timestamp>${messages.length === 1 ? profileNameTag : ""}`,
   });
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "deepseek-chat",
+      model: LLM_MODEL!,
       messages: messages,
-      tools: [dateTool, fetchEventsTool],
+      tools: [dateTool, servicesTool, fetchEventsTool, createEventTool],
       tool_choice: "auto",
     });
 
     let apiResponse = completion.choices[0].message.content;
     const toolCalls = completion.choices[0].message.tool_calls;
 
+    console.log("### message", JSON.stringify(completion.choices[0].message));
+
     if (toolCalls && toolCalls.length > 0) {
       for (const toolCall of toolCalls) {
         const { function: functionCall } = toolCall;
         const { name, arguments: _arguments } = functionCall;
-        if (name === "getSaoPauloDate") {
+        if (name === "getSaoPauloDate" || name === "getAllServicesTable") {
           try {
             apiResponse = await handleLLMDateRequest({
               messages,
               apiResponse,
               toolCallId: toolCall.id,
               functionName: name,
-              parameters: {
-                timeMin: "2025-01-01T00:00:00Z",
-                timeMax: "2025-12-31T23:59:59Z",
-                maxResults: 10,
-                singleEvents: true,
-                orderBy: "startTime",
-              },
+              parameters: {},
               dataToContentCB: (data) => data,
             });
           } catch (error) {
@@ -138,6 +144,24 @@ export async function whatsappHonoWebhook(
             return;
           }
         }
+
+        if (name === "createCalendarEvent") {
+          const parameters = JSON.parse(_arguments) as FetchCalendarEventsProps;
+          try {
+            apiResponse = await handleLLMDateRequest({
+              messages,
+              apiResponse,
+              toolCallId: toolCall.id,
+              functionName: name,
+              parameters,
+              dataToContentCB: (data: any[]) => data,
+            });
+          } catch (error) {
+            console.error("Error calling MCP server:", error);
+            res.status(500).json({ error: "Error calling MCP server" });
+            return;
+          }
+        }
       }
     }
 
@@ -166,7 +190,7 @@ export async function whatsappHonoWebhook(
         await client.messages.create({
           from: fromNumber, // Your Twilio WhatsApp number
           to: from, // Recipient's WhatsApp number
-          body: toSendMessage.text,
+          body: toSendMessage.text.replace(/\*\*/g, "*"),
         });
       }
     }

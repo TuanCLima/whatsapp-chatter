@@ -2,13 +2,14 @@ import express, { Request, Response } from "express";
 import cors from "cors";
 import { MCPFunctions, mcpFunctions } from "../mcp/mcpService";
 import {
-  createGoogleCalendarEvent,
+  createCalendarEvent,
   getGoogleCalendarEvents,
 } from "../googleCalendar/googleCalendar";
 import { authorize } from "../googleCalendar/googleAuth";
 import path from "path";
 import fs from "fs";
 import { google } from "googleapis";
+import { GABE_CALENDAR_ID } from "../utils/contants";
 
 const router = express.Router();
 
@@ -49,9 +50,11 @@ router.post(
     try {
       switch (functionName) {
         case "getSaoPauloDate":
+        case "getAllServicesTable":
           result = mcpFunctions[functionName].function();
           break;
         case "fetchCalendarEvents":
+        case "createCalendarEvent":
           result = await mcpFunctions[functionName].function(parameters);
       }
 
@@ -67,23 +70,18 @@ router.post(
 
 router.post("/fetch-events", async (req, res) => {
   authorize(async (auth) => {
-    try {
-      const events = await getGoogleCalendarEvents({
-        calendarId: "primary",
-        timeMin: req.body.timeMin,
-        timeMax: req.body.timeMax,
-        maxResults: req.body.maxResults,
-        singleEvents: true,
-        orderBy: "startTime",
-        auth,
-      });
+    const events = await getGoogleCalendarEvents({
+      // calendarId: "primary",
+      calendarId: GABE_CALENDAR_ID,
+      timeMin: req.body.timeMin,
+      timeMax: req.body.timeMax,
+      maxResults: req.body.maxResults,
+      singleEvents: true,
+      orderBy: "startTime",
+      auth,
+    });
 
-      res.json(events);
-      return;
-    } catch (error) {
-      res.status(500).send("Error fetching events");
-      return;
-    }
+    res.json(events);
   });
 });
 
@@ -96,8 +94,9 @@ router.post("/create-event", async (req, res) => {
         return;
       }
 
-      const createdEvent = await createGoogleCalendarEvent({
-        calendarId: "primary",
+      const createdEvent = await createCalendarEvent({
+        // calendarId: "primary",
+        calendarId: GABE_CALENDAR_ID,
         event,
         auth,
       });
@@ -107,6 +106,30 @@ router.post("/create-event", async (req, res) => {
     } catch (error) {
       console.error("Error creating event:", error);
       res.status(500).send("Error creating event");
+      return;
+    }
+  });
+});
+
+router.post("/create-calendar", async (req, res) => {
+  authorize(async (auth) => {
+    try {
+      const calendarDetails = req.body.calendar;
+      if (!calendarDetails) {
+        res.status(400).send("Calendar details are required");
+        return;
+      }
+
+      const calendar = google.calendar({ version: "v3", auth });
+      const createdCalendar = await calendar.calendars.insert({
+        requestBody: calendarDetails,
+      });
+
+      res.json(createdCalendar.data);
+      return;
+    } catch (error) {
+      console.error("Error creating calendar:", error);
+      res.status(500).send("Error creating calendar");
       return;
     }
   });

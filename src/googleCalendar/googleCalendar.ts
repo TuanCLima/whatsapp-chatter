@@ -42,7 +42,7 @@ async function getGoogleCalendarEvents({
   }
 }
 
-async function createGoogleCalendarEvent({
+async function createCalendarEvent({
   calendarId = "primary",
   event,
   auth,
@@ -66,4 +66,4 @@ async function createGoogleCalendarEvent({
   }
 }
 
-export { getGoogleCalendarEvents, createGoogleCalendarEvent };
+export { getGoogleCalendarEvents, createCalendarEvent };

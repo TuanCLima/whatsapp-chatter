@@ -1,7 +1,11 @@
 import moment from "moment-timezone";
 import { Maybe } from "../types/types";
 import { authorize } from "../googleCalendar/googleAuth";
-import { getGoogleCalendarEvents } from "../googleCalendar/googleCalendar";
+import {
+  createCalendarEvent,
+  getGoogleCalendarEvents,
+} from "../googleCalendar/googleCalendar";
+import { GABE_CALENDAR_ID, SERVICES } from "../utils/contants";
 
 export function getSaoPauloDate() {
   try {
@@ -31,6 +35,10 @@ export function getSaoPauloDate() {
   }
 }
 
+export function getAllServicesTable() {
+  return SERVICES;
+}
+
 export type FetchCalendarEventsProps = {
   timeMin: string;
   timeMax: string;
@@ -39,9 +47,40 @@ export type FetchCalendarEventsProps = {
   orderBy?: "startTime" | "updated";
 };
 
+export type CreateCalendarEventProps = {
+  calendarId: string;
+  event: {
+    summary: string;
+    location: string;
+    description: string;
+    start: {
+      dateTime: string;
+      timeZone: string;
+    };
+    end: {
+      dateTime: string;
+      timeZone: string;
+    };
+    attendees?: { email: string }[];
+  };
+};
+
+export type ServiceItem = {
+  name: string;
+  timeToExecuteInMinutes?: number;
+  rules: string[];
+  description?: string;
+  priceInReais?: number;
+};
+
 export type MCPFunctions = {
   getSaoPauloDate: {
     function: () => { currentDate: string; timezone: string; iso8601: string };
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+  getAllServicesTable: {
+    function: () => ServiceItem[];
     description: string;
     parameters: Record<string, unknown>;
   };
@@ -49,6 +88,11 @@ export type MCPFunctions = {
     function: (params: FetchCalendarEventsProps) => Promise<any>;
     description: string;
     parameters: Record<string, unknown>;
+  };
+  createCalendarEvent: {
+    function: (params: CreateCalendarEventProps) => Promise<any>;
+    description: string;
+    parameters: CreateCalendarEventProps;
   };
 };
 
@@ -59,6 +103,12 @@ export const mcpFunctions: MCPFunctions = {
     description: "Get the current date and time in São Paulo, Brazil",
     parameters: {},
   },
+  getAllServicesTable: {
+    function: getAllServicesTable,
+    description:
+      "Consultar a lista de todos os serviços (procedimentos) oferecidos pelo salão, bem como seus preços e tempo necessário para execução. Nota: A duração do evento deve ser de pelo menos a duração do serviço",
+    parameters: {},
+  },
   fetchCalendarEvents: {
     function: async (params) => {
       return new Promise((resolve, reject) => {
@@ -66,6 +116,7 @@ export const mcpFunctions: MCPFunctions = {
           try {
             const events = await getGoogleCalendarEvents({
               ...params,
+              calendarId: GABE_CALENDAR_ID,
               auth,
             });
             resolve(events);
@@ -85,6 +136,46 @@ export const mcpFunctions: MCPFunctions = {
       orderBy: "string",
     },
   },
+  createCalendarEvent: {
+    function: async (params) => {
+      return new Promise((resolve, reject) => {
+        authorize(async (auth) => {
+          try {
+            const event = await createCalendarEvent({
+              ...params,
+              calendarId: GABE_CALENDAR_ID,
+              auth,
+            });
+            resolve(event);
+          } catch (error) {
+            reject(error as Error);
+          }
+        });
+      });
+    },
+    description: "Create a new event in the Google Calendar.",
+    parameters: {
+      calendarId: "string",
+      event: {
+        summary: "string",
+        location: "string",
+        description: "string",
+        start: {
+          dateTime: "string",
+          timeZone: "string",
+        },
+        end: {
+          dateTime: "string",
+          timeZone: "string",
+        },
+        attendees: [
+          {
+            email: "string",
+          },
+        ],
+      },
+    },
+  },
 };
 
 // MCP function call
@@ -99,10 +190,15 @@ export async function handlerMPCRequest(
   try {
     switch (functionName) {
       case "getSaoPauloDate":
+      case "getAllServicesTable":
         return mcpFunctions[functionName].function();
       case "fetchCalendarEvents":
         return mcpFunctions[functionName].function(
           parameters as FetchCalendarEventsProps
+        );
+      case "createCalendarEvent":
+        return mcpFunctions[functionName].function(
+          parameters as CreateCalendarEventProps
         );
     }
   } catch (error) {

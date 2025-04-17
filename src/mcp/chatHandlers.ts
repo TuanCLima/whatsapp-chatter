@@ -4,6 +4,8 @@ import { openai } from "../webhook";
 import { ChatMessage, Maybe } from "../types/types";
 import { FetchCalendarEventsProps } from "./mcpService";
 
+const LLM_MODEL = process.env.LLM_MODEL;
+
 export async function handleLLMDateRequest({
   messages,
   apiResponse,
@@ -54,10 +56,14 @@ export async function handleLLMDateRequest({
 
   // Get a new completion with the function result
   const secondCompletion = await openai.chat.completions.create({
-    model: "deepseek-chat",
+    model: LLM_MODEL!,
     messages: messages,
   });
 
   apiResponse = secondCompletion.choices[0].message.content ?? "";
+  const toolsCalls = secondCompletion.choices[0].message.tool_calls ?? "";
+
+  console.log("### 2", { apiResponse, toolsCalls });
+
   return apiResponse;
 }
