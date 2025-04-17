@@ -5,7 +5,7 @@ import {
   createCalendarEvent,
   getGoogleCalendarEvents,
 } from "../googleCalendar/googleCalendar";
-import { GABE_CALENDAR_ID, SERVICES } from "../utils/contants";
+import { GABE_CALENDAR_ID, SALON_INFO, SERVICES } from "../utils/contants";
 
 export function getSaoPauloDate() {
   try {
@@ -39,6 +39,10 @@ export function getAllServicesTable() {
   return SERVICES;
 }
 
+export function getSalonInfo() {
+  return SALON_INFO;
+}
+
 export type FetchCalendarEventsProps = {
   timeMin: string;
   timeMax: string;
@@ -68,14 +72,28 @@ export type CreateCalendarEventProps = {
 export type ServiceItem = {
   name: string;
   timeToExecuteInMinutes?: number;
-  rules: string[];
+  details: string[];
   description?: string;
   priceInReais?: number;
+};
+
+export type SalonInfo = {
+  Endereço: string;
+  "Profissionais integrantes": string[];
+  "Telefone para contato": string;
+  Email: string;
+  Instagram: string;
+  InstagramHandle: string;
 };
 
 export type MCPFunctions = {
   getSaoPauloDate: {
     function: () => { currentDate: string; timezone: string; iso8601: string };
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+  getSalonInfo: {
+    function: () => SalonInfo;
     description: string;
     parameters: Record<string, unknown>;
   };
@@ -101,6 +119,11 @@ export const mcpFunctions: MCPFunctions = {
   getSaoPauloDate: {
     function: getSaoPauloDate,
     description: "Get the current date and time in São Paulo, Brazil",
+    parameters: {},
+  },
+  getSalonInfo: {
+    function: getSalonInfo,
+    description: "Consultar informações gerais sobre o salão",
     parameters: {},
   },
   getAllServicesTable: {
@@ -191,6 +214,7 @@ export async function handlerMPCRequest(
     switch (functionName) {
       case "getSaoPauloDate":
       case "getAllServicesTable":
+      case "getSalonInfo":
         return mcpFunctions[functionName].function();
       case "fetchCalendarEvents":
         return mcpFunctions[functionName].function(

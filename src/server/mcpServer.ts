@@ -51,6 +51,7 @@ router.post(
       switch (functionName) {
         case "getSaoPauloDate":
         case "getAllServicesTable":
+        case "getSalonInfo":
           result = mcpFunctions[functionName].function();
           break;
         case "fetchCalendarEvents":

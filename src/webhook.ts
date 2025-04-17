@@ -8,17 +8,19 @@ import {
   createEventTool,
   dateTool,
   fetchEventsTool,
+  getSalonInfo,
   servicesTool,
 } from "./mcp/toolConfig/toolConfig";
 import { handleLLMDateRequest } from "./mcp/chatHandlers";
 import { ChatMessage } from "./types/types";
 
 const API_KEY = process.env.LLM_API_KEY;
-const LLM_BASE_URL = process.env.LLM_BASE_URL;
-const LLM_MODEL = process.env.LLM_MODEL;
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+
+const LLM_BASE_URL = "https://api.deepseek.com";
+export const LLM_MODEL = "deepseek-chat";
 
 export const openai = new OpenAI({
   baseURL: LLM_BASE_URL,
@@ -61,9 +63,15 @@ export async function whatsappHonoWebhook(
 
   try {
     const completion = await openai.chat.completions.create({
-      model: LLM_MODEL!,
+      model: LLM_MODEL,
       messages: messages,
-      tools: [dateTool, servicesTool, fetchEventsTool, createEventTool],
+      tools: [
+        dateTool,
+        getSalonInfo,
+        servicesTool,
+        fetchEventsTool,
+        createEventTool,
+      ],
       tool_choice: "auto",
     });
 
@@ -76,7 +84,11 @@ export async function whatsappHonoWebhook(
       for (const toolCall of toolCalls) {
         const { function: functionCall } = toolCall;
         const { name, arguments: _arguments } = functionCall;
-        if (name === "getSaoPauloDate" || name === "getAllServicesTable") {
+        if (
+          name === "getSaoPauloDate" ||
+          name === "getAllServicesTable" ||
+          name === "getSalonInfo"
+        ) {
           try {
             apiResponse = await handleLLMDateRequest({
               messages,

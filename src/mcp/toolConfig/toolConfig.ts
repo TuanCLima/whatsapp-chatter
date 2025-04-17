@@ -27,6 +27,19 @@ export const servicesTool: ChatCompletionTool = {
   },
 };
 
+export const getSalonInfo: ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "getSalonInfo",
+    description: "Consultar informações gerais sobre o salão.",
+    parameters: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
+};
+
 export const fetchEventsTool: ChatCompletionTool = {
   type: "function",
   function: {

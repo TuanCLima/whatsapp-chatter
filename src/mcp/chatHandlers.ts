@@ -1,10 +1,8 @@
 import axios from "axios";
 import { PORT } from "..";
-import { openai } from "../webhook";
+import { LLM_MODEL, openai } from "../webhook";
 import { ChatMessage, Maybe } from "../types/types";
 import { FetchCalendarEventsProps } from "./mcpService";
-
-const LLM_MODEL = process.env.LLM_MODEL;
 
 export async function handleLLMDateRequest({
   messages,
@@ -56,7 +54,7 @@ export async function handleLLMDateRequest({
 
   // Get a new completion with the function result
   const secondCompletion = await openai.chat.completions.create({
-    model: LLM_MODEL!,
+    model: LLM_MODEL,
     messages: messages,
   });
 
