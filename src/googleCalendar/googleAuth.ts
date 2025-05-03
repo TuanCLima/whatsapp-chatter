@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import readline from "readline";
 import { google } from "googleapis";
-import { OAuth2Client } from "google-auth-library";
+import { gaxios, OAuth2Client } from "google-auth-library";
 
 const CREDENTIALS_PATH = path.join(__dirname, "..", "credentials.json");
 const TOKEN_PATH = path.join(__dirname, "..", "token.json");
@@ -32,11 +32,24 @@ export async function authorize(callback: (auth: any) => Promise<void>) {
 
     if (token.expiry_date && token.expiry_date <= Date.now()) {
       console.log("Access token expired. Refreshing...");
-      const newToken = await oAuth2Client.refreshAccessToken();
-      oAuth2Client.setCredentials(newToken.credentials);
+      try {
+        const newToken = await oAuth2Client.refreshAccessToken();
+        oAuth2Client.setCredentials(newToken.credentials);
 
-      // Save the new token to disk
-      fs.writeFileSync(TOKEN_PATH, JSON.stringify(newToken.credentials));
+        // Save the new token to disk
+        fs.writeFileSync(TOKEN_PATH, JSON.stringify(newToken.credentials));
+      } catch (error) {
+        if (error instanceof gaxios.GaxiosError) {
+          const { message } = error;
+
+          if (message === "invalid_grant") {
+            // Delete the token file and call authozire again
+            fs.unlinkSync(TOKEN_PATH);
+            console.log("Token expired. Please reauthorize the app.");
+            return authorize(callback);
+          }
+        }
+      }
       console.log("Token refreshed and saved to disk.");
     }
 

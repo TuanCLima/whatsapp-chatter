@@ -1,9 +1,19 @@
 import { ChatCompletionTool } from "openai/resources/chat";
 
-export const dateTool: ChatCompletionTool = {
+enum FunctionName {
+  getSaoPauloDate = "getSaoPauloDate",
+  getAllServicesTable = "getAllServicesTable",
+  getCalendarEventCancellationRules = "getCalendarEventCancellationRules",
+  getSalonInfo = "getSalonInfo",
+  getProfessionalLinkContactToAttachInAnswer = "getProfessionalLinkContactToAttachInAnswer",
+  fetchCalendarEvents = "fetchCalendarEvents",
+  createCalendarEvent = "createCalendarEvent",
+}
+
+const dateTool: ChatCompletionTool = {
   type: "function",
   function: {
-    name: "getSaoPauloDate",
+    name: FunctionName.getSaoPauloDate,
     description: "Get the current date and time in São Paulo, Brazil",
     parameters: {
       type: "object",
@@ -13,12 +23,12 @@ export const dateTool: ChatCompletionTool = {
   },
 };
 
-export const servicesTool: ChatCompletionTool = {
+const servicesTool: ChatCompletionTool = {
   type: "function",
   function: {
-    name: "getAllServicesTable",
+    name: FunctionName.getAllServicesTable,
     description:
-      "Consultar a lista de todos os serviços (procedimentos) oferecidos pelo salão, bem como seus preços e tempo necessário para execução. Nota: A duração do evento deve ser de pelo menos a duração do serviço",
+      "Consultar a lista de todos os serviços (procedimentos) oferecidos pelo salão, bem como seus preços e tempo necessário para execução. Nota: A duração do evento deve ser de pelo menos a duração do serviço. Importante: Não alucine detalhes sobre os procedimentos. Use apenas as informações fornecidas.",
     parameters: {
       type: "object",
       properties: {},
@@ -27,11 +37,11 @@ export const servicesTool: ChatCompletionTool = {
   },
 };
 
-export const getSalonInfo: ChatCompletionTool = {
+const cancellationRulesConfigTool: ChatCompletionTool = {
   type: "function",
   function: {
-    name: "getSalonInfo",
-    description: "Consultar informações gerais sobre o salão.",
+    name: FunctionName.getCalendarEventCancellationRules,
+    description: "Regras para cancelamento",
     parameters: {
       type: "object",
       properties: {},
@@ -40,12 +50,39 @@ export const getSalonInfo: ChatCompletionTool = {
   },
 };
 
-export const fetchEventsTool: ChatCompletionTool = {
+const getSalonInfoTool: ChatCompletionTool = {
   type: "function",
   function: {
-    name: "fetchCalendarEvents",
+    name: FunctionName.getSalonInfo,
+    description: "Consultar informações gerais sobre o salão",
+    parameters: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
+};
+
+const getProfessionalLinkContactToAttachInAnswerTool: ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: FunctionName.getProfessionalLinkContactToAttachInAnswer,
     description:
-      "Fetch events from the Google Calendar within a specified time range.",
+      "Buscar o link de contato do profissional para incluir na resposta",
+    parameters: {
+      type: "object",
+      properties: {},
+      required: [],
+    },
+  },
+};
+
+const fetchEventsTool: ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: FunctionName.fetchCalendarEvents,
+    description:
+      "Use esta ferramenta para consultar a disponibilidade da agenda da Gabe antes de agendar qualquer coisa. Outros nomes para esta funcionalidade são: consultar agenda, consultar disponibilidade, consultar horários disponíveis. Busque deixar um intervalo de 10 minutos entre eventos/agendamentos",
     parameters: {
       type: "object",
       properties: {
@@ -77,11 +114,12 @@ export const fetchEventsTool: ChatCompletionTool = {
   },
 };
 
-export const createEventTool: ChatCompletionTool = {
+const createEventTool: ChatCompletionTool = {
   type: "function",
   function: {
-    name: "createCalendarEvent",
-    description: "Create a new event in the Google Calendar.",
+    name: FunctionName.createCalendarEvent,
+    description:
+      "Criar um novo evento/agendamento/horário no calendário da Gabe. Busque deixar um intervalo de 10 minutos entre eventos/agendamentos",
     parameters: {
       type: "object",
       properties: {
@@ -151,8 +189,13 @@ export const createEventTool: ChatCompletionTool = {
   },
 };
 
-export const toolConfig = {
+export {
   dateTool,
+  servicesTool,
+  cancellationRulesConfigTool,
+  getSalonInfoTool,
+  getProfessionalLinkContactToAttachInAnswerTool,
   fetchEventsTool,
   createEventTool,
+  FunctionName,
 };

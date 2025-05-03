@@ -52,6 +52,8 @@ router.post(
         case "getSaoPauloDate":
         case "getAllServicesTable":
         case "getSalonInfo":
+        case "getCalendarEventCancellationRules":
+        case "getProfessionalLinkContactToAttachInAnswer":
           result = mcpFunctions[functionName].function();
           break;
         case "fetchCalendarEvents":
@@ -102,7 +104,27 @@ router.post("/create-event", async (req, res) => {
         auth,
       });
 
-      res.json(createdEvent);
+      const {
+        kind,
+        id,
+        summary,
+        description,
+        organizer,
+        start,
+        end,
+        sequence,
+      } = createdEvent;
+
+      res.json({
+        kind,
+        id,
+        summary,
+        description,
+        organizer,
+        start,
+        end,
+        sequence,
+      });
       return;
     } catch (error) {
       console.error("Error creating event:", error);
@@ -126,7 +148,9 @@ router.post("/create-calendar", async (req, res) => {
         requestBody: calendarDetails,
       });
 
-      res.json(createdCalendar.data);
+      const { kind, id, summary, description } = createdCalendar.data;
+
+      res.json({ kind, id, summary, description });
       return;
     } catch (error) {
       console.error("Error creating calendar:", error);
