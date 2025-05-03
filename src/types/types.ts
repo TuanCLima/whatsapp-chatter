@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { FetchCalendarEventsProps } from "../mcp/mcpService";
 
 type Maybe<T> = T | undefined | null;
 
@@ -20,3 +21,11 @@ export type ChatMessage =
       content: string | null;
       tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
     };
+
+export type CallLLMProps = {
+  messagesFeed: ChatMessage[];
+  toolCallId?: string;
+  functionName?: string;
+  parameters?: Maybe<Record<string, unknown>> | FetchCalendarEventsProps;
+  dataToContentCB?: (_: any) => any;
+};

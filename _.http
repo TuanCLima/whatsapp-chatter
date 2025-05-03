@@ -76,11 +76,11 @@ Content-Type: application/json
     "location": "123 Main St",
     "description": "Discuss project updates",
     "start": {
-      "dateTime": "2025-04-12T13:00:00-03:00",
+      "dateTime": "2025-05-03T13:00:00-03:00",
       "timeZone": "America/Sao_Paulo"
     },
     "end": {
-      "dateTime": "2025-04-12T14:00:00-03:00",
+      "dateTime": "2025-05-03T14:00:00-03:00",
       "timeZone": "America/Sao_Paulo"
     },
     "attendees": [

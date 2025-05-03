@@ -59,7 +59,10 @@ async function createCalendarEvent({
       requestBody: event,
     });
 
-    return response.data;
+    const { kind, id, summary, description, organizer, start, end, sequence } =
+      response.data;
+
+    return { kind, id, summary, description, organizer, start, end, sequence };
   } catch (error) {
     console.error("Error creating Google Calendar event:", error);
     throw error;

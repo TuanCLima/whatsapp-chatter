@@ -23,6 +23,13 @@ This project is a webhook service designed to handle chat-related events and int
     pnpm install
     ```
 
+## Token Generation
+
+1. Run this in order to generate token.json file or if the refresh token is expired. In case of error, try deleting the token.json file and running this again. Make sure to run this with the app listening on localhost:3000
+    ```bash
+    pnpm auth
+    ```
+
 ## Usage
 
 1. Start the server:

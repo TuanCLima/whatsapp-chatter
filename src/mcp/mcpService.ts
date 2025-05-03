@@ -5,7 +5,13 @@ import {
   createCalendarEvent,
   getGoogleCalendarEvents,
 } from "../googleCalendar/googleCalendar";
-import { GABE_CALENDAR_ID, SALON_INFO, SERVICES } from "../utils/contants";
+import {
+  CALENDAR_EVENT_CANCELLATION_RULES,
+  GABE_CALENDAR_ID,
+  LINK_INFO,
+  SALON_INFO,
+  SERVICES,
+} from "../utils/contants";
 
 export function getSaoPauloDate() {
   try {
@@ -43,6 +49,14 @@ export function getSalonInfo() {
   return SALON_INFO;
 }
 
+export function getProfessionalLinkContactToAttachInAnswer() {
+  return LINK_INFO;
+}
+
+export function getCalendarEventCancellationRules() {
+  return CALENDAR_EVENT_CANCELLATION_RULES;
+}
+
 export type FetchCalendarEventsProps = {
   timeMin: string;
   timeMax: string;
@@ -77,6 +91,11 @@ export type ServiceItem = {
   priceInReais?: number;
 };
 
+export type LinkInfo = {
+  professionalName: string;
+  professionalLink: string;
+}[];
+
 export type SalonInfo = {
   Endereço: string;
   "Profissionais integrantes": string[];
@@ -84,6 +103,11 @@ export type SalonInfo = {
   Email: string;
   Instagram: string;
   InstagramHandle: string;
+};
+
+export type CancellationRules = {
+  userRules: string[];
+  assistanteRules: string[];
 };
 
 export type MCPFunctions = {
@@ -94,6 +118,16 @@ export type MCPFunctions = {
   };
   getSalonInfo: {
     function: () => SalonInfo;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+  getProfessionalLinkContactToAttachInAnswer: {
+    function: () => LinkInfo;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+  getCalendarEventCancellationRules: {
+    function: () => CancellationRules;
     description: string;
     parameters: Record<string, unknown>;
   };
@@ -126,6 +160,17 @@ export const mcpFunctions: MCPFunctions = {
     description: "Consultar informações gerais sobre o salão",
     parameters: {},
   },
+  getProfessionalLinkContactToAttachInAnswer: {
+    function: getProfessionalLinkContactToAttachInAnswer,
+    description:
+      "Buscar o link de contato do profissional para incluir na resposta",
+    parameters: {},
+  },
+  getCalendarEventCancellationRules: {
+    function: getCalendarEventCancellationRules,
+    description: "Regras para cancelamento",
+    parameters: {},
+  },
   getAllServicesTable: {
     function: getAllServicesTable,
     description:
@@ -142,7 +187,36 @@ export const mcpFunctions: MCPFunctions = {
               calendarId: GABE_CALENDAR_ID,
               auth,
             });
-            resolve(events);
+
+            const simplifiedEvents = events.map(
+              ({
+                id,
+                status,
+                created,
+                summary,
+                creator,
+                organizer,
+                start,
+                end,
+                sequence,
+                attendees,
+                eventType,
+              }) => ({
+                id,
+                status,
+                created,
+                summary,
+                creator,
+                organizer,
+                start,
+                end,
+                sequence,
+                attendees,
+                eventType,
+              })
+            );
+
+            resolve(simplifiedEvents);
           } catch (error) {
             reject(error as Error);
           }
@@ -215,6 +289,8 @@ export async function handlerMPCRequest(
       case "getSaoPauloDate":
       case "getAllServicesTable":
       case "getSalonInfo":
+      case "getCalendarEventCancellationRules":
+      case "getProfessionalLinkContactToAttachInAnswer":
         return mcpFunctions[functionName].function();
       case "fetchCalendarEvents":
         return mcpFunctions[functionName].function(
