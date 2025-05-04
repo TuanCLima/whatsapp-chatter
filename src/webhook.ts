@@ -8,7 +8,7 @@ import { getSaoPauloDate } from "./mcp/mcpService";
 import { PORT } from ".";
 
 const API_KEY = process.env.LLM_API_KEY;
-const DEEPSEEK_API_URL = "https://api.deepseek.com";
+const DEEPSEEK_API_URL = "https://api.openai.com/v1";
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
@@ -67,7 +67,7 @@ export async function whatsappHonoWebhook(
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "deepseek-chat",
+      model: "gpt-4.1",
       messages: messages,
       tools: [
         {
@@ -133,7 +133,7 @@ export async function whatsappHonoWebhook(
 
             // Get a new completion with the function result
             const secondCompletion = await openai.chat.completions.create({
-              model: "deepseek-chat",
+              model: "gpt-4.1",
               messages: messages,
             });
 
