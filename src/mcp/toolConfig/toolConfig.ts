@@ -82,7 +82,7 @@ const fetchEventsTool: ChatCompletionTool = {
   function: {
     name: FunctionName.fetchCalendarEvents,
     description:
-      "Use esta ferramenta para consultar a disponibilidade da agenda da Gabe antes de agendar qualquer coisa. Outros nomes para esta funcionalidade são: consultar agenda, consultar disponibilidade, consultar horários disponíveis. Busque deixar um intervalo de 10 minutos entre eventos/agendamentos",
+      "Use esta ferramenta para consultar a disponibilidade da agenda da Gabe antes de agendar qualquer coisa. Outros nomes para esta funcionalidade são: consultar agenda, consultar disponibilidade, consultar horários disponíveis. Deixe um intervalo de 10 minutos entre eventos/agendamentos",
     parameters: {
       type: "object",
       properties: {
@@ -119,7 +119,7 @@ const createEventTool: ChatCompletionTool = {
   function: {
     name: FunctionName.createCalendarEvent,
     description:
-      "Criar um novo evento/agendamento/horário no calendário da Gabe. Busque deixar um intervalo de 10 minutos entre eventos/agendamentos",
+      "Criar um novo evento/agendamento/horário no calendário da Gabe. Deixe um intervalo de 10 minutos entre eventos/agendamentos",
     parameters: {
       type: "object",
       properties: {

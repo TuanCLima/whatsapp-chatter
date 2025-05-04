@@ -9,12 +9,14 @@
     "dev": "tsx watch src/index.ts",
     "build": "npx tsc",
     "serve": "node dist/index.js",
-    "predeploy": "tsx src/scripts/generate-vcf.ts"
+    "predeploy": "tsx src/scripts/generate-vcf.ts",
+    "loadPrompt": "tsx src/scripts/loadPrompt.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@faker-js/faker": "^9.7.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/node": "^22.14.0",

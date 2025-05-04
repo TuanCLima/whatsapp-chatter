@@ -94,3 +94,5 @@ export const CALENDAR_EVENT_CANCELLATION_RULES: CancellationRules = {
     "Em caso de cancelamento, encaminhe o contato do profissional que irá atender o cliente",
   ],
 };
+
+export const IS_DEV = process.env.NODE_ENV === "development";

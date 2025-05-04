@@ -7,11 +7,14 @@ import { getSaoPauloDate } from "./mcp/mcpService";
 
 import { ChatMessage } from "./types/types";
 import { getNextMessages } from "./getNextMessages";
+import { IS_DEV } from "./utils/contants";
 
 const API_KEY = process.env.LLM_API_KEY;
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+
+import { faker } from "@faker-js/faker";
 
 // const LLM_BASE_URL = "https://api.deepseek.com";
 // export const LLM_MODEL = "deepseek-chat";
@@ -39,7 +42,9 @@ export async function whatsappHonoWebhook(
 ) {
   const body = req.body;
   const { From: from, Body: message, ProfileName } = body;
-  const profileNameTag = `<ProfileName>${ProfileName}</ProfileName>`;
+
+  const name = IS_DEV ? faker.internet.username() : ProfileName;
+  const profileNameTag = `<ProfileName>${name}</ProfileName>`;
   const messagesFeed = history[from] || [
     {
       role: "system",
