@@ -4,3 +4,5 @@ PROMPT.txt
 dist
 *.ipynb
 backlog_notes.txt
+credentials.json
+token.json
