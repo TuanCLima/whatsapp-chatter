@@ -5,12 +5,11 @@ import "dotenv/config";
 import { Request, Response } from "express";
 import { parseLLMMessages } from "./utils/parseLLMMessages";
 import { getSaoPauloDate } from "./mcp/mcpService";
-import { PORT } from ".";
+import { PORT, twilioClient } from ".";
 
 const API_KEY = process.env.LLM_API_KEY;
 const DEEPSEEK_API_URL = "https://api.openai.com/v1";
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
+
 const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
 
 const openai = new OpenAI({
@@ -36,8 +35,6 @@ type ChatMessage =
     };
 
 const history: Record<string, ChatMessage[]> = {};
-
-const client = Twilio(accountSid, authToken);
 
 type TwilioFormData = {
   From: string;
@@ -162,14 +159,14 @@ export async function whatsappHonoWebhook(
 
     for (const toSendMessage of toSendMessages) {
       if (toSendMessage.isContactLink) {
-        await client.messages.create({
+        await twilioClient.messages.create({
           from: fromNumber, // Your Twilio WhatsApp number
           to: from, // Recipient's WhatsApp number
           mediaUrl: [toSendMessage.text],
         });
         await new Promise((resolve) => setTimeout(resolve, 700)); // Wait for 1 second before sending the next message
       } else {
-        await client.messages.create({
+        await twilioClient.messages.create({
           from: fromNumber, // Your Twilio WhatsApp number
           to: from, // Recipient's WhatsApp number
           body: toSendMessage.text,

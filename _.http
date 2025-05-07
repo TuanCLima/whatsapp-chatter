@@ -36,3 +36,15 @@ Content-Type: application/json
   "functionName": "getSaoPauloDate",
   "parameters": {}
 }
+
+### fetch contacts
+GET http://localhost:3000/contacts
+Content-Type: application/json
+
+### fetch conversations
+GET http://localhost:3000/conversations
+Content-Type: application/json
+
+### fetch conversation
+GET http://localhost:3000/conversations/whatsapp:+5511999999999
+Content-Type: application/json
