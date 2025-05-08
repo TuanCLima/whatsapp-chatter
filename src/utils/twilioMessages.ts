@@ -135,7 +135,7 @@ export async function getWhatsAppConversationByContactId(
       const message: Message = {
         id: msg.sid,
         text,
-        sender: contactId,
+        sender: msg.from,
         timestamp: msg.dateSent?.toISOString() || "",
         status: msg.status as "sent" | "delivered" | "read",
       };
