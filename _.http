@@ -29,7 +29,7 @@ GET http://localhost:3000/CONTACT_1.vcf
 GET http://localhost:3000/api/mcp/functions
 
 ### get mcp date
-POST http://localhost:3000/api/mcp/execute
+POST http://localhost:3001/api/mcp/execute
 Content-Type: application/json
 
 {
@@ -76,18 +76,40 @@ Content-Type: application/json
     "location": "123 Main St",
     "description": "Discuss project updates",
     "start": {
-      "dateTime": "2025-05-03T13:00:00-03:00",
+      "dateTime": "2025-05-08T13:00:00-03:00",
       "timeZone": "America/Sao_Paulo"
     },
     "end": {
-      "dateTime": "2025-05-03T14:00:00-03:00",
+      "dateTime": "2025-05-08T14:00:00-03:00",
       "timeZone": "America/Sao_Paulo"
     },
     "attendees": [
-      { "email": "example1@gmail.com" },
-      { "email": "example2@gmail.com" }
+      { "email": "example1@gmail.com" }
     ]
   }
+}
+
+### Get date
+GET http://localhost:3000/api/mcp/date
+
+### Test creating a calendar
+POST http://localhost:3000/api/mcp/create-calendar
+Content-Type: application/json
+
+{
+  "calendar": {
+    "summary": "Gabe",
+    "description": "Calendário da Gabe",
+    "timeZone": "America/Sao_Paulo"
+  }
+}
+
+### Test cancelling event
+POST http://localhost:3000/api/mcp/cancel-event
+Content-Type: application/json
+
+{
+  "eventId": "kc0kd5m3m48kqcg80sjucp6q78"
 }
 
 ### Test creating a calendar

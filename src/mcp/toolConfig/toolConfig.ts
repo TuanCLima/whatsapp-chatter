@@ -8,6 +8,7 @@ enum FunctionName {
   getProfessionalLinkContactToAttachInAnswer = "getProfessionalLinkContactToAttachInAnswer",
   fetchCalendarEvents = "fetchCalendarEvents",
   createCalendarEvent = "createCalendarEvent",
+  cancelCalendarEvent = "cancelCalendarEvent",
 }
 
 const dateTool: ChatCompletionTool = {
@@ -130,7 +131,7 @@ const createEventTool: ChatCompletionTool = {
         },
         event: {
           type: "object",
-          description: "The event details.",
+          description: "Detalhes do evento/agendamento a ser criado",
           properties: {
             summary: {
               type: "string",
@@ -141,7 +142,7 @@ const createEventTool: ChatCompletionTool = {
             description: {
               type: "string",
               description:
-                "Aqui vai metadados como o serviço escolhido pela cliente. Exemplo: corte e/ou finalização. Importante: Não pergunte ao cliente sobre o campo. Pergunte sobre o serviço de interesse e deduza-o o campo a partir dele",
+                "Aqui vai metadados 3 metadados: 1) o serviço escolhido pela cliente. Exemplo: corte e/ou finalização. 2) o telefone do cliente. 3) o nome do cliente (ProfileName). Importante: Não pergunte ao cliente sobre o campo. Pergunte sobre o serviço de interesse e deduza-o o campo a partir dele",
             },
             start: {
               type: "object",
@@ -169,22 +170,45 @@ const createEventTool: ChatCompletionTool = {
               },
               required: ["dateTime", "timeZone"],
             },
-            attendees: {
-              type: "array",
-              description:
-                "Lista de convidados. Optional. Perguntar ao cliente se deseja incluir email para recever evento no calendário. Confirmar validade do email",
-              items: {
-                type: "object",
-                properties: {
-                  email: { type: "string", description: "Email do convidado." },
-                },
-              },
-            },
+            // attendees: {
+            //   type: "array",
+            //   description:
+            //     "Lista de convidados. Optional." /* "Perguntar ao cliente se deseja incluir email para recever evento no calendário. Confirmar validade do email" */,
+            //   items: {
+            //     type: "object",
+            //     properties: {
+            //       email: { type: "string", description: "Email do convidado." },
+            //     },
+            //   },
+            // },
           },
           required: ["summary", "start", "end"],
         },
       },
       required: ["calendarId", "event"],
+    },
+  },
+};
+
+const cancelEventTool: ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: FunctionName.cancelCalendarEvent,
+    description:
+      "Cancelar um evento/agendamento existente no calendário da Gabe. Importante: Não é possível cancelar eventos com menos de 24 horas de antecedência",
+    parameters: {
+      type: "object",
+      properties: {
+        // calendarId: {
+        //   type: "string",
+        //   description: "The ID of the calendar where the event is located.",
+        // },
+        eventId: {
+          type: "string",
+          description: "The ID of the event to be canceled.",
+        },
+      },
+      required: ["calendarId", "eventId"],
     },
   },
 };
@@ -197,5 +221,6 @@ export {
   getProfessionalLinkContactToAttachInAnswerTool,
   fetchEventsTool,
   createEventTool,
+  cancelEventTool,
   FunctionName,
 };

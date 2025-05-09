@@ -1,7 +1,8 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
-import { MCPFunctions, mcpFunctions } from "../mcp/mcpService";
+import { getSaoPauloDate, MCPFunctions, mcpFunctions } from "../mcp/mcpService";
 import {
+  cancelCalendarEvent,
   createCalendarEvent,
   getGoogleCalendarEvents,
 } from "../googleCalendar/googleCalendar";
@@ -26,6 +27,11 @@ router.get("/functions", (_, res) => {
   }));
 
   res.json(functionsList);
+});
+
+router.get("/date", (_, res) => {
+  const body = getSaoPauloDate();
+  res.json(body);
 });
 
 router.post(
@@ -58,6 +64,7 @@ router.post(
           break;
         case "fetchCalendarEvents":
         case "createCalendarEvent":
+        case "cancelCalendarEvent":
           result = await mcpFunctions[functionName].function(parameters);
       }
 
@@ -154,6 +161,32 @@ router.post("/create-calendar", async (req, res) => {
       return;
     } catch (error) {
       console.error("Error creating calendar:", error);
+      res.status(500).send("Error creating calendar");
+      return;
+    }
+  });
+});
+
+router.post("/cancel-event", async (req, res) => {
+  console.log('"Cancel event route hit"); ');
+  authorize(async (auth) => {
+    try {
+      const body = req.body;
+      if (!body) {
+        res.status(400).send("Cancellation details are required");
+        return;
+      }
+
+      await cancelCalendarEvent({
+        calendarId: GABE_CALENDAR_ID,
+        eventId: body.eventId,
+        auth,
+      });
+
+      res.json({ message: "Event canceled successfully" });
+      return;
+    } catch (error) {
+      console.error("Error cancelling event:", error);
       res.status(500).send("Error creating calendar");
       return;
     }

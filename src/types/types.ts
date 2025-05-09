@@ -11,15 +11,18 @@ export type ChatMessage =
       content: string;
       tool_call_id: string;
       name: string;
+      debugLevel?: number;
     }
   | {
       role: "user" | "system";
       content: string;
+      debugLevel?: number;
     }
   | {
       role: "assistant";
       content: string | null;
       tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
+      debugLevel?: number;
     };
 
 export type CallLLMProps = {
