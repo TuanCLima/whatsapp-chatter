@@ -52,11 +52,15 @@ export async function whatsappHonoWebhook(
     },
   ];
 
+  const phoneNumber = `<Telefone>${from}</Telefone>`;
+
   messagesFeed.push({
     role: "user",
     content: `${message}\n<Timestamp>${
       getSaoPauloDate().currentDate
-    }</Timestamp>${messagesFeed.length === 1 ? profileNameTag : ""}`,
+    }</Timestamp>${
+      messagesFeed.length === 1 ? `${profileNameTag}${phoneNumber}` : ""
+    }`,
   });
 
   try {
@@ -106,7 +110,7 @@ export async function whatsappHonoWebhook(
         }
       });
 
-    history[from] = [...messagesFeed, ...newMessagesForFeed];
+    history[from] = messagesFeed;
 
     console.log("Messages history:\n", history[from]);
 

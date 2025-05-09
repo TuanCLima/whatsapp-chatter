@@ -29,8 +29,10 @@ async function loadPromptToEnv() {
       .concat(`${envVarName}=${formattedPrompt}`)
       .join("\n");
 
+    console.log(updatedEnvContent);
+
     // Write the updated .env file
-    await fs.promises.writeFile(envFilePath, updatedEnvContent, "utf-8");
+    // await fs.promises.writeFile(envFilePath, updatedEnvContent, "utf-8");
 
     console.log(`Environment variable ${envVarName} has been updated.`);
   } catch (error) {

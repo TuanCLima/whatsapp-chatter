@@ -1,5 +1,6 @@
 import { toolCall } from "./mcp/toolCall";
 import {
+  cancelEventTool,
   cancellationRulesConfigTool,
   createEventTool,
   dateTool,
@@ -24,6 +25,7 @@ export async function getNextMessages(messagesFeed: ChatMessage[]) {
       fetchEventsTool,
       createEventTool,
       getProfessionalLinkContactToAttachInAnswerTool,
+      cancelEventTool,
     ],
     tool_choice: "auto",
   });

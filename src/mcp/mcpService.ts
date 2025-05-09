@@ -2,6 +2,7 @@ import moment from "moment-timezone";
 import { Maybe } from "../types/types";
 import { authorize } from "../googleCalendar/googleAuth";
 import {
+  cancelCalendarEvent,
   createCalendarEvent,
   getGoogleCalendarEvents,
 } from "../googleCalendar/googleCalendar";
@@ -79,8 +80,13 @@ export type CreateCalendarEventProps = {
       dateTime: string;
       timeZone: string;
     };
-    attendees?: { email: string }[];
+    // attendees?: { email: string }[];
   };
+};
+
+export type CancelCalendarEventProps = {
+  calendarId: "string";
+  eventId: "string";
 };
 
 export type ServiceItem = {
@@ -107,7 +113,7 @@ export type SalonInfo = {
 
 export type CancellationRules = {
   userRules: string[];
-  assistanteRules: string[];
+  assistantRules: string[];
 };
 
 export type MCPFunctions = {
@@ -145,6 +151,11 @@ export type MCPFunctions = {
     function: (params: CreateCalendarEventProps) => Promise<any>;
     description: string;
     parameters: CreateCalendarEventProps;
+  };
+  cancelCalendarEvent: {
+    function: (params: CancelCalendarEventProps) => Promise<any>;
+    description: string;
+    parameters: CancelCalendarEventProps;
   };
 };
 
@@ -265,12 +276,34 @@ export const mcpFunctions: MCPFunctions = {
           dateTime: "string",
           timeZone: "string",
         },
-        attendees: [
-          {
-            email: "string",
-          },
-        ],
+        // attendees: [
+        //   {
+        //     email: "string",
+        //   },
+        // ],
       },
+    },
+  },
+  cancelCalendarEvent: {
+    function: async (params) => {
+      return new Promise((resolve, reject) => {
+        authorize(async (auth) => {
+          try {
+            const res = await cancelCalendarEvent({
+              ...params,
+              auth,
+            });
+            resolve(res);
+          } catch (error) {
+            reject(error as Error);
+          }
+        });
+      });
+    },
+    description: "Cancelar um evento existente no Google Calendar.",
+    parameters: {
+      calendarId: "string",
+      eventId: "string",
     },
   },
 };
@@ -299,6 +332,10 @@ export async function handlerMPCRequest(
       case "createCalendarEvent":
         return mcpFunctions[functionName].function(
           parameters as CreateCalendarEventProps
+        );
+      case "cancelCalendarEvent":
+        return mcpFunctions[functionName].function(
+          parameters as CancelCalendarEventProps
         );
     }
   } catch (error) {

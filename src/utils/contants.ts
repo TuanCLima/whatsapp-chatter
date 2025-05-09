@@ -86,12 +86,10 @@ export const LINK_INFO: LinkInfo = [
 
 export const CALENDAR_EVENT_CANCELLATION_RULES: CancellationRules = {
   userRules: [
-    "Cancelamentos devem ser realizados pelo menos 24 horas antes do horário agendamento",
-    "Busque chegar no horário",
-    "Para cancelar o procedimento, entre em contato direto com o profissional que ira te atender",
+    "Cancelamentos devem ser realizados pelo menos 24 horas antes do horário do agendamento",
   ],
-  assistanteRules: [
-    "Em caso de cancelamento, encaminhe o contato do profissional que irá atender o cliente",
+  assistantRules: [
+    "Em caso de cancelamento, confirme se o telefone e o nome do cliente correspondem aos dados constantes no corpo do evento",
   ],
 };
 
