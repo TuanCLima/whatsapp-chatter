@@ -105,7 +105,7 @@ export async function whatsappHonoWebhook(
             body: "Houve um erro ao enviar a mensagem. Tente novamente mais tarde, por favor.",
           });
           console.error("Error sending message:", error);
-          res.status(500).json({ error: "Error sending message" });
+          res.json({ status: "Received", from, message });
           return;
         }
       });
