@@ -2,11 +2,12 @@ import { MessageInstance } from "twilio/lib/rest/api/v2010/account/message";
 import { twilioClient } from "..";
 import { Contact, Conversation, Maybe, Message } from "../types/types";
 
-const WHATSAPP_NUMBER = process.env.TWILIO_WHATSAPP_NUMBER_LOGS;
+const WHATSAPP_NUMBER_TEST = process.env.TWILIO_WHATSAPP_NUMBER_TEST;
+const WHATSAPP_NUMBER_LIVE = process.env.TWILIO_WHATSAPP_NUMBER_LIVE;
 
 export async function getUniqueWhatsAppContacts(): Promise<Contact[]> {
   const messages = await twilioClient.messages.list({
-    limit: 100, // adjust based on how many messages you want to process
+    limit: 1000, // adjust based on how many messages you want to process
   });
 
   const contactsMap = new Map<string, Contact>();
@@ -29,7 +30,7 @@ export async function getUniqueWhatsAppContacts(): Promise<Contact[]> {
 }
 
 export function getContactId(to: string, from: string): string {
-  if (to === WHATSAPP_NUMBER) {
+  if (to === WHATSAPP_NUMBER_TEST || to === WHATSAPP_NUMBER_LIVE) {
     return from;
   }
 
@@ -38,7 +39,7 @@ export function getContactId(to: string, from: string): string {
 
 export async function getWhatsAppConversations(): Promise<Conversation[]> {
   const messages = await twilioClient.messages.list({
-    limit: 20, // Adjust based on how many messages you want to process
+    limit: 500, // Adjust based on how many messages you want to process
   });
 
   const conversationsMap = new Map<string, Conversation>();
@@ -76,6 +77,7 @@ export async function getWhatsAppConversations(): Promise<Conversation[]> {
 }
 
 async function getVCFFileName(msg: MessageInstance): Promise<string> {
+  return "not workign yet";
   const mediaList = await twilioClient.messages(msg.sid).media.list();
   if (mediaList.length > 0) {
     const media = mediaList[0]; // Assuming the first media file is the one we need
@@ -107,7 +109,7 @@ export async function getWhatsAppConversationByContactId(
   contactId: string
 ): Promise<Maybe<Conversation>> {
   const messages = await twilioClient.messages.list({
-    limit: 200, // Adjust based on how many messages you want to process
+    limit: 2000, // Adjust based on how many messages you want to process
   });
 
   const conversationsMap = new Map<string, Conversation>();
