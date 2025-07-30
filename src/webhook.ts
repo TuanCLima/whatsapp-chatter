@@ -3,11 +3,14 @@ import Twilio from "twilio";
 import "dotenv/config";
 import { Request, Response } from "express";
 import { parseLLMMessages } from "./utils/parseLLMMessages";
-import { getSaoPauloDate } from "./mcp/mcpService";
 
 import { ChatMessage } from "./types/types";
 import { getNextMessages } from "./getNextMessages";
-import { IS_DEV } from "./utils/contants";
+import { FALLBACK_PROMPT, IS_DEV } from "./utils/contants";
+
+import { db, initializeDatabase } from "./db";
+import { InsertMessage, messages, users } from "./db/schema";
+import { eq } from "drizzle-orm";
 
 const API_KEY = process.env.LLM_API_KEY;
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -26,7 +29,10 @@ export const openai = new OpenAI({
   apiKey: API_KEY,
 });
 
-const history: Record<string, ChatMessage[]> = {};
+// Initialize the database when the application starts
+initializeDatabase().catch(console.error);
+
+const abortControllers: Record<string, AbortController | undefined> = {};
 
 const client = Twilio(accountSid, authToken);
 
@@ -43,35 +49,121 @@ export async function whatsappHonoWebhook(
   const body = req.body;
   const { From: from, Body: message, ProfileName } = body;
 
-  const name = IS_DEV ? faker.internet.username() : ProfileName;
-  const profileNameTag = `<ProfileName>${name}</ProfileName>`;
-  const messagesFeed = history[from] || [
-    {
-      role: "system",
-      content: process.env.MYPROMPT,
-    },
-  ];
+  let name = IS_DEV ? faker.internet.username() : ProfileName;
+  name = "Tuan";
+  let messagesFeed: InsertMessage[] = await db
+    .select()
+    .from(messages)
+    .where(eq(messages.phoneNumber, from))
+    .orderBy(messages.timestamp);
 
-  const phoneNumber = `<Telefone>${from}</Telefone>`;
+  if (messagesFeed.length === 0) {
+    const initialMessageCommon: InsertMessage = {
+      phoneNumber: from,
+      role: "system",
+      content: process.env.MYPROMPT ?? FALLBACK_PROMPT,
+    };
+    await db.insert(messages).values(initialMessageCommon);
+    messagesFeed = [
+      {
+        ...initialMessageCommon,
+        toolCallId: null,
+        toolCalls: null,
+      },
+    ];
+  }
+
+  await db.insert(users).values({
+    phoneNumber: from,
+    profileName: name,
+  });
+
+  await db.insert(messages).values({
+    phoneNumber: from,
+    role: "user",
+    content: message,
+    profileName: name,
+    toolCallId: null,
+    toolCalls: null,
+  } as InsertMessage);
+
+  messagesFeed.push({
+    role: "system",
+    content: JSON.stringify({
+      profileName: name,
+      phoneNumber: from,
+    }),
+    phoneNumber: from,
+  });
 
   messagesFeed.push({
     role: "user",
-    content: `${message}\n<Timestamp>${
-      getSaoPauloDate().currentDate
-    }</Timestamp>${
-      messagesFeed.length === 1 ? `${profileNameTag}${phoneNumber}` : ""
-    }`,
+    content: message,
+    phoneNumber: from,
+    profileName: name,
+    toolCallId: null,
+    toolCalls: null,
+  } as InsertMessage);
+
+  if (abortControllers[from]) {
+    console.log("Aborting previous request for", from);
+    abortControllers[from].abort();
+    abortControllers[from] = undefined;
+  }
+
+  const abortController = new AbortController();
+  abortControllers[from] = abortController;
+
+  const chatMessages = messagesFeed.map((m) => {
+    return {
+      role: m.role,
+      content: m.content,
+      tool_calls: m.toolCalls
+        ? (JSON.parse(
+            m.toolCalls
+          ) as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[])
+        : undefined,
+      tool_call_id: m.toolCallId,
+    } as ChatMessage;
   });
 
   try {
-    const newMessagesForFeed = await getNextMessages(messagesFeed);
+    const newMessagesForFeed = await getNextMessages(
+      chatMessages,
+      abortController.signal
+    );
 
     if (!newMessagesForFeed || newMessagesForFeed.length === 0) {
+      abortControllers[from] = undefined;
       res.status(500).json({ error: "No new messages" });
       return;
     }
 
-    messagesFeed.push(...newMessagesForFeed);
+    const newMessagesForDB = newMessagesForFeed.map((m, idx) => {
+      let toolCallId;
+      let toolCalls;
+
+      if (m.role === "tool") {
+        toolCallId = m.tool_call_id;
+      }
+
+      if (m.role === "assistant") {
+        toolCalls = JSON.stringify(m.tool_calls);
+      }
+      // Create a new message object for the feed
+      return {
+        phoneNumber: from,
+        role: m.role,
+        content: m.content,
+        profileName: name,
+        toolCallId,
+        toolCalls,
+      };
+    });
+
+    messagesFeed.push(...newMessagesForDB);
+
+    await db.insert(messages).values(newMessagesForDB);
 
     newMessagesForFeed
       .filter((m) => m.role === "assistant")
@@ -110,13 +202,12 @@ export async function whatsappHonoWebhook(
         }
       });
 
-    history[from] = messagesFeed;
-
-    console.log("Messages history:\n", history[from]);
-
+    console.log("Messages history:\n", messagesFeed);
+    abortControllers[from] = undefined;
     res.json({ status: "Received", from, message });
     return;
   } catch (error) {
+    abortControllers[from] = undefined;
     res.status(500).json({ Error: "Catch" });
     console.error("Error:", error);
   }

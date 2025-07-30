@@ -12,23 +12,31 @@ import {
 import { ChatMessage } from "./types/types";
 import { LLM_MODEL, openai } from "./webhook";
 
-export async function getNextMessages(messagesFeed: ChatMessage[]) {
+export async function getNextMessages(
+  messagesFeed: ChatMessage[],
+  signal?: AbortSignal
+) {
   const newMessagesForFeed: ChatMessage[] = [];
-  const completion = await openai.chat.completions.create({
-    model: LLM_MODEL,
-    messages: messagesFeed,
-    tools: [
-      dateTool,
-      getSalonInfoTool,
-      servicesTool,
-      cancellationRulesConfigTool,
-      fetchEventsTool,
-      createEventTool,
-      getProfessionalLinkContactToAttachInAnswerTool,
-      cancelEventTool,
-    ],
-    tool_choice: "auto",
-  });
+  const completion = await openai.chat.completions.create(
+    {
+      model: LLM_MODEL,
+      messages: messagesFeed,
+      tools: [
+        dateTool,
+        getSalonInfoTool,
+        servicesTool,
+        cancellationRulesConfigTool,
+        fetchEventsTool,
+        createEventTool,
+        getProfessionalLinkContactToAttachInAnswerTool,
+        cancelEventTool,
+      ],
+      tool_choice: "auto",
+    },
+    {
+      signal,
+    }
+  );
 
   const { tool_calls, content } = completion.choices[0].message;
 
@@ -72,10 +80,10 @@ export async function getNextMessages(messagesFeed: ChatMessage[]) {
       });
 
       try {
-        const newMessages = await getNextMessages([
-          ...messagesFeed,
-          ...newMessagesForFeed,
-        ]);
+        const newMessages = await getNextMessages(
+          [...messagesFeed, ...newMessagesForFeed],
+          signal
+        );
         newMessagesForFeed.push(...newMessages);
       } catch (error) {
         console.error("Error calling MCP server:", error);

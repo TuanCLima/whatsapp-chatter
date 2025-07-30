@@ -10,7 +10,11 @@
     "build": "npx tsc",
     "serve": "node dist/index.js",
     "predeploy": "tsx src/scripts/generate-vcf.ts",
-    "loadPrompt": "tsx src/scripts/loadPrompt.ts"
+    "loadPrompt": "tsx src/scripts/loadPrompt.ts",
+    "db:studio": "drizzle-kit studio",
+    "db:push": "drizzle-kit push",
+    "db:generate": "drizzle-kit generate",
+    "db:reset": "rm -rf db.sqlite && drizzle-kit push"
   },
   "keywords": [],
   "author": "",
@@ -26,9 +30,13 @@
   },
   "dependencies": {
     "@cloudflare/workers-types": "^4.20250403.0",
+    "@libsql/client": "^0.15.8",
+    "@libsql/sqlite3": "^0.3.1",
     "axios": "^1.8.4",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
+    "drizzle-kit": "^0.31.1",
+    "drizzle-orm": "^0.43.1",
     "express": "^5.1.0",
     "google-auth-library": "^9.15.1",
     "googleapis": "^148.0.0",
