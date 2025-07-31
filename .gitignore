@@ -9,3 +9,4 @@ token.json
 .vscode
 backup/**
 prompts_backup
+sqlite.db

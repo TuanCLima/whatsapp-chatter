@@ -42,15 +42,35 @@ type TwilioFormData = {
   ProfileName: string;
 };
 
+const fakes = [
+  {
+    from: "whatsapp:+5511999999999",
+    profileName: "João",
+  },
+  {
+    from: "whatsapp:+5511988888888",
+    profileName: "Maria",
+  },
+  {
+    from: "whatsapp:+5511977777777",
+    profileName: "Carlos",
+  }
+]
+
+const indexSelected = 2
+
+
+
 export async function whatsappHonoWebhook(
   req: Request<{}, {}, TwilioFormData>,
   res: Response
 ) {
   const body = req.body;
-  const { From: from, Body: message, ProfileName } = body;
+  const { From: _from, Body: message, ProfileName } = body;
+  const from = (IS_DEV && fakes[indexSelected].from) ? fakes[indexSelected].from : _from;
 
-  let name = IS_DEV ? faker.internet.username() : ProfileName;
-  name = "Tuan";
+  let name = (IS_DEV && fakes[indexSelected].profileName) ? fakes[indexSelected].profileName : (IS_DEV ? faker.internet.username() : ProfileName);
+
   let messagesFeed: InsertMessage[] = await db
     .select()
     .from(messages)
@@ -73,10 +93,20 @@ export async function whatsappHonoWebhook(
     ];
   }
 
-  await db.insert(users).values({
-    phoneNumber: from,
-    profileName: name,
-  });
+  const existingUser = await db
+    .select()
+    .from(users)
+    .where(eq(users.phoneNumber, from))
+    .limit(1);
+
+  if (existingUser.length === 0) {
+    await db.insert(users).values({
+      phoneNumber: from,
+      profileName: name,
+    });
+  } else if (existingUser[0].profileName !== name) {
+    await db.update(users).set({ profileName: name }).where(eq(users.phoneNumber, from));
+  }
 
   await db.insert(messages).values({
     phoneNumber: from,
@@ -178,14 +208,14 @@ export async function whatsappHonoWebhook(
             if (toSendMessage.isContactLink) {
               await client.messages.create({
                 from: fromNumber, // Your Twilio WhatsApp number
-                to: from, // Recipient's WhatsApp number
+                to: _from, // Recipient's WhatsApp number
                 mediaUrl: [toSendMessage.text],
               });
               await new Promise((resolve) => setTimeout(resolve, 700)); // Wait for 1 second before sending the next message
             } else {
               await client.messages.create({
                 from: fromNumber,
-                to: from,
+                to: _from,
                 body: toSendMessage.text.replace(/\*\*/g, "*"),
               });
             }
@@ -193,7 +223,7 @@ export async function whatsappHonoWebhook(
         } catch (error) {
           await client.messages.create({
             from: fromNumber,
-            to: from,
+            to: _from,
             body: "Houve um erro ao enviar a mensagem. Tente novamente mais tarde, por favor.",
           });
           console.error("Error sending message:", error);
