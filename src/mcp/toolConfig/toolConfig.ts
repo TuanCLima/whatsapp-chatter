@@ -7,6 +7,7 @@ enum FunctionName {
   getSalonInfo = "getSalonInfo",
   getProfessionalLinkContactToAttachInAnswer = "getProfessionalLinkContactToAttachInAnswer",
   fetchCalendarEvents = "fetchCalendarEvents",
+  checkEventAvailability = "checkEventAvailability",
   createCalendarEvent = "createCalendarEvent",
   cancelCalendarEvent = "cancelCalendarEvent",
 }
@@ -115,12 +116,39 @@ const fetchEventsTool: ChatCompletionTool = {
   },
 };
 
+const checkEventAvailabilityTool: ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: FunctionName.checkEventAvailability,
+    description:
+      "OBRIGATÓRIO: SEMPRE use esta ferramenta ANTES de sugerir ou confirmar qualquer agendamento ao cliente. Verifica se o horário proposto está disponível, não tem conflitos com outros eventos e respeita as restrições de horário (como não agendar entre 12h-13h). Use esta ferramenta para validar QUALQUER horário antes de oferecer ao cliente ou criar o evento.",
+    parameters: {
+      type: "object",
+      properties: {
+        proposedStartTime: {
+          type: "string",
+          description: "Horário de início proposto para o evento (ISO 8601 format).",
+        },
+        proposedEndTime: {
+          type: "string",
+          description: "Horário de fim proposto para o evento (ISO 8601 format).",
+        },
+        serviceDurationMinutes: {
+          type: "integer",
+          description: "Duração do serviço em minutos.",
+        },
+      },
+      required: ["proposedStartTime", "proposedEndTime", "serviceDurationMinutes"],
+    },
+  },
+};
+
 const createEventTool: ChatCompletionTool = {
   type: "function",
   function: {
     name: FunctionName.createCalendarEvent,
     description:
-      "Criar um novo evento/agendamento/horário no calendário da Gabe. Deixe um intervalo de 10 minutos entre eventos/agendamentos",
+      "Criar um novo evento/agendamento/horário no calendário da Gabe. IMPORTANTE: SEMPRE use a ferramenta checkEventAvailability ANTES de criar qualquer evento para garantir disponibilidade.",
     parameters: {
       type: "object",
       properties: {
@@ -220,6 +248,7 @@ export {
   getSalonInfoTool,
   getProfessionalLinkContactToAttachInAnswerTool,
   fetchEventsTool,
+  checkEventAvailabilityTool,
   createEventTool,
   cancelEventTool,
   FunctionName,

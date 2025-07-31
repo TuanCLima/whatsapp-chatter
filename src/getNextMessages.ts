@@ -2,6 +2,7 @@ import { toolCall } from "./mcp/toolCall";
 import {
   cancelEventTool,
   cancellationRulesConfigTool,
+  checkEventAvailabilityTool,
   createEventTool,
   dateTool,
   fetchEventsTool,
@@ -27,6 +28,7 @@ export async function getNextMessages(
         servicesTool,
         cancellationRulesConfigTool,
         fetchEventsTool,
+        checkEventAvailabilityTool,
         createEventTool,
         getProfessionalLinkContactToAttachInAnswerTool,
         cancelEventTool,

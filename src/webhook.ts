@@ -17,7 +17,6 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
 
-import { faker } from "@faker-js/faker";
 import { getSaoPauloDate } from "./mcp/mcpService";
 import { getInitialPrompt } from "./utils/utils";
 
@@ -75,10 +74,22 @@ const fakes = [
   {
     from: "whatsapp:+5511977777777",
     profileName: "Carlos",
-  }
+  },
+  {
+    from: "whatsapp:+5511966666666",
+    profileName: "Ana",
+  },
+  {
+    from: "whatsapp:+5511955555555",
+    profileName: "Pedro",
+  },
+  {
+    from: "whatsapp:+5511944444444",
+    profileName: "Luiza",
+  },
 ]
 
-const indexSelected = 2
+const indexSelected = 5
 
 
 
@@ -88,9 +99,9 @@ export async function whatsappHonoWebhook(
 ) {
   const body = req.body;
   const { From: _from, Body: message, ProfileName } = body;
-  const from = (IS_DEV && fakes[indexSelected].from) ? fakes[indexSelected].from : _from;
+  const from = (IS_DEV && fakes[indexSelected]?.from) ? fakes[indexSelected]?.from : _from;
 
-  let name = (IS_DEV && fakes[indexSelected].profileName) ? fakes[indexSelected].profileName : (IS_DEV ? faker.internet.username() : ProfileName);
+  let name = (IS_DEV && fakes[indexSelected]?.profileName) ? fakes[indexSelected]?.profileName : ProfileName;
 
   let messagesFeed: InsertMessage[] = await db
     .select()
@@ -225,6 +236,7 @@ export async function whatsappHonoWebhook(
                 from: fromNumber, // Your Twilio WhatsApp number
                 to: _from, // Recipient's WhatsApp number
                 mediaUrl: [toSendMessage.text],
+                body: "Contato compartilhado" // Adding body text for media messages
               });
               await new Promise((resolve) => setTimeout(resolve, 700)); // Wait for 1 second before sending the next message
             } else {
@@ -236,12 +248,8 @@ export async function whatsappHonoWebhook(
             }
           }
         } catch (error) {
-          await client.messages.create({
-            from: fromNumber,
-            to: _from,
-            body: "Houve um erro ao enviar a mensagem. Tente novamente mais tarde, por favor.",
-          });
           console.error("Error sending message:", error);
+          abortControllers[from] = undefined;
           res.status(500).json({ error: "Error sending message" });
           return;
         }
