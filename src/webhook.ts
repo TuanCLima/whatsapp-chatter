@@ -6,7 +6,7 @@ import { parseLLMMessages } from "./utils/parseLLMMessages";
 
 import { ChatMessage } from "./types/types";
 import { getNextMessages } from "./getNextMessages";
-import { FALLBACK_PROMPT, IS_DEV } from "./utils/contants";
+import { IS_DEV } from "./utils/contants";
 
 import { db, initializeDatabase } from "./db";
 import { InsertMessage, messages, users } from "./db/schema";
@@ -18,6 +18,8 @@ const authToken = process.env.TWILIO_AUTH_TOKEN;
 const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
 
 import { faker } from "@faker-js/faker";
+import { getSaoPauloDate } from "./mcp/mcpService";
+import { getInitialPrompt } from "./utils/utils";
 
 // const LLM_BASE_URL = "https://api.deepseek.com";
 // export const LLM_MODEL = "deepseek-chat";
@@ -35,6 +37,25 @@ initializeDatabase().catch(console.error);
 const abortControllers: Record<string, AbortController | undefined> = {};
 
 const client = Twilio(accountSid, authToken);
+
+// Helper function to create time-aware context message
+function createTimeAwareContextMessage(name: string, from: string) {
+  const currentTime = getSaoPauloDate();
+  
+  return {
+    role: "system" as const,
+    content: JSON.stringify({
+      contextType: "current_interaction",
+      profileName: name,
+      phoneNumber: from,
+      currentDateTime: currentTime.currentDate,
+      timeZone: currentTime.timezone,
+      timestamp: currentTime.iso8601,
+      message: `Conversa iniciada em ${currentTime.currentDate} (${currentTime.timezone}). Use a ferramenta getSaoPauloDate se precisar de informações de tempo atualizadas durante a conversa.`
+    }),
+    phoneNumber: from,
+  };
+}
 
 type TwilioFormData = {
   From: string;
@@ -81,7 +102,7 @@ export async function whatsappHonoWebhook(
     const initialMessageCommon: InsertMessage = {
       phoneNumber: from,
       role: "system",
-      content: process.env.MYPROMPT ?? FALLBACK_PROMPT,
+      content: getInitialPrompt(),
     };
     await db.insert(messages).values(initialMessageCommon);
     messagesFeed = [
@@ -117,14 +138,8 @@ export async function whatsappHonoWebhook(
     toolCalls: null,
   } as InsertMessage);
 
-  messagesFeed.push({
-    role: "system",
-    content: JSON.stringify({
-      profileName: name,
-      phoneNumber: from,
-    }),
-    phoneNumber: from,
-  });
+  // Add current time context to the system message. Not added to the database, but to the messages feed
+  messagesFeed.push(createTimeAwareContextMessage(name, from));
 
   messagesFeed.push({
     role: "user",
