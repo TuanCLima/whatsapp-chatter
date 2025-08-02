@@ -90,10 +90,13 @@ const fakes = [
   {
     from: "whatsapp:+5511933333333",
     profileName: "Fernanda",
-  }
+  },
+  { from: "whatsapp:+5511922222222",
+    profileName: "Roberto",
+  },
 ]
 
-const indexSelected = -1
+const indexSelected = 7
 
 export async function whatsappHonoWebhook(
   req: Request<{}, {}, TwilioFormData>,
@@ -111,21 +114,17 @@ export async function whatsappHonoWebhook(
     .where(eq(messages.phoneNumber, from))
     .orderBy(messages.timestamp);
 
-  if (messagesFeed.length === 0) {
-    const initialMessageCommon: InsertMessage = {
+  const initialMessageCommon: InsertMessage = {
       phoneNumber: from,
       role: "system",
       content: getInitialPrompt(),
     };
-    await db.insert(messages).values(initialMessageCommon);
-    messagesFeed = [
-      {
+  
+  messagesFeed.unshift({
         ...initialMessageCommon,
         toolCallId: null,
         toolCalls: null,
-      },
-    ];
-  }
+  })
 
   const existingUser = await db
     .select()
