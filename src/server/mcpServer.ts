@@ -64,6 +64,8 @@ router.post(
           break;
         case "fetchCalendarEvents":
         case "checkEventAvailability":
+        case "checkEventCancellationEligibility":
+        case "checkAndCancelEventIfEligible":
         case "createCalendarEvent":
         case "cancelCalendarEvent":
           result = await mcpFunctions[functionName].function(parameters);

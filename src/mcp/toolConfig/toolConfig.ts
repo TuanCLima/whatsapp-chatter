@@ -8,6 +8,8 @@ enum FunctionName {
   getProfessionalLinkContactToAttachInAnswer = "getProfessionalLinkContactToAttachInAnswer",
   fetchCalendarEvents = "fetchCalendarEvents",
   checkEventAvailability = "checkEventAvailability",
+  checkEventCancellationEligibility = "checkEventCancellationEligibility",
+  checkAndCancelEventIfEligible = "checkAndCancelEventIfEligible",
   createCalendarEvent = "createCalendarEvent",
   cancelCalendarEvent = "cancelCalendarEvent",
 }
@@ -143,6 +145,52 @@ const checkEventAvailabilityTool: ChatCompletionTool = {
   },
 };
 
+const checkEventCancellationEligibilityTool: ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: FunctionName.checkEventCancellationEligibility,
+    description:
+      "Verificar se um evento é elegível para cancelamento baseado nas regras: evento deve existir, deve começar em mais de 48 horas, e o telefone deve corresponder ao registrado no evento. Use esta ferramenta apenas para verificar elegibilidade sem cancelar.",
+    parameters: {
+      type: "object",
+      properties: {
+        eventId: {
+          type: "string",
+          description: "O ID do evento no Google Calendar que se deseja verificar para cancelamento.",
+        },
+        userPhone: {
+          type: "string",
+          description: "O número de telefone do usuário solicitando o cancelamento (será comparado com o telefone registrado no evento).",
+        },
+      },
+      required: ["eventId", "userPhone"],
+    },
+  },
+};
+
+const checkAndCancelEventIfEligibleTool: ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: FunctionName.checkAndCancelEventIfEligible,
+    description:
+      "RECOMENDADO para cancelamentos: Verifica automaticamente se um evento é elegível para cancelamento e o cancela se todas as regras forem atendidas (evento existe, mais de 48h de antecedência, telefone corresponde). Se não for elegível, retorna instruções para enviar cartão de contato do Gabe.",
+    parameters: {
+      type: "object",
+      properties: {
+        eventId: {
+          type: "string",
+          description: "O ID do evento no Google Calendar que se deseja cancelar.",
+        },
+        userPhone: {
+          type: "string",
+          description: "O número de telefone do usuário solicitando o cancelamento (será comparado com o telefone registrado no evento).",
+        },
+      },
+      required: ["eventId", "userPhone"],
+    },
+  },
+};
+
 const createEventTool: ChatCompletionTool = {
   type: "function",
   function: {
@@ -223,7 +271,7 @@ const cancelEventTool: ChatCompletionTool = {
   function: {
     name: FunctionName.cancelCalendarEvent,
     description:
-      "Cancelar um evento/agendamento existente no calendário da Gabe. Importante: Não é possível cancelar eventos com menos de 24 horas de antecedência",
+      "Cancelar um evento/agendamento existente no calendário da Gabe. Chame a ferramenta fetchCalendarEvents para obter a id do evento a ser cancelado. Importante: Não é possível cancelar eventos com menos de 24 horas de antecedência",
     parameters: {
       type: "object",
       properties: {
@@ -249,6 +297,8 @@ export {
   getProfessionalLinkContactToAttachInAnswerTool,
   fetchEventsTool,
   checkEventAvailabilityTool,
+  checkEventCancellationEligibilityTool,
+  checkAndCancelEventIfEligibleTool,
   createEventTool,
   cancelEventTool,
   FunctionName,

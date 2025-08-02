@@ -87,11 +87,13 @@ const fakes = [
     from: "whatsapp:+5511944444444",
     profileName: "Luiza",
   },
+  {
+    from: "whatsapp:+5511933333333",
+    profileName: "Fernanda",
+  }
 ]
 
-const indexSelected = 5
-
-
+const indexSelected = -1
 
 export async function whatsappHonoWebhook(
   req: Request<{}, {}, TwilioFormData>,

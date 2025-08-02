@@ -79,7 +79,7 @@ export async function getCalendarEventById({
   calendarId?: string;
   eventId: string;
   auth: OAuth2Client | string;
-}): Promise<calendar_v3.Schema$Event> {
+}): Promise<calendar_v3.Schema$Event | null> {
   const calendar = google.calendar({ version: "v3", auth });
 
   try {
@@ -91,7 +91,7 @@ export async function getCalendarEventById({
     return response.data;
   } catch (error) {
     console.error("Error fetching Google Calendar event:", error);
-    throw error;
+    return null
   }
 }
 
@@ -111,6 +111,10 @@ export async function cancelCalendarEvent({
     eventId,
     auth,
   });
+
+  if (!event) {
+    return { error: "Event not found" };
+  }
 
   // Check if event end date is before 24 hours from now
   const now = new Date();
