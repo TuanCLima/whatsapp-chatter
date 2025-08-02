@@ -78,25 +78,26 @@ const fakes = [
   {
     from: "whatsapp:+5511966666666",
     profileName: "Ana",
-  },
+  }, // 3
   {
     from: "whatsapp:+5511955555555",
     profileName: "Pedro",
-  },
+  }, // 4
   {
     from: "whatsapp:+5511944444444",
     profileName: "Luiza",
-  },
+  }, // 5
   {
     from: "whatsapp:+5511933333333",
     profileName: "Fernanda",
-  },
-  { from: "whatsapp:+5511922222222",
+  }, // 6
+  {
+    from: "whatsapp:+5511922222222",
     profileName: "Roberto",
-  },
+  }, // 7
 ]
 
-const indexSelected = 7
+const indexSelected = 6
 
 export async function whatsappHonoWebhook(
   req: Request<{}, {}, TwilioFormData>,
@@ -256,7 +257,7 @@ export async function whatsappHonoWebhook(
         }
       });
 
-    console.log("Messages history:\n", messagesFeed);
+    IS_DEV && console.log("Messages history:\n", messagesFeed);
     abortControllers[from] = undefined;
     res.json({ status: "Received", from, message });
     return;

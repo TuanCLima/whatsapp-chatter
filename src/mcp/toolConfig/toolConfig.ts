@@ -173,7 +173,7 @@ const checkAndCancelEventIfEligibleTool: ChatCompletionTool = {
   function: {
     name: FunctionName.checkAndCancelEventIfEligible,
     description:
-      "RECOMENDADO para cancelamentos: Verifica automaticamente se um evento é elegível para cancelamento e o cancela se todas as regras forem atendidas (evento existe, mais de 48h de antecedência, telefone corresponde). Se não for elegível, retorna instruções para enviar cartão de contato do Gabe.",
+      "RECOMENDADO para cancelamentos: Verifica automaticamente se um evento é elegível para cancelamento e o cancela se todas as regras forem atendidas (evento existe, mais de 48h de antecedência, telefone corresponde). Se não for elegível, retorna instruções para enviar cartão de contato do Gabe. Não pergunte dados do evento ao usuário, use os dados do evento já fornecidos pela função fetchCalendarEvents",
     parameters: {
       type: "object",
       properties: {

@@ -14,7 +14,7 @@
     "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
-    "db:reset": "rm -rf db.sqlite && drizzle-kit push"
+    "db:reset": "rm -rf sqlite.db && drizzle-kit push"
   },
   "keywords": [],
   "author": "",
