@@ -84,16 +84,20 @@ export async function getNextMessages(
         name: functionName,
         content: JSON.stringify(toolResponse),
       });
+    }
+  }
 
-      try {
-        const newMessages = await getNextMessages(
-          [...messagesFeed, ...newMessagesForFeed],
-          signal
-        );
-        newMessagesForFeed.push(...newMessages);
-      } catch (error) {
-        console.error("Error calling MCP server:", error);
-      }
+  if (tool_calls && tool_calls.length > 0) {
+    try {
+      const newMessages = await getNextMessages(
+        [...messagesFeed, ...newMessagesForFeed],
+        signal
+      );
+      newMessagesForFeed.push(...newMessages);
+
+      return newMessagesForFeed;
+    } catch (error) {
+      console.error("Error calling MCP server:", error);
     }
   }
 

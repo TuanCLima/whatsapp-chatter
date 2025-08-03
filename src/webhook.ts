@@ -257,7 +257,7 @@ export async function whatsappHonoWebhook(
         }
       });
 
-    IS_DEV && console.log("Messages history:\n", messagesFeed);
+    // IS_DEV && console.log("Messages history:\n", messagesFeed);
     abortControllers[from] = undefined;
     res.json({ status: "Received", from, message });
     return;
