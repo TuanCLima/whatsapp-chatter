@@ -32,7 +32,7 @@ const servicesTool: ChatCompletionTool = {
   function: {
     name: FunctionName.getAllServicesTable,
     description:
-      "Consultar a lista de todos os serviços (procedimentos) oferecidos pelo salão, bem como seus preços e tempo necessário para execução. Nota: A duração do evento deve ser de pelo menos a duração do serviço. Importante: Não alucine detalhes sobre os procedimentos. Use apenas as informações fornecidas.",
+      "Consultar a lista de todos os serviços (procedimentos) oferecidos pelo salão, bem como seus preços e tempo necessário para execução. Nota: A duração do evento deve ser de pelo menos a duração do serviço. Importante: Não alucine detalhes sobre os procedimentos. Use apenas as informações fornecidas. Não liste ao usuário serviços que não existe",
     parameters: {
       type: "object",
       properties: {},
@@ -86,7 +86,7 @@ const fetchEventsTool: ChatCompletionTool = {
   function: {
     name: FunctionName.fetchCalendarEvents,
     description:
-      "Use esta ferramenta para consultar a disponibilidade da agenda da Gabe antes de agendar qualquer coisa. Outros nomes para esta funcionalidade são: consultar agenda, consultar disponibilidade, consultar horários disponíveis. Deixe um intervalo de 10 minutos entre eventos/agendamentos",
+      "Use esta ferramenta para consultar a disponibilidade da agenda da Gabe antes de agendar qualquer coisa. Outros nomes para esta funcionalidade são: consultar agenda, consultar disponibilidade, consultar horários disponíveis",
     parameters: {
       type: "object",
       properties: {

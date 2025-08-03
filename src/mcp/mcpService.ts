@@ -8,6 +8,7 @@ import {
   getCalendarEventById,
 } from "../googleCalendar/googleCalendar";
 import {
+  Atendentes,
   CALENDAR_EVENT_CANCELLATION_RULES,
   GABE_CALENDAR_ID,
   LINK_INFO,
@@ -527,6 +528,9 @@ export type ServiceItem = {
   details: string[];
   description?: string;
   priceInReais?: number;
+  performedBy?: Atendentes[];
+  // sendContactCard?: boolean;
+  // scheduleCalendarEvent?: boolean;
 };
 
 export type LinkInfo = {

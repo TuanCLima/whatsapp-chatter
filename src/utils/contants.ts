@@ -11,6 +11,12 @@ export const GABE_CALENDAR_ID =
 export const FALLBACK_PROMPT =
   "Você é um assistente de salão de baleza. Responda sempre em português. Atualmente o salão está em manutenção. Se entrarem em contato. Diga que o atendimento por whatsapp está temporariamente fora de serviço.";
 
+export enum Atendentes {
+  GABE = "Gabe",
+  RAFA = "Rafa",
+  KARINA = "Karina",
+}
+
 export const SERVICES: ServiceItem[] = [
   {
     name: "Corte",
@@ -20,7 +26,7 @@ export const SERVICES: ServiceItem[] = [
       "Por enquanto não trabalhamos com cortes curtos estilo tapered cut, que precisem do acabamento da máquina no geral.",
     ],
     timeToExecuteInMinutes: 120,
-    priceInReais: 135,
+    performedBy: [Atendentes.GABE],
   },
   {
     name: "Finalização",
@@ -31,27 +37,32 @@ export const SERVICES: ServiceItem[] = [
       /* "⁠Para orçamento de finalização, pedimos uma foto do seu cabelo de costas solto e seco, ou para comparecer presencialmente.", */
     ],
     timeToExecuteInMinutes: 90,
+    performedBy: [Atendentes.GABE, Atendentes.RAFA],
   },
   {
     name: "Coloração e mechas",
     description: "⁠",
     details: [],
     timeToExecuteInMinutes: 180,
+    performedBy: [Atendentes.RAFA],
   },
   {
     name: "Penteados",
     description: "⁠",
     details: [],
+    performedBy: [Atendentes.KARINA],
   },
   {
     name: "Maquiagens",
     description: "⁠",
     details: [],
+    performedBy: [Atendentes.KARINA],
   },
   {
     name: "Tranças",
     description: "⁠",
     details: [],
+    performedBy: [Atendentes.KARINA],
   },
 ];
 
@@ -75,15 +86,15 @@ export const SALON_INFO: SalonInfo = {
 export const LINK_INFO: LinkInfo = [
   {
     professionalLink: "",
-    professionalName: "Gabe",
+    professionalName: Atendentes.GABE,
   },
   {
     professionalLink: "",
-    professionalName: "Rafa",
+    professionalName: Atendentes.RAFA,
   },
   {
     professionalLink: "",
-    professionalName: "Karina",
+    professionalName: Atendentes.KARINA,
   },
 ];
 
