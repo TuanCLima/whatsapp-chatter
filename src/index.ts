@@ -66,7 +66,7 @@ app.get("/db/contacts", async (req, res) => {
           .select()
           .from(messages)
           .where(eq(messages.phoneNumber, user.phoneNumber))
-          .orderBy(messages.timestamp)
+          .orderBy(desc(messages.timestamp))
           .limit(1);
 
         const contact: Contact = {
@@ -201,12 +201,38 @@ app.get("/db/conversations/:contactId", async (req, res) => {
 
 // Send a message
 app.post("/send-message", async (req, res) => {
-  const { conversationSid, body } = req.body;
+  const { phoneNumber, body } = req.body;
+
+  
+  if (!phoneNumber || !body) {
+    res.status(400).json({ error: "Phone number and message body are required" });
+    return;
+  }
+
   try {
-    const message = await twilioClient.conversations.v1
-      .conversations(conversationSid)
-      .messages.create({ body });
-    res.json(message);
+    const message = await twilioClient.messages.create({
+      from: process.env.TWILIO_WHATSAPP_NUMBER, 
+      to: phoneNumber.startsWith('whatsapp:') ? phoneNumber : `whatsapp:${phoneNumber}`,
+      body: body,
+    });
+
+
+    await db.insert(messages).values({
+      phoneNumber: phoneNumber.startsWith('whatsapp:') ? phoneNumber : `whatsapp:${phoneNumber}`,
+      role: "assistant",
+      content: body,
+      toolCallId: null,
+      toolCalls: null,
+    });
+
+    res.json({
+      sid: message.sid,
+      status: message.status,
+      dateCreated: message.dateCreated,
+      body: message.body,
+      to: message.to,
+      from: message.from,
+    });
   } catch (error) {
     console.error("Error sending message:", error);
     res.status(500).json({ error: "Failed to send message" });

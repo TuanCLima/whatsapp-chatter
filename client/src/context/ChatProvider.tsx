@@ -1,9 +1,11 @@
 import { Contact, Conversation, Maybe } from "@/types";
-import { useQuery } from "@tanstack/react-query";
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { ChatContext } from "./ChatContext";
 
 export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
+    const queryClient = useQueryClient();
+    
     const { data: contacts = [] } = useQuery<Contact[]>({queryKey: ['contacts'], queryFn: async () => {
       const response = await fetch('http://localhost:3000/db/contacts');
       if (!response.ok) {
@@ -34,15 +36,19 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
       setFilteredContacts(contacts);
     }, [contacts]);
 
-   /*  const sendMessageMutation = useMutation(
-      async (text: string) => {
-        if (!activeContactId || !text.trim()) return;
+    const sendMessageMutation = useMutation({
+      mutationFn: async (text: string) => {
+        console.log('Sending message:', text, activeContactId);
+
+        if (!activeContactId || !text.trim()) {
+          throw new Error('No active contact or empty message');
+        }
   
-        const response = await fetch('/api/send-message', {
+        const response = await fetch('http://localhost:3000/send-message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            conversationSid: activeContactId,
+            phoneNumber: activeContactId,
             body: text,
           }),
         });
@@ -51,49 +57,18 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
           throw new Error('Error sending message');
         }
   
-        return text;
+        return await response.json();
       },
-      {
-        onSuccess: (text) => {
-          const newMessage: Message = {
-            id: Date.now().toString(),
-            text,
-            sender: 'user',
-            timestamp: new Date().toISOString(),
-            status: 'sent',
-          };
+      onSuccess: () => {
+        // Invalidate and refetch conversation data
+        queryClient.invalidateQueries({ queryKey: ['conversation', activeContactId] });
+        queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      },
+    });
   
-          setConversations((prevConversations) => {
-            const conversationIndex = prevConversations.findIndex(
-              (conv) => conv.contactId === activeContactId
-            );
-  
-            if (conversationIndex === -1) {
-              return [
-                ...prevConversations,
-                {
-                  id: Date.now().toString(),
-                  contactId: activeContactId,
-                  messages: [newMessage],
-                },
-              ];
-            }
-  
-            const updatedConversations = [...prevConversations];
-            updatedConversations[conversationIndex] = {
-              ...updatedConversations[conversationIndex],
-              messages: [...updatedConversations[conversationIndex].messages, newMessage],
-            };
-  
-            return updatedConversations;
-          });
-        },
-      }
-    );
-  
-    const sendMessage = (text: string) => {
+    const sendMessage = useCallback((text: string) => {
       sendMessageMutation.mutate(text);
-    }; */
+    }, [sendMessageMutation]);
   
     return (
       <ChatContext.Provider
@@ -103,7 +78,7 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
             conversations,
             activeContactId,
             setActiveContactId,
-            sendMessage: () => {},
+            sendMessage,
             searchContacts: (query: string) => {
               if (!query) {
                 setFilteredContacts(contacts);
@@ -117,7 +92,7 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
             filteredContacts,
             conversation
           }),
-          [contacts, conversations, activeContactId, filteredContacts, conversation/* , sendMessage */]
+          [contacts, conversations, activeContactId, filteredContacts, conversation, sendMessage]
         )}
       >
         {children}
