@@ -10,6 +10,10 @@ import {
   getWhatsAppConversations,
 } from "./utils/twilioMessages";
 import cors from "cors";
+import { db } from "./db";
+import { users, messages } from "./db/schema";
+import { and, desc, eq, ne, or } from "drizzle-orm";
+import { Contact, Conversation, Message } from "./types/types";
 
 export const PORT = process.env.PORT ?? 3000;
 const app = express();
@@ -49,6 +53,46 @@ app.get("/contacts", async (req, res) => {
   }
 });
 
+app.get("/db/contacts", async (req, res) => {
+  try {
+    // Get all users from database
+    const dbUsers = await db.select().from(users);
+    
+    // Convert users to contacts format
+    const contacts: Contact[] = await Promise.all(
+      dbUsers.map(async (user) => {
+        // Get the latest message for this user to show as lastMessage
+        const latestMessage = await db
+          .select()
+          .from(messages)
+          .where(eq(messages.phoneNumber, user.phoneNumber))
+          .orderBy(messages.timestamp)
+          .limit(1);
+
+        const contact: Contact = {
+          id: user.phoneNumber,
+          name: user.profileName || user.phoneNumber,
+          avatar: "", // You might want to add avatar support to your schema
+          lastMessage: latestMessage.length > 0 ? {
+            text: latestMessage[0].content || "",
+            timestamp: latestMessage[0].timestamp,
+            status: "delivered" as const,
+          } : undefined,
+          online: false, // You might want to add online status to your schema
+          typing: false,
+        };
+
+        return contact;
+      })
+    );
+
+    res.status(200).json(contacts);
+  } catch (error) {
+    console.error("Error fetching DB contacts:", error);
+    res.status(500).json({ error: "Failed to fetch contacts from database" });
+  }
+});
+
 app.get("/conversations", async (req, res) => {
   try {
     const conversations = await getWhatsAppConversations();
@@ -67,6 +111,91 @@ app.get("/conversations/:contactId", async (req, res) => {
   } catch (error) {
     console.error("Error fetching conversations:", error);
     res.status(500).json({ error: "Failed to fetch conversations" });
+  }
+});
+
+// Database-powered conversations route (alternative to WhatsApp API)
+app.get("/db/conversations", async (req, res) => {
+  try {
+    // Get all users from database
+    const dbUsers = await db.select().from(users);
+    
+    // Convert users to conversations format
+    const conversations: Conversation[] = await Promise.all(
+      dbUsers.map(async (user) => {
+        // Get messages for this user
+        const userMessages = await db
+          .select()
+          .from(messages)
+          .where(eq(messages.phoneNumber, user.phoneNumber))
+          .orderBy(messages.timestamp);
+
+        // Convert database messages to frontend format
+        const conversationMessages: Message[] = userMessages.map((msg) => ({
+          id: msg.id.toString(),
+          text: msg.content || "",
+          sender: msg.role === "user" ? user.phoneNumber : "assistant",
+          timestamp: msg.timestamp,
+          status: "delivered" as const,
+        }));
+
+        return {
+          id: user.phoneNumber,
+          contactId: user.phoneNumber,
+          messages: conversationMessages,
+        };
+      })
+    );
+
+    res.status(200).json(conversations);
+  } catch (error) {
+    console.error("Error fetching DB conversations:", error);
+    res.status(500).json({ error: "Failed to fetch conversations from database" });
+  }
+});
+
+// Get specific conversation from database
+app.get("/db/conversations/:contactId", async (req, res) => {
+  const { contactId } = req.params;
+  try {
+    // Get user from database
+    const user = await db
+      .select()
+      .from(users)
+      .where(eq(users.phoneNumber, contactId))
+      .limit(1);
+
+    if (user.length === 0) {
+      res.status(404).json({ error: "Conversation not found" });
+      return;
+    }
+
+    // Get messages for this user
+    const userMessages = await db
+      .select()
+      .from(messages)
+      .where(and(eq(messages.phoneNumber, contactId), or(eq(messages.role, "user"), and(eq(messages.role, "assistant"), ne(messages.content, "")))))
+      .orderBy(desc(messages.timestamp));
+
+    // Convert database messages to frontend format
+    const conversationMessages: Message[] = userMessages.map((msg) => ({
+      id: msg.id.toString(),
+      text: msg.content || "",
+      sender: msg.role === "user" ? contactId : "assistant",
+      timestamp: msg.timestamp,
+      status: "delivered" as const,
+    }));
+
+    const conversation: Conversation = {
+      id: contactId,
+      contactId: contactId,
+      messages: conversationMessages,
+    };
+
+    res.status(200).json(conversation);
+  } catch (error) {
+    console.error("Error fetching DB conversation:", error);
+    res.status(500).json({ error: "Failed to fetch conversation from database" });
   }
 });
 

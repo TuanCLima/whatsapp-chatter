@@ -5,7 +5,7 @@ import { ChatContext } from "./ChatContext";
 
 export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
     const { data: contacts = [] } = useQuery<Contact[]>({queryKey: ['contacts'], queryFn: async () => {
-      const response = await fetch('http://localhost:3000/contacts');
+      const response = await fetch('http://localhost:3000/db/contacts');
       if (!response.ok) {
         throw new Error('Error fetching contacts');
       }
@@ -16,7 +16,7 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
       queryKey: ['conversation', activeContactId],
       queryFn: async () => {
       if (!activeContactId) return [];
-      const response = await fetch(`http://localhost:3000/conversations/${activeContactId}`);
+      const response = await fetch(`http://localhost:3000/db/conversations/${activeContactId}`);
       if (!response.ok) {
         throw new Error('Error fetching conversation');
       }
