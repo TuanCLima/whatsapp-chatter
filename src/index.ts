@@ -239,6 +239,83 @@ app.post("/send-message", async (req, res) => {
   }
 });
 
+// Authentication endpoints
+app.post("/auth/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    res.status(400).json({ error: "Email and password are required" });
+    return 
+  }
+
+  if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+    res.status(500).json({ error: "Admin credentials not configured" });
+    return 
+  }
+
+  // Simple hardcoded admin credentials for demo
+  // In production, you would hash passwords and store in database
+  const adminCredentials = {
+    email: process.env.ADMIN_EMAIL,
+    password: process.env.ADMIN_PASSWORD, // In production, this should be hashed
+    user: {
+      id: "1",
+      email: process.env.ADMIN_EMAIL,
+      role: "admin" as const,
+      name: "Admin User",
+    }
+  };
+
+  if (email === adminCredentials.email && password === adminCredentials.password) {
+    // Generate a simple JWT token (in production, use proper JWT library)
+    const token = Buffer.from(JSON.stringify({
+      userId: adminCredentials.user.id,
+      role: adminCredentials.user.role,
+      exp: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
+    })).toString('base64');
+
+    res.json({
+      user: adminCredentials.user,
+      token: token
+    });
+  } else {
+    res.status(401).json({ error: "Invalid credentials" });
+  }
+});
+
+app.get("/auth/verify", (req, res) => {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+
+  const token = authHeader.substring(7);
+  
+  try {
+    // Decode the simple token (in production, use proper JWT verification)
+    const payload = JSON.parse(Buffer.from(token, 'base64').toString());
+    
+    if (payload.exp < Date.now()) {
+      return res.status(401).json({ error: "Token expired" });
+    }
+
+    if (payload.role !== 'admin') {
+      return res.status(403).json({ error: "Insufficient privileges" });
+    }
+
+    // Return user data
+    res.json({
+      id: payload.userId,
+      email: "admin@example.com",
+      role: payload.role,
+      name: "Admin User",
+    });
+  } catch (error) {
+    res.status(401).json({ error: "Invalid token" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running at port: ${PORT}`);
 });
