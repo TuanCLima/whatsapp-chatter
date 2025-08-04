@@ -55,6 +55,16 @@ export default {
           4: 'hsl(var(--chart-4))',
           5: 'hsl(var(--chart-5))',
         },
+        // WhatsApp-inspired colors
+        whatsapp: {
+          primary: '#25d366',
+          dark: '#128c7e',
+          darker: '#075e54',
+          light: '#dcf8c6',
+          background: '#0b141a',
+          surface: '#1f2c34',
+          gray: '#667781',
+        },
       },
       keyframes: {
         'accordion-down': {
