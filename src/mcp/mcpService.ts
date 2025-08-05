@@ -347,6 +347,17 @@ export async function checkEventAvailability(params: CheckEventAvailabilityProps
       };
     }
 
+    // Check if salon is closed (Sundays and Mondays)
+    const dayOfWeek = startDate.getDay(); // 0 = Sunday, 1 = Monday
+    if (dayOfWeek === 0 || dayOfWeek === 1) {
+      return {
+        available: false,
+        message: "O salão está fechado aos domingos e segundas-feiras. Por favor, escolha um horário entre terça e sábado.",
+        conflicts: ["salon_closed"],
+        availableTimeSpans: [],
+      };
+    }
+
     // Check forbidden hours (12h-13h / lunch time)
     const startHour = startDate.getHours();
     const endHour = endDate.getHours();
