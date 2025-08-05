@@ -97,7 +97,7 @@ const fakes = [
   }, // 7
 ]
 
-const indexSelected = 6
+const indexSelected = -1
 
 export async function whatsappHonoWebhook(
   req: Request<{}, {}, TwilioFormData>,
@@ -137,10 +137,14 @@ export async function whatsappHonoWebhook(
     await db.insert(users).values({
       phoneNumber: from,
       profileName: name,
+      conversationDisabled: false,
     });
   } else if (existingUser[0].profileName !== name) {
     await db.update(users).set({ profileName: name }).where(eq(users.phoneNumber, from));
   }
+
+  // Check if conversation is disabled for this user
+  const isConversationDisabled = existingUser.length > 0 && existingUser[0].conversationDisabled;
 
   await db.insert(messages).values({
     phoneNumber: from,
@@ -150,6 +154,12 @@ export async function whatsappHonoWebhook(
     toolCallId: null,
     toolCalls: null,
   } as InsertMessage);
+
+  // If conversation is disabled, just acknowledge receipt without processing
+  if (isConversationDisabled) {
+    res.json({ status: "Received (conversation disabled)", from, message });
+    return;
+  }
 
   // Add current time context to the system message. Not added to the database, but to the messages feed
   messagesFeed.push(createTimeAwareContextMessage(name, from));

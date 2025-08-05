@@ -4,6 +4,8 @@ export interface Contact {
   id: string;
   name: string;
   avatar: string;
+  phoneNumber?: string;
+  conversationDisabled?: boolean;
   lastMessage?: {
     text: string;
     timestamp: string;

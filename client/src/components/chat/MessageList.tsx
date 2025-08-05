@@ -59,7 +59,7 @@ export default function MessageList({ messages, contactId }: MessageListProps) {
                   contactId={contactId}
                 />
               </motion.div>
-            )).reverse()}
+            ))}
           </AnimatePresence>
         </div>
       ))}

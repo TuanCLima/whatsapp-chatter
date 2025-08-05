@@ -2,6 +2,7 @@ import { Contact, Conversation, Maybe } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { ChatContext } from "./ChatContext";
+import { userService } from "@/services/UserService";
 
 export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
     const queryClient = useQueryClient();
@@ -69,6 +70,20 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
     const sendMessage = useCallback((text: string) => {
       sendMessageMutation.mutate(text);
     }, [sendMessageMutation]);
+
+    const toggleConversationMutation = useMutation({
+      mutationFn: async ({ phoneNumber, disabled }: { phoneNumber: string; disabled: boolean }) => {
+        return await userService.toggleConversation(phoneNumber, disabled);
+      },
+      onSuccess: () => {
+        // Invalidate and refetch contacts to update the conversation status
+        queryClient.invalidateQueries({ queryKey: ['contacts'] });
+      },
+    });
+
+    const toggleConversation = useCallback((phoneNumber: string, disabled: boolean) => {
+      toggleConversationMutation.mutate({ phoneNumber, disabled });
+    }, [toggleConversationMutation]);
   
     return (
       <ChatContext.Provider
@@ -90,9 +105,10 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
               setFilteredContacts(filtered);
             },
             filteredContacts,
-            conversation
+            conversation,
+            toggleConversation
           }),
-          [contacts, conversations, activeContactId, filteredContacts, conversation, sendMessage]
+          [contacts, conversations, activeContactId, filteredContacts, conversation, sendMessage, toggleConversation]
         )}
       >
         {children}

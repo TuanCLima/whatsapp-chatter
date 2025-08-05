@@ -27,8 +27,19 @@ export async function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       phone_number TEXT NOT NULL,
       profile_name TEXT NOT NULL,
+      conversation_disabled INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT
     );
   `);
+
+  // Add the conversation_disabled column if it doesn't exist (for existing databases)
+  try {
+    await client.execute(`
+      ALTER TABLE users ADD COLUMN conversation_disabled INTEGER NOT NULL DEFAULT 0;
+    `);
+  } catch (error) {
+    // Column might already exist, ignore the error
+    console.log("conversation_disabled column might already exist");
+  }
 }

@@ -22,6 +22,7 @@ export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   phoneNumber: text("phone_number").notNull(),
   profileName: text("profile_name").notNull(),
+  conversationDisabled: integer("conversation_disabled", { mode: "boolean" }).default(false).notNull(),
   createdAt: text("created_at")
     .default(sql`current_timestamp`)
     .notNull(),

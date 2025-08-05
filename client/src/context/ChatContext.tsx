@@ -9,6 +9,7 @@ interface ChatContextType {
   sendMessage: (text: string) => void;
   searchContacts: (query: string) => void;
   filteredContacts: Contact[];
+  toggleConversation: (phoneNumber: string, disabled: boolean) => void;
 }
 
 export const ChatContext = createContext<ChatContextType | undefined>(undefined);

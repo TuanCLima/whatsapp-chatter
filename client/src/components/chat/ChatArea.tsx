@@ -10,7 +10,7 @@ interface ChatAreaProps {
 }
 
 export default function ChatArea({ setMobileMenuOpen }: ChatAreaProps) {
-  const { activeContactId, contacts, conversations, conversation } = useChat();
+  const { activeContactId, contacts, conversations, conversation, toggleConversation } = useChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Find active contact and conversation
@@ -37,7 +37,8 @@ export default function ChatArea({ setMobileMenuOpen }: ChatAreaProps) {
     <div className="flex-1 flex flex-col h-full bg-background relative">
       <ChatHeader 
         contact={activeContact} 
-        setMobileMenuOpen={setMobileMenuOpen} 
+        setMobileMenuOpen={setMobileMenuOpen}
+        onToggleConversation={toggleConversation}
       />
       
       <div 

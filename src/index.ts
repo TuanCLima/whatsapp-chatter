@@ -20,7 +20,7 @@ const app = express();
 app.use(
   cors({
     origin: "*", // Allow all origins
-    methods: ["GET", "POST"], // Allow only GET and POST methods
+    methods: ["GET", "POST", "PUT"], // Allow only GET and POST methods
     allowedHeaders: ["Content-Type", "Authorization"], // Allow specific headers
   })
 );
@@ -73,6 +73,8 @@ app.get("/db/contacts", async (req, res) => {
           id: user.phoneNumber,
           name: user.profileName || user.phoneNumber,
           avatar: "", // You might want to add avatar support to your schema
+          phoneNumber: user.phoneNumber,
+          conversationDisabled: user.conversationDisabled,
           lastMessage: latestMessage.length > 0 ? {
             text: latestMessage[0].content || "",
             timestamp: latestMessage[0].timestamp,
@@ -175,7 +177,7 @@ app.get("/db/conversations/:contactId", async (req, res) => {
       .select()
       .from(messages)
       .where(and(eq(messages.phoneNumber, contactId), or(eq(messages.role, "user"), and(eq(messages.role, "assistant"), ne(messages.content, "")))))
-      .orderBy(desc(messages.timestamp));
+      .orderBy(messages.timestamp);
 
     // Convert database messages to frontend format
     const conversationMessages: Message[] = userMessages.map((msg) => ({
@@ -236,6 +238,49 @@ app.post("/send-message", async (req, res) => {
   } catch (error) {
     console.error("Error sending message:", error);
     res.status(500).json({ error: "Failed to send message" });
+  }
+});
+
+// Toggle conversation status for a user
+app.put("/users/:phoneNumber/conversation", async (req, res) => {
+  const { phoneNumber } = req.params;
+  const { disabled } = req.body;
+
+  if (typeof disabled !== "boolean") {
+    res.status(400).json({ error: "disabled field is required and must be a boolean" });
+    return;
+  }
+
+  try {
+    // Check if user exists
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.phoneNumber, phoneNumber))
+      .limit(1);
+
+    if (existingUser.length === 0) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    // Update conversation status
+    await db
+      .update(users)
+      .set({ 
+        conversationDisabled: disabled,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(users.phoneNumber, phoneNumber));
+
+    res.json({ 
+      success: true, 
+      phoneNumber, 
+      conversationDisabled: disabled 
+    });
+  } catch (error) {
+    console.error("Error updating conversation status:", error);
+    res.status(500).json({ error: "Failed to update conversation status" });
   }
 });
 

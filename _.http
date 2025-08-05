@@ -141,6 +141,15 @@ Content-Type: application/json
   }
 }
 
+### Toggle conversation
+PUT http://localhost:3000/users/whatsapp%3A%2B5511933333333/conversation
+Content-Type: application/json
+
+{
+  "disabled": true
+}
+
+
 ### Test cancelling event
 POST http://localhost:3000/api/mcp/cancel-event
 Content-Type: application/json
