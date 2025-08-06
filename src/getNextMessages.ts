@@ -1,4 +1,4 @@
-import { toolCall } from "./mcp/toolCall";
+import { toolCall } from './mcp/toolCall'
 import {
   cancelEventTool,
   cancellationRulesConfigTool,
@@ -11,15 +11,15 @@ import {
   getProfessionalLinkContactToAttachInAnswerTool,
   getSalonInfoTool,
   servicesTool,
-} from "./mcp/toolConfig/toolConfig";
-import { ChatMessage } from "./types/types";
-import { LLM_MODEL, openai } from "./webhook";
+} from './mcp/toolConfig/toolConfig'
+import { ChatMessage } from './types/types'
+import { LLM_MODEL, openai } from './webhook'
 
 export async function getNextMessages(
   messagesFeed: ChatMessage[],
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ) {
-  const newMessagesForFeed: ChatMessage[] = [];
+  const newMessagesForFeed: ChatMessage[] = []
   const completion = await openai.chat.completions.create(
     {
       model: LLM_MODEL,
@@ -37,53 +37,53 @@ export async function getNextMessages(
         getProfessionalLinkContactToAttachInAnswerTool,
         cancelEventTool,
       ],
-      tool_choice: "auto",
+      tool_choice: 'auto',
     },
     {
       signal,
-    }
-  );
+    },
+  )
 
-  const { tool_calls, content } = completion.choices[0].message;
+  const { tool_calls, content } = completion.choices[0].message
 
   if (content && tool_calls && tool_calls.length > 0) {
     console.error(
-      "LLM completion is returning content and tool calls at the same time. This is not expected."
-    );
+      'LLM completion is returning content and tool calls at the same time. This is not expected.',
+    )
   }
 
   if (tool_calls && tool_calls.length > 0) {
     for (const tool_call of tool_calls) {
-      const { function: functionCall } = tool_call;
-      const { arguments: _arguments } = functionCall;
-      const functionName = functionCall.name;
+      const { function: functionCall } = tool_call
+      const { arguments: _arguments } = functionCall
+      const functionName = functionCall.name
 
       newMessagesForFeed.push({
-        role: "assistant",
+        role: 'assistant',
         content: null,
         tool_calls: [
           {
             id: tool_call.id,
-            type: "function",
+            type: 'function',
             function: {
               name: functionName,
               arguments: _arguments,
             },
           },
         ],
-      });
+      })
 
       const toolResponse = await toolCall({
         functionName,
         parameters: JSON.parse(_arguments),
-      });
+      })
 
       newMessagesForFeed.push({
-        role: "tool",
+        role: 'tool',
         tool_call_id: tool_call.id,
         name: functionName,
         content: JSON.stringify(toolResponse),
-      });
+      })
     }
   }
 
@@ -91,22 +91,22 @@ export async function getNextMessages(
     try {
       const newMessages = await getNextMessages(
         [...messagesFeed, ...newMessagesForFeed],
-        signal
-      );
-      newMessagesForFeed.push(...newMessages);
+        signal,
+      )
+      newMessagesForFeed.push(...newMessages)
 
-      return newMessagesForFeed;
+      return newMessagesForFeed
     } catch (error) {
-      console.error("Error calling MCP server:", error);
+      console.error('Error calling MCP server:', error)
     }
   }
 
   if (content) {
     newMessagesForFeed.push({
-      role: "assistant",
+      role: 'assistant',
       content,
-    });
+    })
   }
 
-  return newMessagesForFeed;
+  return newMessagesForFeed
 }

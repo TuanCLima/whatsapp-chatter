@@ -1,15 +1,18 @@
-import { useState } from 'react';
-import { Menu, Search, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { ModeToggle } from '@/components/theme/ModeToggle';
+import { useState } from 'react'
+import { Menu, Search, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { ModeToggle } from '@/components/theme/ModeToggle'
 
 interface SidebarHeaderProps {
-  searchQuery: string;
-  onSearch: (query: string) => void;
+  searchQuery: string
+  onSearch: (query: string) => void
 }
 
-export default function SidebarHeader({ searchQuery, onSearch }: SidebarHeaderProps) {
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
+export default function SidebarHeader({
+  searchQuery,
+  onSearch,
+}: SidebarHeaderProps) {
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
 
   return (
     <div className="p-2 bg-card border-b border-border flex flex-col space-y-2">
@@ -19,14 +22,20 @@ export default function SidebarHeader({ searchQuery, onSearch }: SidebarHeaderPr
         </div>
         <div className="flex items-center space-x-1">
           <ModeToggle />
-          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground"
+          >
             <Menu className="h-5 w-5" />
           </Button>
         </div>
       </div>
-      
+
       <div className="relative">
-        <div className={`absolute inset-y-0 left-3 flex items-center pointer-events-none transition-opacity ${isSearchFocused || searchQuery ? 'opacity-0' : 'opacity-100'}`}>
+        <div
+          className={`absolute inset-y-0 left-3 flex items-center pointer-events-none transition-opacity ${isSearchFocused || searchQuery ? 'opacity-0' : 'opacity-100'}`}
+        >
           <Search className="h-4 w-4 text-muted-foreground" />
         </div>
         <input
@@ -39,7 +48,7 @@ export default function SidebarHeader({ searchQuery, onSearch }: SidebarHeaderPr
           onBlur={() => setIsSearchFocused(false)}
         />
         {searchQuery && (
-          <button 
+          <button
             className="absolute inset-y-0 right-3 flex items-center"
             onClick={() => onSearch('')}
           >
@@ -48,5 +57,5 @@ export default function SidebarHeader({ searchQuery, onSearch }: SidebarHeaderPr
         )}
       </div>
     </div>
-  );
+  )
 }

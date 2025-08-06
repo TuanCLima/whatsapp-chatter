@@ -3,68 +3,68 @@ import {
   LinkInfo,
   SalonInfo,
   ServiceItem,
-} from "../mcp/mcpService";
+} from '../mcp/mcpService'
 
 export const GABE_CALENDAR_ID =
-  "655f352e632432559b496c08e28b63abd11a7af04585aed6d28b19e29dd36eec@group.calendar.google.com";
+  '655f352e632432559b496c08e28b63abd11a7af04585aed6d28b19e29dd36eec@group.calendar.google.com'
 
 export const FALLBACK_PROMPT =
-  "Você é um assistente de salão de baleza. Responda sempre em português. Atualmente o salão está em manutenção. Se entrarem em contato. Diga que o atendimento por whatsapp está temporariamente fora de serviço.";
+  'Você é um assistente de salão de baleza. Responda sempre em português. Atualmente o salão está em manutenção. Se entrarem em contato. Diga que o atendimento por whatsapp está temporariamente fora de serviço.'
 
 export enum Atendentes {
-  GABE = "Gabe",
-  RAFA = "Rafa",
-  KARINA = "Karina",
+  GABE = 'Gabe',
+  RAFA = 'Rafa',
+  KARINA = 'Karina',
 }
 
 export const SERVICES: ServiceItem[] = [
   {
-    name: "Corte",
-    description: "",
+    name: 'Corte',
+    description: '',
     details: [
-      "⁠O valor de corte é fixo, independente da quantidade e tamanho do cabelo.",
-      "Por enquanto não trabalhamos com cortes curtos estilo tapered cut, que precisem do acabamento da máquina no geral.",
+      '⁠O valor de corte é fixo, independente da quantidade e tamanho do cabelo.',
+      'Por enquanto não trabalhamos com cortes curtos estilo tapered cut, que precisem do acabamento da máquina no geral.',
     ],
     timeToExecuteInMinutes: 120,
     performedBy: [Atendentes.GABE],
   },
   {
-    name: "Finalização",
+    name: 'Finalização',
     description:
-      "⁠A finalização é composta por lavagem, finalização com cremes, mousses, gelatinas e a secagem no difusor",
+      '⁠A finalização é composta por lavagem, finalização com cremes, mousses, gelatinas e a secagem no difusor',
     details: [
-      "⁠Todos os procedimentos incluem finalização. ",
+      '⁠Todos os procedimentos incluem finalização. ',
       /* "⁠Para orçamento de finalização, pedimos uma foto do seu cabelo de costas solto e seco, ou para comparecer presencialmente.", */
     ],
     timeToExecuteInMinutes: 90,
     performedBy: [Atendentes.GABE, Atendentes.RAFA],
   },
   {
-    name: "Coloração e mechas",
-    description: "⁠",
+    name: 'Coloração e mechas',
+    description: '⁠',
     details: [],
     timeToExecuteInMinutes: 180,
     performedBy: [Atendentes.RAFA],
   },
   {
-    name: "Penteados",
-    description: "⁠",
+    name: 'Penteados',
+    description: '⁠',
     details: [],
     performedBy: [Atendentes.KARINA],
   },
   {
-    name: "Maquiagens",
-    description: "⁠",
+    name: 'Maquiagens',
+    description: '⁠',
     details: [],
     performedBy: [Atendentes.KARINA],
   },
   {
-    name: "Tranças",
-    description: "⁠",
+    name: 'Tranças',
+    description: '⁠',
     details: [],
     performedBy: [Atendentes.KARINA],
   },
-];
+]
 
 const {
   SALON_ADDR,
@@ -72,39 +72,39 @@ const {
   SALON_EMAIL,
   SALON_INSTAGRAM_HANDLE,
   SALON_INSTAGRAM_URL,
-} = process.env;
+} = process.env
 
 export const SALON_INFO: SalonInfo = {
   Endereço: SALON_ADDR!,
-  "Profissionais integrantes": ["Gabe", "Rafa", "Karina"],
-  "Telefone para contato": SALON_PHONE!,
+  'Profissionais integrantes': ['Gabe', 'Rafa', 'Karina'],
+  'Telefone para contato': SALON_PHONE!,
   Email: SALON_EMAIL!,
   Instagram: SALON_INSTAGRAM_URL!,
   InstagramHandle: SALON_INSTAGRAM_HANDLE!,
-};
+}
 
 export const LINK_INFO: LinkInfo = [
   {
-    professionalLink: "",
+    professionalLink: '',
     professionalName: Atendentes.GABE,
   },
   {
-    professionalLink: "",
+    professionalLink: '',
     professionalName: Atendentes.RAFA,
   },
   {
-    professionalLink: "",
+    professionalLink: '',
     professionalName: Atendentes.KARINA,
   },
-];
+]
 
 export const CALENDAR_EVENT_CANCELLATION_RULES: CancellationRules = {
   userRules: [
-    "Cancelamentos devem ser realizados pelo menos 24 horas antes do horário do agendamento",
+    'Cancelamentos devem ser realizados pelo menos 24 horas antes do horário do agendamento',
   ],
   assistantRules: [
-    "Em caso de cancelamento, confirme se o telefone e o nome do cliente correspondem aos dados constantes no corpo do evento",
+    'Em caso de cancelamento, confirme se o telefone e o nome do cliente correspondem aos dados constantes no corpo do evento',
   ],
-};
+}
 
-export const IS_DEV = process.env.NODE_ENV === "development";
+export const IS_DEV = process.env.NODE_ENV === 'development'

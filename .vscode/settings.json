@@ -1,3 +1,5 @@
 {
-    "workbench.colorTheme": "Night Wolf (dark gray) (No Italics)"
+  "workbench.colorTheme": "Night Wolf (dark gray) (No Italics)",
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "biomejs.biome"
 }

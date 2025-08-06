@@ -1,33 +1,39 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Lock, Mail } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Loader2, Lock, Mail } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const { login, isLoading } = useAuth();
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const { login, isLoading } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
+    e.preventDefault()
+    setError('')
+
     if (!email || !password) {
-      setError('Please fill in all fields');
-      return;
+      setError('Please fill in all fields')
+      return
     }
 
     try {
-      await login(email, password);
+      await login(email, password)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Login failed')
     }
-  };
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4">
@@ -49,13 +55,16 @@ export default function LoginScreen() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <Alert variant="destructive" className="border-red-600 bg-red-900/20">
+                <Alert
+                  variant="destructive"
+                  className="border-red-600 bg-red-900/20"
+                >
                   <AlertDescription className="text-red-200">
                     {error}
                   </AlertDescription>
                 </Alert>
               )}
-              
+
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-white">
                   Email
@@ -74,7 +83,7 @@ export default function LoginScreen() {
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-white">
                   Password
@@ -93,7 +102,7 @@ export default function LoginScreen() {
                   />
                 </div>
               </div>
-              
+
               <Button
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white"
@@ -109,7 +118,7 @@ export default function LoginScreen() {
                 )}
               </Button>
             </form>
-            
+
             <div className="mt-4 text-center">
               <p className="text-sm text-slate-400">
                 Contact your administrator if you need access
@@ -119,5 +128,5 @@ export default function LoginScreen() {
         </Card>
       </div>
     </div>
-  );
+  )
 }

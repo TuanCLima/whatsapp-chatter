@@ -1,4 +1,4 @@
-import { LucideMessageSquare } from 'lucide-react';
+import { LucideMessageSquare } from 'lucide-react'
 
 export default function EmptyChat() {
   return (
@@ -17,5 +17,5 @@ export default function EmptyChat() {
         </p>
       </div>
     </div>
-  );
+  )
 }
