@@ -535,7 +535,7 @@ export async function checkEventAvailability(
 export type FetchCalendarEventsProps = {
   timeMin: string
   timeMax: string
-  maxResults?: number
+  // maxResults?: number
   singleEvents?: boolean
   orderBy?: 'startTime' | 'updated'
 }
@@ -748,7 +748,6 @@ export const mcpFunctions: MCPFunctions = {
     parameters: {
       timeMin: 'string',
       timeMax: 'string',
-      maxResults: 'number',
       singleEvents: 'boolean',
       orderBy: 'string',
     },

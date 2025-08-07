@@ -98,10 +98,10 @@ const fetchEventsTool: ChatCompletionTool = {
           type: 'string',
           description: 'The end of the time range (ISO 8601 format).',
         },
-        maxResults: {
-          type: 'integer',
-          description: 'The maximum number of events to fetch.',
-        },
+        // maxResults: {
+        //   type: 'integer',
+        //   description: 'The maximum number of events to fetch.',
+        // },
         singleEvents: {
           type: 'boolean',
           description:

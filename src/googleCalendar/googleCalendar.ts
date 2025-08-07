@@ -19,7 +19,7 @@ async function getGoogleCalendarEvents({
   calendarId = 'primary',
   timeMin,
   timeMax,
-  maxResults = 10,
+  maxResults = 100,
   singleEvents = true,
   orderBy = 'startTime',
   auth,
