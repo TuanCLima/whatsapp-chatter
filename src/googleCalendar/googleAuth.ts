@@ -30,32 +30,70 @@ export async function authorize(callback: (auth: any) => Promise<void>) {
     const token = JSON.parse(tokenText)
     oAuth2Client.setCredentials(token)
 
-    if (token.expiry_date && token.expiry_date <= Date.now()) {
-      console.log('Access token expired. Refreshing...')
+    // Validate that we have a refresh token
+    if (!token.refresh_token) {
+      console.log('No refresh token found. Requesting new authorization...')
+      fs.unlinkSync(TOKEN_PATH)
+      return getAccessToken(oAuth2Client, callback)
+    }
+
+    // Check if token is close to expiry (refresh if less than 5 minutes remaining)
+    if (token.expiry_date && token.expiry_date <= Date.now() + (5 * 60 * 1000)) {
+      console.log('Access token expired or expiring soon. Refreshing...')
       try {
         const newToken = await oAuth2Client.refreshAccessToken()
         oAuth2Client.setCredentials(newToken.credentials)
 
         // Save the new token to disk
         fs.writeFileSync(TOKEN_PATH, JSON.stringify(newToken.credentials))
+        console.log('Token refreshed and saved to disk.')
       } catch (error) {
+        console.error('Error refreshing token:', error)
         if (error instanceof gaxios.GaxiosError) {
-          const { message } = error
+          const { message, status } = error
 
-          if (message === 'invalid_grant') {
-            // Delete the token file and call authozire again
+          if (message === 'invalid_grant' || status === 400) {
+            // Delete the token file and call authorize again
+            console.log('Refresh token expired or invalid. Requesting new authorization...')
             fs.unlinkSync(TOKEN_PATH)
-            console.log('Token expired. Please reauthorize the app.')
             return authorize(callback)
           }
         }
+        
+        // For other errors, still try to proceed with existing token
+        console.log('Failed to refresh token, but continuing with existing credentials...')
       }
-      console.log('Token refreshed and saved to disk.')
     }
 
     return callback(oAuth2Client)
   } else {
     getAccessToken(oAuth2Client, callback)
+  }
+}
+
+// Utility function to check token validity
+export async function validateToken(): Promise<boolean> {
+  if (!fs.existsSync(TOKEN_PATH)) {
+    return false
+  }
+
+  try {
+    const tokenText = fs.readFileSync(TOKEN_PATH, 'utf-8')
+    const token = JSON.parse(tokenText)
+
+    // Check if we have a refresh token
+    if (!token.refresh_token) {
+      return false
+    }
+
+    // Check if token is not expired (with 10 minute buffer)
+    if (token.expiry_date && token.expiry_date <= Date.now() + (10 * 60 * 1000)) {
+      return false
+    }
+
+    return true
+  } catch {
+    return false
   }
 }
 
@@ -65,6 +103,7 @@ function getAccessToken(
 ) {
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
+    prompt: 'consent', // Force consent screen to ensure refresh token
     scope: ['https://www.googleapis.com/auth/calendar'], // Updated scope
   })
   console.log('Authorize this app by visiting this URL:', authUrl)
@@ -89,4 +128,4 @@ function getAccessToken(
   })
 }
 
-module.exports = { authorize }
+module.exports = { authorize, validateToken }

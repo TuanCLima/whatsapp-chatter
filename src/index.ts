@@ -387,6 +387,26 @@ app.get('/auth/verify', (req, res) => {
   }
 })
 
+// Google token health check endpoint
+app.get('/api/token-health', async (req, res) => {
+  try {
+    const { validateToken } = require('./googleCalendar/googleAuth')
+    const isValid = await validateToken()
+    
+    res.json({ 
+      valid: isValid,
+      timestamp: new Date().toISOString(),
+      message: isValid ? 'Google Calendar token is healthy' : 'Google Calendar token needs refresh'
+    })
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to check token health',
+      valid: false,
+      timestamp: new Date().toISOString()
+    })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running at port: ${PORT}`)
 })
