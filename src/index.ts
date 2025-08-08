@@ -7,7 +7,7 @@ import 'dotenv/config'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import { and, desc, eq, ne, or } from 'drizzle-orm'
-import { createProxyMiddleware } from 'http-proxy-middleware'
+import { createProxyMiddleware, responseInterceptor } from 'http-proxy-middleware'
 import { db } from './db'
 import { messages, users } from './db/schema'
 import type { Contact, Conversation, Message } from './types/types'
@@ -145,7 +145,31 @@ const drizzleProxy = createProxyMiddleware({
   cookieDomainRewrite: {
     '*': '',
   },
-})
+  // Intercept HTML/JS and rewrite hardcoded localhost endpoints to our proxied path
+  selfHandleResponse: true,
+  onProxyRes: responseInterceptor(async (responseBuffer, proxyRes) => {
+    const ct = String(proxyRes.headers['content-type'] || '')
+    if (!/text\/html|javascript|json/i.test(ct)) {
+      return responseBuffer
+    }
+    let body = responseBuffer.toString('utf8')
+    const replacements = [
+      /https?:\/\/localhost:4983/gi,
+      /wss?:\/\/localhost:4983/gi,
+      /https?:\/\/127\.0\.0\.1:4983/gi,
+      /wss?:\/\/127\.0\.0\.1:4983/gi,
+      /https?:\/\/local\.drizzle\.studio/gi,
+    ]
+    for (const r of replacements) {
+      body = body.replace(r, '/admin/drizzle')
+    }
+    // Also handle bare "localhost:4983" occurrences
+    body = body.replace(/localhost:4983/gi, '/admin/drizzle')
+    body = body.replace(/127\.0\.0\.1:4983/gi, '/admin/drizzle')
+    return Buffer.from(body, 'utf8')
+  }),
+  // Cast to any to allow onProxyRes in options without TS complaints
+} as any)
 
 // Redirects to ensure trailing slash so relative asset paths resolve under /admin/drizzle/
 app.get('/admin', (_req, res) => res.redirect(302, '/admin/drizzle/'))
@@ -165,7 +189,7 @@ app.post('/webhook', whatsappHonoWebhook)
 
 // Serve React UI for all other routes
 
-app.get('/contacts', async (req, res) => {
+app.get('/contacts', async (_req, res) => {
   try {
     const contacts = await getUniqueWhatsAppContacts()
     res.status(200).json(contacts)
@@ -175,7 +199,7 @@ app.get('/contacts', async (req, res) => {
   }
 })
 
-app.get('/db/contacts', async (req, res) => {
+app.get('/db/contacts', async (_req, res) => {
   try {
     // Get all users from database
     const dbUsers = await db.select().from(users)
@@ -220,7 +244,7 @@ app.get('/db/contacts', async (req, res) => {
   }
 })
 
-app.get('/conversations', async (req, res) => {
+app.get('/conversations', async (_req, res) => {
   try {
     const conversations = await getWhatsAppConversations()
     res.status(200).json(conversations)
@@ -242,7 +266,7 @@ app.get('/conversations/:contactId', async (req, res) => {
 })
 
 // Database-powered conversations route (alternative to WhatsApp API)
-app.get('/db/conversations', async (req, res) => {
+app.get('/db/conversations', async (_req, res) => {
   try {
     // Get all users from database
     const dbUsers = await db.select().from(users)
