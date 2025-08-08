@@ -1,16 +1,14 @@
 import OpenAI from 'openai'
 import Twilio from 'twilio'
 import 'dotenv/config'
-import { Request, Response } from 'express'
-import { parseLLMMessages } from './utils/parseLLMMessages'
-
-import { ChatMessage } from './types/types'
-import { getNextMessages } from './getNextMessages'
-import { IS_DEV } from './utils/contants'
-
-import { db, initializeDatabase } from './db'
-import { InsertMessage, messages, users } from './db/schema'
 import { eq } from 'drizzle-orm'
+import type { Request, Response } from 'express'
+import { db, initializeDatabase } from './db'
+import { type InsertMessage, messages, users } from './db/schema'
+import { getNextMessages } from './getNextMessages'
+import type { ChatMessage } from './types/types'
+import { IS_DEV } from './utils/contants'
+import { parseLLMMessages } from './utils/parseLLMMessages'
 
 const API_KEY = process.env.LLM_API_KEY
 const accountSid = process.env.TWILIO_ACCOUNT_SID
@@ -23,7 +21,8 @@ import { getInitialPrompt } from './utils/utils'
 // const LLM_BASE_URL = "https://api.deepseek.com";
 // export const LLM_MODEL = "deepseek-chat";
 const LLM_BASE_URL = 'https://api.openai.com/v1'
-export const LLM_MODEL = 'gpt-4.1'
+// export const LLM_MODEL = 'gpt-4.1'
+export const LLM_MODEL = 'gpt-5'
 
 export const openai = new OpenAI({
   baseURL: LLM_BASE_URL,
@@ -108,12 +107,12 @@ export async function whatsappHonoWebhook(
   const from =
     IS_DEV && fakes[indexSelected]?.from ? fakes[indexSelected]?.from : _from
 
-  let name =
+  const name =
     IS_DEV && fakes[indexSelected]?.profileName
       ? fakes[indexSelected]?.profileName
       : ProfileName
 
-  let messagesFeed: InsertMessage[] = await db
+  const messagesFeed: InsertMessage[] = await db
     .select()
     .from(messages)
     .where(eq(messages.phoneNumber, from))

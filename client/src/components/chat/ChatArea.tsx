@@ -10,22 +10,13 @@ interface ChatAreaProps {
 }
 
 export default function ChatArea({ setMobileMenuOpen }: ChatAreaProps) {
-  const {
-    activeContactId,
-    contacts,
-    conversations,
-    conversation,
-    toggleConversation,
-  } = useChat()
+  const { activeContactId, contacts, conversation, toggleConversation } =
+    useChat()
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Find active contact and conversation
   const activeContact = activeContactId
     ? contacts.find((contact) => contact.id === activeContactId)
-    : null
-
-  const activeConversation = activeContactId
-    ? conversations.find((conv) => conv.contactId === activeContactId)
     : null
 
   // Scroll to bottom when messages change

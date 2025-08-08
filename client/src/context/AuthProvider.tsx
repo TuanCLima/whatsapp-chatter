@@ -1,6 +1,7 @@
-import { ReactNode, useCallback, useEffect, useState } from 'react'
-import { AuthContext, User } from './AuthContext'
+import { type ReactNode, useCallback, useEffect, useState } from 'react'
+import { API_BASE_URL } from '@/config/api'
 import { useToast } from '@/hooks/use-toast'
+import { AuthContext, type User } from './AuthContext'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -14,7 +15,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const token = localStorage.getItem('admin_token')
         if (token) {
           // Verify token with backend
-          const response = await fetch('http://localhost:3000/auth/verify', {
+          const response = await fetch(`${API_BASE_URL}/auth/verify`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -42,11 +43,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string) => {
       try {
         setIsLoading(true)
-        const response = await fetch('http://localhost:3000/auth/login', {
+        const response = await fetch(`${API_BASE_URL}/auth/login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
+          // Allow Set-Cookie from backend so server-side admin auth works on /admin/drizzle
+          credentials: 'include',
           body: JSON.stringify({ email, password }),
         })
 
@@ -87,7 +90,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [toast],
   )
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      // Clear server cookie
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+    } catch (e) {
+      console.warn('Logout request failed (continuing):', e)
+    }
     localStorage.removeItem('admin_token')
     setUser(null)
     toast({

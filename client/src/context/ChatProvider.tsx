@@ -1,8 +1,15 @@
-import { Contact, Conversation, Maybe } from '@/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
-import { ChatContext } from './ChatContext'
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
+import { API_BASE_URL } from '@/config/api'
 import { userService } from '@/services/UserService'
+import type { Contact, Conversation, Maybe } from '@/types'
+import { ChatContext } from './ChatContext'
 
 export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
   const queryClient = useQueryClient()
@@ -10,7 +17,7 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
   const { data: contacts = [] } = useQuery<Contact[]>({
     queryKey: ['contacts'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:3000/db/contacts')
+      const response = await fetch(`${API_BASE_URL}/db/contacts`)
       if (!response.ok) {
         throw new Error('Error fetching contacts')
       }
@@ -23,7 +30,7 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
     queryFn: async () => {
       if (!activeContactId) return []
       const response = await fetch(
-        `http://localhost:3000/db/conversations/${activeContactId}`,
+        `${API_BASE_URL}/db/conversations/${activeContactId}`,
       )
       if (!response.ok) {
         throw new Error('Error fetching conversation')
@@ -48,7 +55,7 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
         throw new Error('No active contact or empty message')
       }
 
-      const response = await fetch('http://localhost:3000/send-message', {
+      const response = await fetch(`${API_BASE_URL}/send-message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

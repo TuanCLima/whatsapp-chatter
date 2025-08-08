@@ -1,27 +1,44 @@
 import express from 'express'
-import { whatsappHonoWebhook } from './webhook'
 import path from 'path'
-import mcpRouter from './server/mcpServer'
 import Twilio from 'twilio'
+import mcpRouter from './server/mcpServer'
+import { whatsappHonoWebhook } from './webhook'
 import 'dotenv/config'
+import cookieParser from 'cookie-parser'
+import cors from 'cors'
+import { and, desc, eq, ne, or } from 'drizzle-orm'
+import { createProxyMiddleware } from 'http-proxy-middleware'
+import { db } from './db'
+import { messages, users } from './db/schema'
+import type { Contact, Conversation, Message } from './types/types'
 import {
   getUniqueWhatsAppContacts,
   getWhatsAppConversationByContactId,
   getWhatsAppConversations,
 } from './utils/twilioMessages'
-import cors from 'cors'
-import { db } from './db'
-import { users, messages } from './db/schema'
-import { and, desc, eq, ne, or } from 'drizzle-orm'
-import { Contact, Conversation, Message } from './types/types'
+
+// Extend Express Request interface to include user property
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        userId: string
+        role: string
+        exp: number
+      }
+    }
+  }
+}
 
 export const PORT = process.env.PORT ?? 3000
 const app = express()
+// CORS: reflect request origin and allow credentials so cookies can be set/sent in dev and prod
 app.use(
   cors({
-    origin: '*', // Allow all origins
-    methods: ['GET', 'POST', 'PUT'], // Allow only GET and POST methods
-    allowedHeaders: ['Content-Type', 'Authorization'], // Allow specific headers
+    origin: (origin, callback) => callback(null, true),
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   }),
 )
 
@@ -32,16 +49,98 @@ export const twilioClient = Twilio(accountSid, authToken)
 
 app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
-
-app.use(express.static(path.resolve(__dirname, '../dist/public')))
+app.use(cookieParser())
 
 app.use('/api/mcp', mcpRouter)
+
+/**
+ * DRIZZLE STUDIO PROXY SETUP
+ *
+ * This sets up a protected proxy route to access Drizzle Studio at:
+ * https://your-server.com/admin/drizzle
+ *
+ * Requirements:
+ * 1. User must be authenticated with admin token (via Bearer token in Authorization header)
+ * 2. Drizzle Studio must be running locally at https://local.drizzle.studio
+ *
+ * Usage:
+ * - Login via /auth/login to get admin token
+ * - Access /admin/drizzle with Authorization: Bearer <token> header
+ * - Or access through your admin UI that includes the token
+ */
+
+// Authentication middleware for protected routes
+const authenticateAdmin = (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+): void => {
+  // Accept token from Authorization header, HttpOnly cookie, or query param for flexibility
+  const authHeader = req.headers.authorization
+  const cookieToken = req.cookies?.admin_token as string | undefined
+  const queryToken = (req.query?.t || req.query?.token) as string | undefined
+  const presentedToken =
+    (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined) ||
+    cookieToken ||
+    queryToken
+
+  console.log(
+    'Authenticating admin request... hasAuthHeader:',
+    !!authHeader,
+    'hasCookie:',
+    !!cookieToken,
+    'hasQuery:',
+    !!queryToken,
+  )
+
+  if (!presentedToken) {
+    res.status(401).json({ error: 'No token provided' })
+    return
+  }
+
+  const token = presentedToken
+
+  try {
+    // Decode the simple token (in production, use proper JWT verification)
+    const payload = JSON.parse(Buffer.from(token, 'base64').toString())
+
+    if (payload.exp < Date.now()) {
+      res.status(401).json({ error: 'Token expired' })
+      return
+    }
+
+    if (payload.role !== 'admin') {
+      res.status(403).json({ error: 'Insufficient privileges' })
+      return
+    }
+
+    console.log('Authenticating admin payload', payload)
+
+    // Add user info to request for use in next middleware
+    req.user = payload
+    next()
+  } catch {
+    res.status(401).json({ error: 'Invalid token' })
+    return
+  }
+}
+
+app.use(
+  '/admin/drizzle',
+  authenticateAdmin,
+  createProxyMiddleware({
+    target: 'https://local.drizzle.studio',
+    changeOrigin: true,
+    pathRewrite: {
+      '^/admin/drizzle': '', // Remove /admin/drizzle prefix when forwarding
+    },
+    secure: false, // Allow self-signed certificates for local development
+  }),
+)
+
 app.post('/webhook', whatsappHonoWebhook)
 
 // Serve React UI for all other routes
-app.get('/', (_, res) => {
-  res.sendFile(path.resolve(__dirname, '../dist/public/index.html'))
-})
 
 app.get('/contacts', async (req, res) => {
   try {
@@ -345,6 +444,16 @@ app.post('/auth/login', async (req, res) => {
       }),
     ).toString('base64')
 
+    // Set HttpOnly cookie so normal browser navigation to protected routes works
+    const isProd = process.env.NODE_ENV === 'production'
+    res.cookie('admin_token', token, {
+      httpOnly: true,
+      secure: isProd, // secure cookies in prod
+      sameSite: isProd ? 'lax' : 'lax',
+      maxAge: 24 * 60 * 60 * 1000,
+      path: '/',
+    })
+
     res.json({
       user: adminCredentials.user,
       token: token,
@@ -354,11 +463,18 @@ app.post('/auth/login', async (req, res) => {
   }
 })
 
+// Optional: logout clears the cookie
+app.post('/auth/logout', (_req, res) => {
+  res.clearCookie('admin_token', { path: '/' })
+  res.json({ success: true })
+})
+
 app.get('/auth/verify', (req, res) => {
   const authHeader = req.headers.authorization
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token provided' })
+    res.status(401).json({ error: 'No token provided' })
+    return
   }
 
   const token = authHeader.substring(7)
@@ -368,11 +484,13 @@ app.get('/auth/verify', (req, res) => {
     const payload = JSON.parse(Buffer.from(token, 'base64').toString())
 
     if (payload.exp < Date.now()) {
-      return res.status(401).json({ error: 'Token expired' })
+      res.status(401).json({ error: 'Token expired' })
+      return
     }
 
     if (payload.role !== 'admin') {
-      return res.status(403).json({ error: 'Insufficient privileges' })
+      res.status(403).json({ error: 'Insufficient privileges' })
+      return
     }
 
     // Return user data
@@ -382,29 +500,50 @@ app.get('/auth/verify', (req, res) => {
       role: payload.role,
       name: 'Admin User',
     })
-  } catch (error) {
+  } catch (_error) {
     res.status(401).json({ error: 'Invalid token' })
   }
 })
 
+// Protected Drizzle Studio proxy route
+
 // Google token health check endpoint
-app.get('/api/token-health', async (req, res) => {
+app.get('/api/token-health', async (_req, res) => {
   try {
     const { validateToken } = require('./googleCalendar/googleAuth')
     const isValid = await validateToken()
-    
-    res.json({ 
+
+    res.json({
       valid: isValid,
       timestamp: new Date().toISOString(),
-      message: isValid ? 'Google Calendar token is healthy' : 'Google Calendar token needs refresh'
+      message: isValid
+        ? 'Google Calendar token is healthy'
+        : 'Google Calendar token needs refresh',
     })
-  } catch (error) {
-    res.status(500).json({ 
+  } catch (_error) {
+    res.status(500).json({
       error: 'Failed to check token health',
       valid: false,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     })
   }
+})
+
+// Serve static files from the React app build directory
+app.use(express.static(path.resolve(__dirname, '../client/dist')))
+
+// Catch all handler: send back React's index.html file for any non-API routes
+app.use((req, res, next) => {
+  // Don't serve index.html for API routes
+  if (
+    req.path.startsWith('/api') ||
+    req.path.startsWith('/webhook') ||
+    req.path.startsWith('/admin')
+  ) {
+    next()
+    return
+  }
+  res.sendFile(path.resolve(__dirname, '../client/dist/index.html'))
 })
 
 app.listen(PORT, () => {

@@ -1,9 +1,11 @@
 // Service to handle user-related API operations
+import { API_BASE_URL } from '@/config/api'
+
 class UserService {
   private apiUrl: string
 
   constructor() {
-    this.apiUrl = 'http://localhost:3000' // Base URL for your API
+    this.apiUrl = API_BASE_URL
   }
 
   async toggleConversation(
