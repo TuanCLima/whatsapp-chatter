@@ -126,25 +126,21 @@ const authenticateAdmin = (
 }
 
 // Create a reusable proxy so we can also attach WebSocket upgrades
-const isProd = process.env.NODE_ENV === 'production'
 const drizzleTarget =
-  process.env.DRIZZLE_STUDIO_URL ||
-  (isProd ? 'http://127.0.0.1:4983' : 'https://local.drizzle.studio')
+  process.env.DRIZZLE_STUDIO_URL || 'https://local.drizzle.studio'
 
 const drizzleProxy = createProxyMiddleware({
   target: drizzleTarget,
   changeOrigin: true,
   ws: true, // Drizzle Studio uses WebSockets; proxy them too
   pathRewrite: {
-    '^/admin/drizzle': '', // Remove /admin/drizzle prefix when forwarding
+    '^/admin/drizzle/?': '/', // Normalize to root when forwarding
   },
   // Accept self-signed certificates used by Drizzle Studio locally
   secure: false,
   xfwd: true, // Add X-Forwarded-* headers so target can infer original host/proto
-  // Ensure Host header matches Studio's expected hostname in dev
-  headers: drizzleTarget.includes('local.drizzle.studio')
-    ? { host: 'local.drizzle.studio' }
-    : undefined,
+  // Ensure Host header matches Studio's expected hostname
+  headers: { host: 'local.drizzle.studio' },
   // Strip cookie Domain so it applies to our origin
   cookieDomainRewrite: {
     '*': '',
