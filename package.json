@@ -13,7 +13,7 @@
     "serve": "concurrently \"pnpm db:studio\" \"tsx src/index.ts\"",
     "predeploy": "tsx src/scripts/generate-vcf.ts",
     "loadPrompt": "tsx src/scripts/loadPrompt.ts",
-    "db:studio": "drizzle-kit studio",
+    "db:studio": "drizzle-kit studio --port 4983 --host 127.0.0.1",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:reset": "rm -rf sqlite.db && drizzle-kit push"
