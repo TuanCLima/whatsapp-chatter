@@ -7,7 +7,7 @@ import 'dotenv/config'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import { and, desc, eq, ne, or } from 'drizzle-orm'
-import { createProxyMiddleware, responseInterceptor } from 'http-proxy-middleware'
+import { createProxyMiddleware } from 'http-proxy-middleware'
 import { db } from './db'
 import { messages, users } from './db/schema'
 import type { Contact, Conversation, Message } from './types/types'
@@ -126,8 +126,7 @@ const authenticateAdmin = (
 }
 
 // Create a reusable proxy so we can also attach WebSocket upgrades
-const drizzleTarget =
-  process.env.DRIZZLE_STUDIO_URL || 'https://local.drizzle.studio'
+const drizzleTarget = process.env.DRIZZLE_STUDIO_URL || 'http://127.0.0.1:4983'
 
 const drizzleProxy = createProxyMiddleware({
   target: drizzleTarget,
@@ -139,37 +138,18 @@ const drizzleProxy = createProxyMiddleware({
   // Accept self-signed certificates used by Drizzle Studio locally
   secure: false,
   xfwd: true, // Add X-Forwarded-* headers so target can infer original host/proto
-  // Ensure Host header matches Studio's expected hostname
-  headers: { host: 'local.drizzle.studio' },
+  // Only set Host header for HTTPS SNI cases
+  headers: drizzleTarget.startsWith('https://')
+    ? { host: 'local.drizzle.studio' }
+    : undefined,
   // Strip cookie Domain so it applies to our origin
   cookieDomainRewrite: {
     '*': '',
   },
-  // Intercept HTML/JS and rewrite hardcoded localhost endpoints to our proxied path
-  selfHandleResponse: true,
-  onProxyRes: responseInterceptor(async (responseBuffer, proxyRes) => {
-    const ct = String(proxyRes.headers['content-type'] || '')
-    if (!/text\/html|javascript|json/i.test(ct)) {
-      return responseBuffer
-    }
-    let body = responseBuffer.toString('utf8')
-    const replacements = [
-      /https?:\/\/localhost:4983/gi,
-      /wss?:\/\/localhost:4983/gi,
-      /https?:\/\/127\.0\.0\.1:4983/gi,
-      /wss?:\/\/127\.0\.0\.1:4983/gi,
-      /https?:\/\/local\.drizzle\.studio/gi,
-    ]
-    for (const r of replacements) {
-      body = body.replace(r, '/admin/drizzle')
-    }
-    // Also handle bare "localhost:4983" occurrences
-    body = body.replace(/localhost:4983/gi, '/admin/drizzle')
-    body = body.replace(/127\.0\.0\.1:4983/gi, '/admin/drizzle')
-    return Buffer.from(body, 'utf8')
-  }),
-  // Cast to any to allow onProxyRes in options without TS complaints
-} as any)
+  // Conservative timeouts to avoid long hangs
+  proxyTimeout: 15000,
+  timeout: 15000,
+})
 
 // Redirects to ensure trailing slash so relative asset paths resolve under /admin/drizzle/
 app.get('/admin', (_req, res) => res.redirect(302, '/admin/drizzle/'))
