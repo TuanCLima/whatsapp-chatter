@@ -147,6 +147,21 @@ const drizzleProxy = createProxyMiddleware({
   },
 })
 
+// Redirects to ensure trailing slash so relative asset paths resolve under /admin/drizzle/
+app.get('/admin', (_req, res) => res.redirect(302, '/admin/drizzle/'))
+// Catch-all for /admin/* that aren't already under /admin/drizzle
+app.use('/admin', (req, res, next) => {
+  const sub = req.path || '/'
+  if (sub === '/') return res.redirect(302, '/admin/drizzle/')
+  if (!sub.startsWith('/drizzle')) {
+    return res.redirect(302, '/admin/drizzle' + sub)
+  }
+  next()
+})
+app.get('/admin/drizzle', authenticateAdmin, (_req, res) =>
+  res.redirect(302, '/admin/drizzle/'),
+)
+
 app.use('/admin/drizzle', authenticateAdmin, drizzleProxy)
 
 app.post('/webhook', whatsappHonoWebhook)
