@@ -158,9 +158,6 @@ app.use('/admin', (req, res, next) => {
   }
   next()
 })
-app.get('/admin/drizzle', authenticateAdmin, (_req, res) =>
-  res.redirect(302, '/admin/drizzle/'),
-)
 
 app.use('/admin/drizzle', authenticateAdmin, drizzleProxy)
 
