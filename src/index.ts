@@ -7,7 +7,7 @@ import 'dotenv/config'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import { and, desc, eq, ne, or } from 'drizzle-orm'
-import { createProxyMiddleware } from 'http-proxy-middleware'
+// import { createProxyMiddleware } from 'http-proxy-middleware'
 import { db } from './db'
 import { messages, users } from './db/schema'
 import type { Contact, Conversation, Message } from './types/types'
@@ -117,30 +117,30 @@ const authenticateAdmin = (
 }
 
 // Create a reusable proxy so we can also attach WebSocket upgrades
-const drizzleTarget = process.env.DRIZZLE_STUDIO_URL || 'http://127.0.0.1:4983'
+// const drizzleTarget = process.env.DRIZZLE_STUDIO_URL || 'http://127.0.0.1:4983'
 
-const drizzleProxy = createProxyMiddleware({
-  target: drizzleTarget,
-  changeOrigin: true,
-  ws: true, // Drizzle Studio uses WebSockets; proxy them too
-  pathRewrite: {
-    '^/admin/drizzle/?': '/', // Normalize to root when forwarding
-  },
-  // Accept self-signed certificates used by Drizzle Studio locally
-  secure: false,
-  xfwd: true, // Add X-Forwarded-* headers so target can infer original host/proto
-  // Only set Host header for HTTPS SNI cases
-  headers: drizzleTarget.startsWith('https://')
-    ? { host: 'local.drizzle.studio' }
-    : undefined,
-  // Strip cookie Domain so it applies to our origin
-  cookieDomainRewrite: {
-    '*': '',
-  },
-  // Conservative timeouts to avoid long hangs
-  proxyTimeout: 15000,
-  timeout: 15000,
-})
+// const drizzleProxy = createProxyMiddleware({
+//   target: drizzleTarget,
+//   changeOrigin: true,
+//   ws: true, // Drizzle Studio uses WebSockets; proxy them too
+//   pathRewrite: {
+//     '^/admin/drizzle/?': '/', // Normalize to root when forwarding
+//   },
+//   // Accept self-signed certificates used by Drizzle Studio locally
+//   secure: false,
+//   xfwd: true, // Add X-Forwarded-* headers so target can infer original host/proto
+//   // Only set Host header for HTTPS SNI cases
+//   headers: drizzleTarget.startsWith('https://')
+//     ? { host: 'local.drizzle.studio' }
+//     : undefined,
+//   // Strip cookie Domain so it applies to our origin
+//   cookieDomainRewrite: {
+//     '*': '',
+//   },
+//   // Conservative timeouts to avoid long hangs
+//   proxyTimeout: 15000,
+//   timeout: 15000,
+// })
 
 // -----------------------------
 // Admin protected raw DB access
@@ -190,18 +190,18 @@ app.get('/admin/db/messages', authenticateAdmin, async (req, res) => {
 })
 
 // Redirects to ensure trailing slash so relative asset paths resolve under /admin/drizzle/
-app.get('/admin', (_req, res) => res.redirect(302, '/admin/drizzle/'))
+// app.get('/admin', (_req, res) => res.redirect(302, '/admin/drizzle/'))
 // Catch-all for /admin/* that aren't already under /admin/drizzle
-app.use('/admin', (req, res, next) => {
-  const sub = req.path || '/'
-  if (sub === '/') return res.redirect(302, '/admin/drizzle/')
-  if (!sub.startsWith('/drizzle')) {
-    return res.redirect(302, '/admin/drizzle' + sub)
-  }
-  next()
-})
+// app.use('/admin', (req, res, next) => {
+//   const sub = req.path || '/'
+//   if (sub === '/') return res.redirect(302, '/admin/drizzle/')
+//   if (!sub.startsWith('/drizzle')) {
+//     return res.redirect(302, '/admin/drizzle' + sub)
+//   }
+//   next()
+// })
 
-app.use('/admin/drizzle', authenticateAdmin, drizzleProxy)
+// app.use('/admin/drizzle', authenticateAdmin, drizzleProxy)
 
 app.post('/webhook', whatsappHonoWebhook)
 
@@ -616,6 +616,6 @@ const server = app.listen(PORT, () => {
 })
 
 // Forward WebSocket upgrade events to the proxy
-server.on('upgrade', drizzleProxy.upgrade)
+// server.on('upgrade', drizzleProxy.upgrade)
 
 export default app
