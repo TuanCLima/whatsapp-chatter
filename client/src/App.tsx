@@ -1,17 +1,19 @@
 import { useState } from 'react'
-import Sidebar from '@/components/sidebar/Sidebar'
-import ChatArea from '@/components/chat/ChatArea'
-import LoginScreen from '@/components/auth/LoginScreen'
-import LoadingScreen from '@/components/auth/LoadingScreen'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import AdminDataPage from '@/components/auth/AdminDataPage'
 import AdminHeader from '@/components/auth/AdminHeader'
+import LoadingScreen from '@/components/auth/LoadingScreen'
+import LoginScreen from '@/components/auth/LoginScreen'
+import ChatArea from '@/components/chat/ChatArea'
+import Sidebar from '@/components/sidebar/Sidebar'
 import { ThemeProvider } from '@/components/theme/ThemeProvider'
-import { ChatProvider } from '@/context/ChatProvider'
-import { AuthProvider } from '@/context/AuthProvider'
-import { useAuth } from '@/context/AuthContext'
 import { Toaster } from '@/components/ui/toaster'
+import { useAuth } from '@/context/AuthContext'
+import { AuthProvider } from '@/context/AuthProvider'
+import { ChatProvider } from '@/context/ChatProvider'
 import './App.css'
 
-function AppContent() {
+function ProtectedChatLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { isAuthenticated, isLoading } = useAuth()
 
@@ -37,14 +39,33 @@ function AppContent() {
   )
 }
 
+function ProtectedDataLayout() {
+  const { isAuthenticated, isLoading } = useAuth()
+  if (isLoading) return <LoadingScreen />
+  if (!isAuthenticated) return <LoginScreen />
+  return (
+    <div className="h-screen flex flex-col bg-background">
+      <AdminHeader />
+      <div className="flex-1 overflow-hidden">
+        <AdminDataPage />
+      </div>
+    </div>
+  )
+}
+
 function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="whatsapp-theme">
       <AuthProvider>
-        <ChatProvider>
-          <AppContent />
-          <Toaster />
-        </ChatProvider>
+        <BrowserRouter>
+          <ChatProvider>
+            <Routes>
+              <Route path="/data" element={<ProtectedDataLayout />} />
+              <Route path="/*" element={<ProtectedChatLayout />} />
+            </Routes>
+          </ChatProvider>
+        </BrowserRouter>
+        <Toaster />
       </AuthProvider>
     </ThemeProvider>
   )

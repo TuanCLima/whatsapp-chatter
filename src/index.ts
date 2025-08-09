@@ -84,15 +84,6 @@ const authenticateAdmin = (
     cookieToken ||
     queryToken
 
-  console.log(
-    'Authenticating admin request... hasAuthHeader:',
-    !!authHeader,
-    'hasCookie:',
-    !!cookieToken,
-    'hasQuery:',
-    !!queryToken,
-  )
-
   if (!presentedToken) {
     res.status(401).json({ error: 'No token provided' })
     return
@@ -149,6 +140,53 @@ const drizzleProxy = createProxyMiddleware({
   // Conservative timeouts to avoid long hangs
   proxyTimeout: 15000,
   timeout: 15000,
+})
+
+// -----------------------------
+// Admin protected raw DB access
+// -----------------------------
+// These endpoints expose raw users and messages data and therefore are protected
+// by the same authenticateAdmin middleware used for the Drizzle Studio proxy.
+// The frontend admin data browser will call these with the admin token.
+app.get('/admin/db/users', authenticateAdmin, async (_req, res) => {
+  try {
+    const allUsers = await db
+      .select()
+      .from(users)
+      .orderBy(desc(users.createdAt))
+    res.json(allUsers)
+  } catch (error) {
+    console.error('Error fetching users (admin):', error)
+    res.status(500).json({ error: 'Failed to fetch users' })
+  }
+})
+
+app.get('/admin/db/messages', authenticateAdmin, async (req, res) => {
+  try {
+    const { phoneNumber, limit = '500' } = req.query as {
+      phoneNumber?: string
+      limit?: string
+    }
+
+    const l = Math.min(Number.parseInt(limit, 10) || 500, 2000)
+    const rows = phoneNumber
+      ? await db
+          .select()
+          .from(messages)
+          .where(eq(messages.phoneNumber, phoneNumber))
+          .orderBy(desc(messages.timestamp))
+          .limit(l)
+      : await db
+          .select()
+          .from(messages)
+          .orderBy(desc(messages.timestamp))
+          .limit(l)
+
+    res.json(rows)
+  } catch (error) {
+    console.error('Error fetching messages (admin):', error)
+    res.status(500).json({ error: 'Failed to fetch messages' })
+  }
 })
 
 // Redirects to ensure trailing slash so relative asset paths resolve under /admin/drizzle/

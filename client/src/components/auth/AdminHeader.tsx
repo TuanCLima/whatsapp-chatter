@@ -1,7 +1,7 @@
-import { Button } from '@/components/ui/button'
+import { Database, LogOut } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { LogOut } from 'lucide-react'
-import { useAuth } from '@/context/AuthContext'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useAuth } from '@/context/AuthContext'
 
 export default function AdminHeader() {
   const { user, logout } = useAuth()
@@ -25,8 +26,14 @@ export default function AdminHeader() {
   return (
     <header className="bg-slate-800 border-b border-slate-700 px-4 py-2">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-4">
           <h1 className="text-lg font-semibold text-white">Chat Admin Panel</h1>
+          <Link
+            to="/data"
+            className="text-xs text-slate-300 hover:text-white flex items-center gap-1"
+          >
+            <Database className="h-4 w-4" /> Data
+          </Link>
         </div>
 
         <DropdownMenu>
