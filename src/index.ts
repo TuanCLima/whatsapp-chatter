@@ -37,7 +37,7 @@ app.use(
   cors({
     origin: (origin, callback) => callback(null, true),
     credentials: true,
-    methods: ['GET', 'POST', 'PUT'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   }),
 )
@@ -116,38 +116,6 @@ const authenticateAdmin = (
   }
 }
 
-// Create a reusable proxy so we can also attach WebSocket upgrades
-// const drizzleTarget = process.env.DRIZZLE_STUDIO_URL || 'http://127.0.0.1:4983'
-
-// const drizzleProxy = createProxyMiddleware({
-//   target: drizzleTarget,
-//   changeOrigin: true,
-//   ws: true, // Drizzle Studio uses WebSockets; proxy them too
-//   pathRewrite: {
-//     '^/admin/drizzle/?': '/', // Normalize to root when forwarding
-//   },
-//   // Accept self-signed certificates used by Drizzle Studio locally
-//   secure: false,
-//   xfwd: true, // Add X-Forwarded-* headers so target can infer original host/proto
-//   // Only set Host header for HTTPS SNI cases
-//   headers: drizzleTarget.startsWith('https://')
-//     ? { host: 'local.drizzle.studio' }
-//     : undefined,
-//   // Strip cookie Domain so it applies to our origin
-//   cookieDomainRewrite: {
-//     '*': '',
-//   },
-//   // Conservative timeouts to avoid long hangs
-//   proxyTimeout: 15000,
-//   timeout: 15000,
-// })
-
-// -----------------------------
-// Admin protected raw DB access
-// -----------------------------
-// These endpoints expose raw users and messages data and therefore are protected
-// by the same authenticateAdmin middleware used for the Drizzle Studio proxy.
-// The frontend admin data browser will call these with the admin token.
 app.get('/admin/db/users', authenticateAdmin, async (_req, res) => {
   try {
     const allUsers = await db
@@ -189,19 +157,44 @@ app.get('/admin/db/messages', authenticateAdmin, async (req, res) => {
   }
 })
 
-// Redirects to ensure trailing slash so relative asset paths resolve under /admin/drizzle/
-// app.get('/admin', (_req, res) => res.redirect(302, '/admin/drizzle/'))
-// Catch-all for /admin/* that aren't already under /admin/drizzle
-// app.use('/admin', (req, res, next) => {
-//   const sub = req.path || '/'
-//   if (sub === '/') return res.redirect(302, '/admin/drizzle/')
-//   if (!sub.startsWith('/drizzle')) {
-//     return res.redirect(302, '/admin/drizzle' + sub)
-//   }
-//   next()
-// })
+// Clear ALL messages (dangerous) - admin only
+app.delete(
+  '/admin/db/clear-all-messages',
+  authenticateAdmin,
+  async (_req, res) => {
+    try {
+      // Delete all rows from messages table
+      await db.delete(messages)
+      res.json({ success: true })
+    } catch (error) {
+      console.error('Error clearing messages (admin):', error)
+      res.status(500).json({ error: 'Failed to clear messages' })
+    }
+  },
+)
 
-// app.use('/admin/drizzle', authenticateAdmin, drizzleProxy)
+// Clear messages for a specific phone number (?phoneNumber=... required)
+app.delete(
+  '/admin/db/messages-per-user',
+  authenticateAdmin,
+  async (req, res) => {
+    try {
+      const { phoneNumber } = req.query as { phoneNumber?: string }
+
+      console.log('/admin/db/messages-per-user', { phoneNumber })
+
+      if (!phoneNumber) {
+        res.status(400).json({ error: 'phoneNumber query param required' })
+        return
+      }
+      await db.delete(messages).where(eq(messages.phoneNumber, phoneNumber))
+      res.json({ success: true })
+    } catch (error) {
+      console.error('Error clearing phone messages (admin):', error)
+      res.status(500).json({ error: 'Failed to clear user messages' })
+    }
+  },
+)
 
 app.post('/webhook', whatsappHonoWebhook)
 

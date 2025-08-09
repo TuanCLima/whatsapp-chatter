@@ -100,6 +100,42 @@ export function AdminDataPage() {
     })
   }, [messages, phoneFilter, search])
 
+  async function clearAllData() {
+    if (!confirm('Delete ALL users and messages? This cannot be undone.'))
+      return
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/db/clear-all-messages`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) throw new Error('Failed to clear all data')
+      setUsers([])
+      setMessages([])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error')
+    }
+  }
+
+  async function clearUserData(phoneNumber: string) {
+    if (!confirm(`Delete user ${phoneNumber} and their messages?`)) return
+    try {
+      console.log('/admin/db/messages-per-user clearUserData', { phoneNumber })
+      const res = await fetch(
+        `${API_BASE_URL}/admin/db/messages-per-user?phoneNumber=${encodeURIComponent(phoneNumber)}`,
+        {
+          method: 'DELETE',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      )
+      if (!res.ok) throw new Error('Failed to clear user data')
+      setUsers((prev) => prev.filter((u) => u.phoneNumber !== phoneNumber))
+      setMessages((prev) => prev.filter((m) => m.phoneNumber !== phoneNumber))
+      if (phoneFilter === phoneNumber) setPhoneFilter('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error')
+    }
+  }
+
   return (
     <div className="p-4 space-y-4 h-full flex flex-col">
       <div className="flex items-center gap-2 flex-wrap">
@@ -131,6 +167,14 @@ export function AdminDataPage() {
         >
           Clear Filters
         </Button>
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={clearAllData}
+          disabled={!users.length}
+        >
+          Clear DB
+        </Button>
       </div>
       {error && <div className="text-red-500 text-sm">{error}</div>}
       <Tabs
@@ -145,9 +189,6 @@ export function AdminDataPage() {
         </TabsList>
         <TabsContent value="users" className="flex-1 overflow-hidden mt-2">
           <Card className="h-full flex flex-col">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Users</CardTitle>
-            </CardHeader>
             <CardContent className="flex-1 overflow-hidden p-0">
               {loadingUsers ? (
                 <div className="p-4">Loading users...</div>
@@ -161,6 +202,7 @@ export function AdminDataPage() {
                         <th className="p-2">Profile</th>
                         <th className="p-2">Disabled</th>
                         <th className="p-2">Created</th>
+                        <th className="p-2 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -168,7 +210,12 @@ export function AdminDataPage() {
                         <tr
                           key={u.id}
                           className="border-b last:border-b-0 hover:bg-muted/40 cursor-pointer"
-                          onClick={() => setPhoneFilter(u.phoneNumber)}
+                          onClick={(e) => {
+                            // Avoid row click when clicking button
+                            if ((e.target as HTMLElement).closest('button'))
+                              return
+                            setPhoneFilter(u.phoneNumber)
+                          }}
                         >
                           <td className="p-2 font-mono text-xs">{u.id}</td>
                           <td className="p-2 font-mono text-xs">
@@ -180,6 +227,16 @@ export function AdminDataPage() {
                           </td>
                           <td className="p-2 text-xs">
                             {new Date(u.createdAt).toLocaleString()}
+                          </td>
+                          <td className="p-2 text-right">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-500 hover:text-red-600"
+                              onClick={() => clearUserData(u.phoneNumber)}
+                            >
+                              Clear
+                            </Button>
                           </td>
                         </tr>
                       ))}
