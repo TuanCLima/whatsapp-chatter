@@ -1,4 +1,4 @@
-import { ChatCompletionTool } from 'openai/resources/chat'
+import type { ChatCompletionTool } from 'openai/resources/chat'
 
 enum FunctionName {
   getSaoPauloDate = 'getSaoPauloDate',
@@ -32,7 +32,7 @@ const servicesTool: ChatCompletionTool = {
   function: {
     name: FunctionName.getAllServicesTable,
     description:
-      'Consultar a lista de todos os serviços (procedimentos) oferecidos pelo salão, bem como seus preços e tempo necessário para execução. Nota: A duração do evento deve ser de pelo menos a duração do serviço. Importante: Não alucine detalhes sobre os procedimentos. Use apenas as informações fornecidas. Não liste ao usuário serviços que não existe',
+      'Consultar a lista de todos os serviços (procedimentos) oferecidos pelo salão e tempo necessário para execução. Nota: A duração do evento deve ser de pelo menos a duração do serviço. Importante: Não alucine detalhes sobre os procedimentos. Use apenas as informações fornecidas. Não liste ao usuário serviços que não existe',
     parameters: {
       type: 'object',
       properties: {},
@@ -206,7 +206,7 @@ const createEventTool: ChatCompletionTool = {
   function: {
     name: FunctionName.createCalendarEvent,
     description:
-      'Criar um novo evento/agendamento/horário no calendário da Gabe. IMPORTANTE: SEMPRE use a ferramenta checkEventAvailability ANTES de criar qualquer evento para garantir disponibilidade.',
+      'Criar um novo evento/agendamento/horário no calendário da Gabe. IMPORTANTE: SEMPRE use a ferramenta checkEventAvailability ANTES de criar qualquer evento para garantir disponibilidade. Não esqueça de adicionar o link do contato do whatsapp.',
     parameters: {
       type: 'object',
       properties: {
@@ -224,7 +224,11 @@ const createEventTool: ChatCompletionTool = {
               description:
                 'Aqui vai o nome do cliente. Não pergunte a ele sobre esse campo',
             },
-            location: { type: 'string', description: 'Não preencher' },
+            location: {
+              type: 'string',
+              description:
+                'Adicionar link do contato do whatsapp como link de forma que quando clicado abra o whatsapp o formato é https://wa.me/[numero do telefone]. Exemplo: https://wa.me/5511999999999',
+            },
             description: {
               type: 'string',
               description:

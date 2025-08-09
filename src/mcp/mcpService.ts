@@ -585,7 +585,7 @@ export type ServiceItem = {
   timeToExecuteInMinutes?: number
   details: string[]
   description?: string
-  priceInReais?: number
+  // priceInReais?: number
   performedBy?: Atendentes[]
   // sendContactCard?: boolean;
   // scheduleCalendarEvent?: boolean;
@@ -694,7 +694,7 @@ export const mcpFunctions: MCPFunctions = {
   getAllServicesTable: {
     function: getAllServicesTable,
     description:
-      'Consultar a lista de todos os serviços (procedimentos) oferecidos pelo salão, bem como seus preços e tempo necessário para execução. Nota: A duração do evento deve ser de pelo menos a duração do serviço',
+      'Consultar a lista de todos os serviços (procedimentos) oferecidos pelo salão e tempo necessário para execução. Nota: A duração do evento deve ser de pelo menos a duração do serviço',
     parameters: {},
   },
   fetchCalendarEvents: {

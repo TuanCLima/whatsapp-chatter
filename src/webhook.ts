@@ -10,6 +10,8 @@ import type { ChatMessage } from './types/types'
 import { IS_DEV } from './utils/contants'
 import { parseLLMMessages } from './utils/parseLLMMessages'
 
+const IS_DEV_OTHER = process.env.NODE_ENV === 'development'
+
 const API_KEY = process.env.LLM_API_KEY
 const accountSid = process.env.TWILIO_ACCOUNT_SID
 const authToken = process.env.TWILIO_AUTH_TOKEN
@@ -22,7 +24,7 @@ import { getInitialPrompt } from './utils/utils'
 // export const LLM_MODEL = "deepseek-chat";
 const LLM_BASE_URL = 'https://api.openai.com/v1'
 // export const LLM_MODEL = 'gpt-4.1'
-export const LLM_MODEL = 'gpt-5'
+export const LLM_MODEL = process.env.LLM_MODEL || 'gpt-4.1'
 
 export const openai = new OpenAI({
   baseURL: LLM_BASE_URL,
@@ -59,6 +61,9 @@ type TwilioFormData = {
   From: string
   Body: string
   ProfileName: string
+  NumMedia?: string // Twilio sends number of media items as a string
+  // Dynamic media content type & url fields (MediaContentType0, MediaUrl0, ...)
+  [key: string]: string | undefined
 }
 
 const fakes = [
@@ -99,18 +104,53 @@ const fakes = [
 const indexSelected = -1
 
 export async function whatsappHonoWebhook(
-  req: Request<{}, {}, TwilioFormData>,
+  req: Request<never, unknown, TwilioFormData>,
   res: Response,
 ) {
   const body = req.body
   const { From: _from, Body: message, ProfileName } = body
   const from =
-    IS_DEV && fakes[indexSelected]?.from ? fakes[indexSelected]?.from : _from
+    IS_DEV_OTHER && fakes[indexSelected]?.from
+      ? fakes[indexSelected]?.from
+      : _from
 
   const name =
-    IS_DEV && fakes[indexSelected]?.profileName
+    IS_DEV_OTHER && fakes[indexSelected]?.profileName
       ? fakes[indexSelected]?.profileName
       : ProfileName
+
+  // --- Early exit for audio messages ---
+  try {
+    const numMediaRaw = body.NumMedia
+    const numMedia = numMediaRaw ? parseInt(numMediaRaw, 10) : 0
+    if (numMedia > 0) {
+      let hasAudio = false
+      for (let i = 0; i < numMedia; i++) {
+        const contentType: string | undefined = body[`MediaContentType${i}`]
+        if (contentType?.toLowerCase().startsWith('audio')) {
+          hasAudio = true
+          break
+        }
+      }
+      if (hasAudio) {
+        // Inform user that audio messages are not allowed and exit early
+        await client.messages.create({
+          from: fromNumber,
+          to: _from,
+          body: 'Mensagens de áudio não são permitidas por enquanto. Favor tentar enviar uma mensagem de texto.',
+        })
+        res.json({
+          status: 'Rejected audio message',
+          from,
+          reason: 'audio_not_allowed',
+        })
+        return
+      }
+    }
+  } catch (e) {
+    console.error('Error while checking media types', e)
+    // Fail open (continue) – optional: you could choose to block on any error
+  }
 
   const messagesFeed: InsertMessage[] = await db
     .select()
@@ -214,9 +254,9 @@ export async function whatsappHonoWebhook(
       return
     }
 
-    const newMessagesForDB = newMessagesForFeed.map((m, idx) => {
-      let toolCallId
-      let toolCalls
+    const newMessagesForDB = newMessagesForFeed.map((m) => {
+      let toolCallId: string | null = null
+      let toolCalls: string | null = null
 
       if (m.role === 'tool') {
         toolCallId = m.tool_call_id
