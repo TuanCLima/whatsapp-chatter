@@ -174,16 +174,17 @@ app.delete(
 )
 
 app.delete(
-  '/admin/db/clear-all-users',
+  '/admin/db/clear-all-users-and-messages',
   authenticateAdmin,
   async (_req, res) => {
     try {
       // Delete all rows from users table
       await db.delete(users)
+      await db.delete(messages)
       res.json({ success: true })
     } catch (error) {
-      console.error('Error clearing users (admin):', error)
-      res.status(500).json({ error: 'Failed to clear users' })
+      console.error('Error clearing users or messages (admin):', error)
+      res.status(500).json({ error: 'Failed to clear users and messages' })
     }
   },
 )

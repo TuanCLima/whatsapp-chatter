@@ -114,14 +114,18 @@ export function AdminDataPage() {
     }
   }
 
-  async function clearAllUsers() {
-    if (!confirm('Delete ALL users? This cannot be undone.')) return
+  async function clearAllUsersAndMessages() {
+    if (!confirm('Delete ALL users and messages? This cannot be undone.'))
+      return
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/db/clear-all-users`, {
-        method: 'DELETE',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      if (!res.ok) throw new Error('Failed to clear all users')
+      const res = await fetch(
+        `${API_BASE_URL}/admin/db/clear-all-users-and-messages`,
+        {
+          method: 'DELETE',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      )
+      if (!res.ok) throw new Error('Failed to clear all users and messages')
       setUsers([])
       setMessages([])
     } catch (e) {
@@ -191,10 +195,10 @@ export function AdminDataPage() {
         <Button
           size="sm"
           variant="destructive"
-          onClick={clearAllUsers}
+          onClick={clearAllUsersAndMessages}
           disabled={!users.length}
         >
-          Clear All Users
+          Clear All Users and Messages
         </Button>
       </div>
       {error && <div className="text-red-500 text-sm">{error}</div>}
