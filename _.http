@@ -180,3 +180,8 @@ Content-Type: application/json
 ### fetch conversation
 GET http://localhost:3000/conversations/whatsapp:+5511999999999
 Content-Type: application/json
+
+
+### fetch messages from db
+GET http://localhost:3000/admin/db/messages?limit=500
+Authorization: Bearer [token]

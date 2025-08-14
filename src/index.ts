@@ -589,14 +589,16 @@ app.get('/api/token-health', async (_req, res) => {
 
 // Serve static files from the React app build directory
 app.use(express.static(path.resolve(__dirname, '../client/dist')))
+app.use(express.static(path.resolve(__dirname, '../dist/public')))
 
 // Catch all handler: send back React's index.html file for any non-API routes
 app.use((req, res, next) => {
-  // Don't serve index.html for API routes
+  // Don't serve index.html for API routes or static asset requests
   if (
     req.path.startsWith('/api') ||
     req.path.startsWith('/webhook') ||
-    req.path.startsWith('/admin')
+    req.path.startsWith('/admin') ||
+    path.extname(req.path) // If the request is for a file (has an extension), skip
   ) {
     next()
     return
@@ -604,11 +606,8 @@ app.use((req, res, next) => {
   res.sendFile(path.resolve(__dirname, '../client/dist/index.html'))
 })
 
-const server = app.listen(PORT, () => {
+app.listen(PORT, () => {
   console.log(`🚀 Server running at port: ${PORT}`)
 })
-
-// Forward WebSocket upgrade events to the proxy
-// server.on('upgrade', drizzleProxy.upgrade)
 
 export default app

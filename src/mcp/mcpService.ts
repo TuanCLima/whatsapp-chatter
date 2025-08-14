@@ -247,12 +247,12 @@ function findAvailableTimeSpans(
 ): AvailableTimeSpan[] {
   const availableSpans: AvailableTimeSpan[] = []
 
-  // Business hours: 9:00 - 19:00
+  // Business hours: 9:00 - 18:00
   const businessStart = new Date(targetDate)
   businessStart.setHours(9, 0, 0, 0)
 
   const businessEnd = new Date(targetDate)
-  businessEnd.setHours(19, 0, 0, 0)
+  businessEnd.setHours(18, 0, 0, 0)
 
   // Lunch break: 12:00 - 13:00
   const lunchStart = new Date(targetDate)
@@ -396,9 +396,9 @@ export async function checkEventAvailability(
       (endHour === 12 && endMinutes > 0) || (endHour === 13 && endMinutes === 0)
     const spansLunch = startHour < 12 && endHour >= 13
 
-    // Check if it's outside business hours (assuming 9h-19h)
+    // Check if it's outside business hours (assuming 9h-18h)
     const isOutsideBusinessHours =
-      startHour < 9 || startHour >= 19 || endHour > 19
+      startHour < 9 || startHour >= 18 || endHour > 18
 
     // Fetch existing events to check for conflicts and find available time spans
     const dayStart = new Date(startDate)
@@ -479,7 +479,7 @@ export async function checkEventAvailability(
                 'Este horário não está disponível pois conflita com o horário de almoço (12:00-13:00).'
             } else if (conflicts.includes('outside_business_hours')) {
               conflictMessage =
-                'Este horário está fora do horário de funcionamento (09:00-19:00).'
+                'Este horário está fora do horário de funcionamento (09:00-18:00).'
             } else {
               const conflictDetails = conflictingEvents
                 .map(
@@ -587,6 +587,7 @@ export type ServiceItem = {
   description?: string
   // priceInReais?: number
   performedBy?: Atendentes[]
+  options?: string[]
   // sendContactCard?: boolean;
   // scheduleCalendarEvent?: boolean;
 }

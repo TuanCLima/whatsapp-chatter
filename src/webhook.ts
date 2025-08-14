@@ -299,10 +299,14 @@ export async function whatsappHonoWebhook(
               })
               await new Promise((resolve) => setTimeout(resolve, 700)) // Wait for 1 second before sending the next message
             } else {
+              const body = toSendMessage.text.replace(/\*\*/g, '*')
+              if (!body) {
+                console.log('Empty message detected')
+              }
               await client.messages.create({
                 from: fromNumber,
                 to: _from,
-                body: toSendMessage.text.replace(/\*\*/g, '*'),
+                body,
               })
             }
           }

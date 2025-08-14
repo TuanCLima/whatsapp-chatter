@@ -32,7 +32,7 @@ const servicesTool: ChatCompletionTool = {
   function: {
     name: FunctionName.getAllServicesTable,
     description:
-      'Consultar a lista de todos os serviços (procedimentos) oferecidos pelo salão e tempo necessário para execução. Nota: A duração do evento deve ser de pelo menos a duração do serviço. Importante: Não alucine detalhes sobre os procedimentos. Use apenas as informações fornecidas. Não liste ao usuário serviços que não existe',
+      'Consultar a lista de todos os serviços (procedimentos) oferecidos pelo salão e tempo necessário para execução. Nota: A duração do evento deve ser de pelo menos a duração do serviço. Importante: Não alucine detalhes sobre os procedimentos. Use apenas as informações fornecidas. Não liste ao usuário serviços que não existem. Quando o serviço possuir opção, pergunte ao cliente qual das opções ele quer realizar e inclua essa informação na descrição do evento. Quando houver mais de uma opção para atendente, pergunte com qual profissional o cliente quer realizar o atendimento. Se for com a Gabe, prossiga para o próximo para o agendamento, se outro, encaminhe o contato apropriado. Envie ao cliente uma lista indexada, se forma que eles possam escolher o serviço digitando um número. Exemplo: "1. Corte, 2. Hidratação, 3. Finalização"',
     parameters: {
       type: 'object',
       properties: {},
