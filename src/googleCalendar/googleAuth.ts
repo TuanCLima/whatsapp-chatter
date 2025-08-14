@@ -42,7 +42,7 @@ export async function authorize(callback: (auth: any) => Promise<void>) {
   const oAuth2Client = new google.auth.OAuth2(
     client_id,
     client_secret,
-    redirect_uris[0],
+    process.env.NODE_ENV === 'production' ? redirect_uris[1] : redirect_uris[0],
   )
 
   // Check if we have previously stored a token.
