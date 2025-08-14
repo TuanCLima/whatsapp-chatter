@@ -173,6 +173,21 @@ app.delete(
   },
 )
 
+app.delete(
+  '/admin/db/clear-all-users',
+  authenticateAdmin,
+  async (_req, res) => {
+    try {
+      // Delete all rows from users table
+      await db.delete(users)
+      res.json({ success: true })
+    } catch (error) {
+      console.error('Error clearing users (admin):', error)
+      res.status(500).json({ error: 'Failed to clear users' })
+    }
+  },
+)
+
 // Clear messages for a specific phone number (?phoneNumber=... required)
 app.delete(
   '/admin/db/messages-per-user',

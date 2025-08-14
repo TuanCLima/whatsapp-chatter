@@ -100,15 +100,28 @@ export function AdminDataPage() {
     })
   }, [messages, phoneFilter, search])
 
-  async function clearAllData() {
-    if (!confirm('Delete ALL users and messages? This cannot be undone.'))
-      return
+  async function clearAllMessages() {
+    if (!confirm('Delete ALL messages? This cannot be undone.')) return
     try {
       const res = await fetch(`${API_BASE_URL}/admin/db/clear-all-messages`, {
         method: 'DELETE',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
-      if (!res.ok) throw new Error('Failed to clear all data')
+      if (!res.ok) throw new Error('Failed to clear all messages')
+      setMessages([])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error')
+    }
+  }
+
+  async function clearAllUsers() {
+    if (!confirm('Delete ALL users? This cannot be undone.')) return
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/db/clear-all-users`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) throw new Error('Failed to clear all users')
       setUsers([])
       setMessages([])
     } catch (e) {
@@ -170,10 +183,18 @@ export function AdminDataPage() {
         <Button
           size="sm"
           variant="destructive"
-          onClick={clearAllData}
+          onClick={clearAllMessages}
           disabled={!users.length}
         >
-          Clear DB
+          Clear All Messages
+        </Button>
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={clearAllUsers}
+          disabled={!users.length}
+        >
+          Clear All Users
         </Button>
       </div>
       {error && <div className="text-red-500 text-sm">{error}</div>}

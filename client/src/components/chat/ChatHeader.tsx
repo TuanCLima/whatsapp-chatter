@@ -1,9 +1,9 @@
-import { Menu, Phone, Video, Search, MoreVertical } from 'lucide-react'
+import { Menu, MoreVertical, Phone, Search, Video } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
-import { Contact } from '@/types'
+import { Switch } from '@/components/ui/switch'
+import type { Contact } from '@/types'
 
 interface ChatHeaderProps {
   contact: Contact
