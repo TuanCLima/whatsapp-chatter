@@ -96,7 +96,7 @@ export async function getCalendarEventById({
 }
 
 export async function cancelCalendarEvent({
-  calendarId = 'primary',
+  calendarId = GABE_CALENDAR_ID,
   eventId,
   auth,
 }: {
