@@ -16,6 +16,22 @@ import {
   SERVICES,
 } from '../utils/contants'
 
+// Helper function to format time in São Paulo timezone
+function formatTimeInSaoPaulo(
+  dateString: string,
+  format: string = 'HH:mm',
+): string {
+  return moment.tz(dateString, 'America/Sao_Paulo').format(format)
+}
+
+// Helper function to format date in São Paulo timezone
+function formatDateInSaoPaulo(
+  dateString: string,
+  format: string = 'DD/MM/YYYY',
+): string {
+  return moment.tz(dateString, 'America/Sao_Paulo').format(format)
+}
+
 export function getSaoPauloDate() {
   try {
     const tz = 'America/Sao_Paulo'
@@ -361,7 +377,7 @@ export async function checkEventAvailability(
     const endDate = new Date(proposedEndTime)
 
     // Check if the proposed time is valid
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
       return {
         available: false,
         message:
@@ -484,7 +500,7 @@ export async function checkEventAvailability(
               const conflictDetails = conflictingEvents
                 .map(
                   (e) =>
-                    `${e.summary || 'Evento'} (${new Date(e.start).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}-${new Date(e.end).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})`,
+                    `${e.summary || 'Evento'} (${formatTimeInSaoPaulo(e.start)}-${formatTimeInSaoPaulo(e.end)})`,
                 )
                 .join(', ')
               conflictMessage = `Este horário não está disponível pois conflita com: ${conflictDetails}.`
@@ -493,10 +509,10 @@ export async function checkEventAvailability(
             // Format available time spans for the message
             const availableSpansMessage =
               availableTimeSpans.length > 0
-                ? ` Horários disponíveis no dia ${startDate.toLocaleDateString('pt-BR')}: ${availableTimeSpans
+                ? ` Horários disponíveis no dia ${formatDateInSaoPaulo(startDate.toISOString())}: ${availableTimeSpans
                     .map(
                       (span) =>
-                        `${new Date(span.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}-${new Date(span.endTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} (${span.duration} minutos disponíveis)`,
+                        `${formatTimeInSaoPaulo(span.startTime)}-${formatTimeInSaoPaulo(span.endTime)} (${span.duration} minutos disponíveis)`,
                     )
                     .join(', ')}.`
                 : ' Não há horários disponíveis neste dia.'
@@ -511,7 +527,7 @@ export async function checkEventAvailability(
           } else {
             resolve({
               available: true,
-              message: `Horário disponível! O agendamento pode ser feito das ${startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} às ${endDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} no dia ${startDate.toLocaleDateString('pt-BR')}.`,
+              message: `Horário disponível! O agendamento pode ser feito das ${formatTimeInSaoPaulo(startDate.toISOString())} às ${formatTimeInSaoPaulo(endDate.toISOString())} no dia ${formatDateInSaoPaulo(startDate.toISOString())}.`,
               conflicts: [],
               availableTimeSpans,
             })
