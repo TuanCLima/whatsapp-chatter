@@ -1,5 +1,5 @@
+import path from 'node:path'
 import express from 'express'
-import path from 'path'
 import Twilio from 'twilio'
 import mcpRouter from './server/mcpServer'
 import { whatsappHonoWebhook } from './webhook'
@@ -9,13 +9,14 @@ import cors from 'cors'
 import { and, desc, eq, ne, or } from 'drizzle-orm'
 // import { createProxyMiddleware } from 'http-proxy-middleware'
 import { db } from './db'
-import { messages, users } from './db/schema'
+import { messages, users } from './db/schema-postgres'
 import type { Contact, Conversation, Message } from './types/types'
 import {
   getUniqueWhatsAppContacts,
   getWhatsAppConversationByContactId,
   getWhatsAppConversations,
 } from './utils/twilioMessages'
+import { dateToTimestamp } from './utils/utils'
 
 // Extend Express Request interface to include user property
 declare global {
@@ -252,7 +253,7 @@ app.get('/db/contacts', async (_req, res) => {
             latestMessage.length > 0
               ? {
                   text: latestMessage[0].content || '',
-                  timestamp: latestMessage[0].timestamp,
+                  timestamp: dateToTimestamp(latestMessage[0].timestamp),
                   status: 'delivered' as const,
                 }
               : undefined,
@@ -313,7 +314,7 @@ app.get('/db/conversations', async (_req, res) => {
           id: msg.id.toString(),
           text: msg.content || '',
           sender: msg.role === 'user' ? user.phoneNumber : 'assistant',
-          timestamp: msg.timestamp,
+          timestamp: dateToTimestamp(msg.timestamp),
           status: 'delivered' as const,
         }))
 
@@ -370,7 +371,7 @@ app.get('/db/conversations/:contactId', async (req, res) => {
       id: msg.id.toString(),
       text: msg.content || '',
       sender: msg.role === 'user' ? contactId : 'assistant',
-      timestamp: msg.timestamp,
+      timestamp: dateToTimestamp(msg.timestamp),
       status: 'delivered' as const,
     }))
 
@@ -463,7 +464,7 @@ app.put('/users/:phoneNumber/conversation', async (req, res) => {
       .update(users)
       .set({
         conversationDisabled: disabled,
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date(),
       })
       .where(eq(users.phoneNumber, phoneNumber))
 

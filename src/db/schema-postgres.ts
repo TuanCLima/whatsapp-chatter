@@ -1,14 +1,13 @@
-import { sql } from 'drizzle-orm'
-import { text, sqliteTable, integer } from 'drizzle-orm/sqlite-core'
+import { boolean, pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core'
 
-export const messages = sqliteTable('messages', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const messages = pgTable('messages', {
+  id: serial('id').primaryKey(),
   phoneNumber: text('phone_number').notNull(),
   role: text('role', {
     enum: ['tool', 'user', 'system', 'assistant'],
   }).notNull(),
   content: text('content'),
-  timestamp: text('timestamp').default(sql`current_timestamp`).notNull(),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
   toolCallId: text('tool_call_id'),
   toolCalls: text('string'),
 })
@@ -16,15 +15,15 @@ export const messages = sqliteTable('messages', {
 export type InsertMessage = typeof messages.$inferInsert
 export type Message = typeof messages.$inferSelect
 
-export const users = sqliteTable('users', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
   phoneNumber: text('phone_number').notNull(),
   profileName: text('profile_name').notNull(),
-  conversationDisabled: integer('conversation_disabled', { mode: 'boolean' })
+  conversationDisabled: boolean('conversation_disabled')
     .default(false)
     .notNull(),
-  createdAt: text('created_at').default(sql`current_timestamp`).notNull(),
-  updatedAt: text('updated_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at'),
 })
 
 export type InsertUser = typeof users.$inferInsert

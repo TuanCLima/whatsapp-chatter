@@ -16,7 +16,7 @@
     "db:studio": "drizzle-kit studio --port 4983 --host 127.0.0.1",
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
-    "db:reset": "rm -rf sqlite.db && drizzle-kit push"
+    "db:migrate": "drizzle-kit migrate"
   },
   "keywords": [],
   "author": "",
@@ -36,19 +36,19 @@
   "dependencies": {
     "@cloudflare/workers-types": "^4.20250403.0",
     "@libsql/client": "^0.15.8",
-    "@libsql/sqlite3": "^0.3.1",
     "axios": "^1.8.4",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "drizzle-kit": "^0.31.1",
-    "drizzle-orm": "^0.43.1",
+    "drizzle-orm": "^0.44.4",
     "express": "^5.1.0",
     "google-auth-library": "^9.15.1",
     "googleapis": "^148.0.0",
     "http-proxy-middleware": "^3.0.5",
     "moment-timezone": "^0.5.48",
     "openai": "^4.90.0",
+    "postgres": "^3.4.7",
     "twilio": "^5.5.1"
   }
 }

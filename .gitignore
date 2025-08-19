@@ -10,3 +10,4 @@ token.json
 backup/**
 prompts_backup
 sqlite.db
+*.sh

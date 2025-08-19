@@ -1,10 +1,12 @@
-import { Config } from 'drizzle-kit'
+import type { Config } from 'drizzle-kit'
 
 export default {
-  schema: './src/db/schema.ts',
+  schema: './src/db/schema-postgres.ts',
   out: './.drizzle',
-  dialect: 'sqlite',
+  dialect: 'postgresql',
   dbCredentials: {
-    url: 'file:./sqlite.db',
+    url:
+      process.env.DATABASE_URL ||
+      'postgresql://postgres:postgres@localhost:5432/chat_webhook',
   },
 } satisfies Config

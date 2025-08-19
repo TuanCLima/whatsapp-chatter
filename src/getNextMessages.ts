@@ -1,10 +1,11 @@
+import { inspect } from 'node:util'
 import { toolCall } from './mcp/toolCall'
 import {
   cancelEventTool,
   cancellationRulesConfigTool,
+  checkAndCancelEventIfEligibleTool,
   checkEventAvailabilityTool,
   checkEventCancellationEligibilityTool,
-  checkAndCancelEventIfEligibleTool,
   createEventTool,
   dateTool,
   fetchEventsTool,
@@ -12,7 +13,7 @@ import {
   getSalonInfoTool,
   servicesTool,
 } from './mcp/toolConfig/toolConfig'
-import { ChatMessage } from './types/types'
+import type { ChatMessage } from './types/types'
 import { LLM_MODEL, openai } from './webhook'
 
 export async function getNextMessages(
@@ -20,6 +21,14 @@ export async function getNextMessages(
   signal?: AbortSignal,
 ) {
   const newMessagesForFeed: ChatMessage[] = []
+  console.log(
+    'messagesFeed:',
+    inspect(messagesFeed.slice(1), {
+      depth: 3,
+      maxStringLength: null,
+      colors: true,
+    }),
+  )
   const completion = await openai.chat.completions.create(
     {
       model: LLM_MODEL,
@@ -45,6 +54,14 @@ export async function getNextMessages(
   )
 
   const { tool_calls, content } = completion.choices[0].message
+
+  console.log(
+    'LLM completion:',
+    inspect(
+      { tool_calls, tContent: content?.slice(0, 50) },
+      { depth: null, maxStringLength: null, colors: true },
+    ),
+  )
 
   if (content && tool_calls && tool_calls.length > 0) {
     console.error(
@@ -77,6 +94,11 @@ export async function getNextMessages(
         functionName,
         parameters: JSON.parse(_arguments),
       })
+
+      console.log(
+        '### tool_calls loop',
+        inspect({ toolResponse }, { depth: 2 }),
+      )
 
       newMessagesForFeed.push({
         role: 'tool',

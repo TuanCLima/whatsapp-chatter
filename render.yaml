@@ -6,6 +6,8 @@ services:
     buildCommand: pnpm install && pnpm build && pnpm predeploy
     startCommand: pnpm serve
     envVars:
+      - key: DATABASE_URL
+        sync: false
       - key: TWILIO_ACCOUNT_SID
         sync: false
       - key: TWILIO_AUTH_TOKEN

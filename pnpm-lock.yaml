@@ -14,9 +14,6 @@ importers:
       '@libsql/client':
         specifier: ^0.15.8
         version: 0.15.8
-      '@libsql/sqlite3':
-        specifier: ^0.3.1
-        version: 0.3.1
       axios:
         specifier: ^1.8.4
         version: 1.8.4
@@ -33,8 +30,8 @@ importers:
         specifier: ^0.31.1
         version: 0.31.1
       drizzle-orm:
-        specifier: ^0.43.1
-        version: 0.43.1(@cloudflare/workers-types@4.20250403.0)(@libsql/client@0.15.8)
+        specifier: ^0.44.4
+        version: 0.44.4(@cloudflare/workers-types@4.20250403.0)(@libsql/client@0.15.8)(postgres@3.4.7)
       express:
         specifier: ^5.1.0
         version: 5.1.0
@@ -53,6 +50,9 @@ importers:
       openai:
         specifier: ^4.90.0
         version: 4.90.0(ws@8.18.1)
+      postgres:
+        specifier: ^3.4.7
+        version: 3.4.7
       twilio:
         specifier: ^5.5.1
         version: 5.5.1
@@ -778,14 +778,8 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@libsql/hrana-client@0.4.4':
-    resolution: {integrity: sha512-BevUg0UBRLs5AEqn0fjrMcl49xCtwuFavgK4MzCb3PTtxpEbQ24oGXctspN9drBiUVmqSZr7go887aiLLzSO3A==}
-
   '@libsql/hrana-client@0.7.0':
     resolution: {integrity: sha512-OF8fFQSkbL7vJY9rfuegK1R7sPgQ6kFMkDamiEccNUvieQ+3urzfDFI616oPl8V7T9zRmnTkSjMOImYCAVRVuw==}
-
-  '@libsql/isomorphic-fetch@0.1.12':
-    resolution: {integrity: sha512-MRo4UcmjAGAa3ac56LoD5OE13m2p0lu0VEtZC2NZMcogM/jc5fU9YtMQ3qbPjFJ+u2BBjFZgMPkQaLS1dlMhpg==}
 
   '@libsql/isomorphic-fetch@0.3.1':
     resolution: {integrity: sha512-6kK3SUK5Uu56zPq/Las620n5aS9xJq+jMBcNSOmjhNf/MUvdyji4vrMTqD7ptY7/4/CAVEAYDeotUz60LNQHtw==}
@@ -823,9 +817,6 @@ packages:
     resolution: {integrity: sha512-+fisSpE+2yK1N88shPtB7bEB8d+fF3CQmy1KnbJ4Oned8cw5uBfU46A1ICG+49RFaKxmoIQimHVAxfGV9NFQ3w==}
     cpu: [x64]
     os: [linux]
-
-  '@libsql/sqlite3@0.3.1':
-    resolution: {integrity: sha512-KOOBUuKDjqzteM6QA0W1vnZDfOt5MNMyo2yr4TaH1RcCd7Fsts4lpzfty6FmE1d6QDrRxjRq2ZciO6VdQ9ZF3A==}
 
   '@libsql/win32-x64-msvc@0.5.12':
     resolution: {integrity: sha512-upNJCcgMgpAFXlL//rRVwlPgMT8uG1LoilHgCEpAp+GEjgBjoDgGW6iOkktuJC8paZh5kt9dCPh3r3jF3HWQjg==}
@@ -1077,8 +1068,8 @@ packages:
     resolution: {integrity: sha512-PUjYKWtzOzPtdtQlTHQG3qfv4Y0XT8+Eas6UbxCmxTj7qgMf+39dDujf1BP1I+qqZtw9uzwTh8jYtkMuCq+B0Q==}
     hasBin: true
 
-  drizzle-orm@0.43.1:
-    resolution: {integrity: sha512-dUcDaZtE/zN4RV/xqGrVSMpnEczxd5cIaoDeor7Zst9wOe/HzC/7eAaulywWGYXdDEc9oBPMjayVEDg0ziTLJA==}
+  drizzle-orm@0.44.4:
+    resolution: {integrity: sha512-ZyzKFpTC/Ut3fIqc2c0dPZ6nhchQXriTsqTNs4ayRgl6sZcFlMs9QZKPSHXK4bdOf41GHGWf+FrpcDDYwW+W6Q==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=4'
@@ -1094,6 +1085,7 @@ packages:
       '@types/better-sqlite3': '*'
       '@types/pg': '*'
       '@types/sql.js': '*'
+      '@upstash/redis': '>=1.34.7'
       '@vercel/postgres': '>=0.8.0'
       '@xata.io/client': '*'
       better-sqlite3: '>=7'
@@ -1136,6 +1128,8 @@ packages:
       '@types/pg':
         optional: true
       '@types/sql.js':
+        optional: true
+      '@upstash/redis':
         optional: true
       '@vercel/postgres':
         optional: true
@@ -1610,6 +1604,10 @@ packages:
   picomatch@2.3.1:
     resolution: {integrity: sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA==}
     engines: {node: '>=8.6'}
+
+  postgres@3.4.7:
+    resolution: {integrity: sha512-Jtc2612XINuBjIl/QTWsV5UvE8UHuNblcO3vVADSrKsrc6RqGX6lOW1cEo3CM2v0XG4Nat8nI+YM7/f26VxXLw==}
+    engines: {node: '>=12'}
 
   printable-characters@1.0.42:
     resolution: {integrity: sha512-dKp+C4iXWK4vVYZmYSd0KBH5F/h1HoZRsbJ82AVKRO3PEo8L4lBS/vLwhVtpwwuYcoIsVY+1JYKR268yn480uQ==}
@@ -2298,16 +2296,6 @@ snapshots:
   '@libsql/darwin-x64@0.5.12':
     optional: true
 
-  '@libsql/hrana-client@0.4.4':
-    dependencies:
-      '@libsql/isomorphic-fetch': 0.1.12
-      '@libsql/isomorphic-ws': 0.1.5
-      js-base64: 3.7.7
-    transitivePeerDependencies:
-      - bufferutil
-      - encoding
-      - utf-8-validate
-
   '@libsql/hrana-client@0.7.0':
     dependencies:
       '@libsql/isomorphic-fetch': 0.3.1
@@ -2317,13 +2305,6 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
-
-  '@libsql/isomorphic-fetch@0.1.12':
-    dependencies:
-      '@types/node-fetch': 2.6.12
-      node-fetch: 2.7.0
-    transitivePeerDependencies:
-      - encoding
 
   '@libsql/isomorphic-fetch@0.3.1': {}
 
@@ -2352,14 +2333,6 @@ snapshots:
 
   '@libsql/linux-x64-musl@0.5.12':
     optional: true
-
-  '@libsql/sqlite3@0.3.1':
-    dependencies:
-      '@libsql/hrana-client': 0.4.4
-    transitivePeerDependencies:
-      - bufferutil
-      - encoding
-      - utf-8-validate
 
   '@libsql/win32-x64-msvc@0.5.12':
     optional: true
@@ -2620,10 +2593,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.43.1(@cloudflare/workers-types@4.20250403.0)(@libsql/client@0.15.8):
+  drizzle-orm@0.44.4(@cloudflare/workers-types@4.20250403.0)(@libsql/client@0.15.8)(postgres@3.4.7):
     optionalDependencies:
       '@cloudflare/workers-types': 4.20250403.0
       '@libsql/client': 0.15.8
+      postgres: 3.4.7
 
   dunder-proto@1.0.1:
     dependencies:
@@ -3197,6 +3171,8 @@ snapshots:
   pathe@2.0.3: {}
 
   picomatch@2.3.1: {}
+
+  postgres@3.4.7: {}
 
   printable-characters@1.0.42: {}
 

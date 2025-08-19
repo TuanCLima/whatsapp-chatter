@@ -3,8 +3,8 @@ import Twilio from 'twilio'
 import 'dotenv/config'
 import { eq } from 'drizzle-orm'
 import type { Request, Response } from 'express'
-import { db, initializeDatabase } from './db'
-import { type InsertMessage, messages, users } from './db/schema'
+import { db } from './db'
+import { type InsertMessage, messages, users } from './db/schema-postgres'
 import { getNextMessages } from './getNextMessages'
 import type { ChatMessage } from './types/types'
 import { IS_DEV } from './utils/contants'
@@ -30,9 +30,6 @@ export const openai = new OpenAI({
   baseURL: LLM_BASE_URL,
   apiKey: API_KEY,
 })
-
-// Initialize the database when the application starts
-initializeDatabase().catch(console.error)
 
 const abortControllers: Record<string, AbortController | undefined> = {}
 
@@ -276,8 +273,6 @@ export async function whatsappHonoWebhook(
       }
     })
 
-    messagesFeed.push(...newMessagesForDB)
-
     await db.insert(messages).values(newMessagesForDB)
 
     newMessagesForFeed
@@ -302,6 +297,7 @@ export async function whatsappHonoWebhook(
               const body = toSendMessage.text.replace(/\*\*/g, '*')
               if (!body) {
                 console.log('Empty message detected')
+                continue
               }
               await client.messages.create({
                 from: fromNumber,

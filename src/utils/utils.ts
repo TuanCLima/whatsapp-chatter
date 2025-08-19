@@ -13,3 +13,7 @@ INFORMAÇÃO DE TEMPO ATUAL:
 IMPORTANTE: Você tem acesso a uma ferramenta chamada "getSaoPauloDate" que pode ser usada para obter informações atualizadas de data e hora sempre que necessário durante a conversa.`
   return timeAwarePrompt
 }
+
+export const dateToTimestamp = (date: Date): string => {
+  return new Date(date).toISOString().replace('T', ' ').replace('Z', '').substring(0, 23)
+}
