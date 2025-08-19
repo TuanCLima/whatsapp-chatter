@@ -17,6 +17,7 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID
 const authToken = process.env.TWILIO_AUTH_TOKEN
 const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER
 
+import { inspect } from 'node:util'
 import { getSaoPauloDate } from './mcp/mcpService'
 import { getInitialPrompt } from './utils/utils'
 
@@ -155,6 +156,15 @@ export async function whatsappHonoWebhook(
     .where(eq(messages.phoneNumber, from))
     .orderBy(messages.timestamp)
 
+  // console.log(
+  //   'messagesFeed:',
+  //   inspect(messagesFeed.slice(1), {
+  //     depth: 4,
+  //     maxStringLength: null,
+  //     colors: true,
+  //   }),
+  // )
+
   const initialMessageCommon: InsertMessage = {
     phoneNumber: from,
     role: 'system',
@@ -251,7 +261,7 @@ export async function whatsappHonoWebhook(
       return
     }
 
-    const newMessagesForDB = newMessagesForFeed.map((m) => {
+    const newMessagesForDB = newMessagesForFeed.map((m, index) => {
       let toolCallId: string | null = null
       let toolCalls: string | null = null
 
@@ -262,6 +272,10 @@ export async function whatsappHonoWebhook(
       if (m.role === 'assistant') {
         toolCalls = JSON.stringify(m.tool_calls)
       }
+
+      // Create timestamp with incremental milliseconds to ensure order
+      const timestamp = new Date(Date.now() + index)
+
       // Create a new message object for the feed
       return {
         phoneNumber: from,
@@ -270,9 +284,11 @@ export async function whatsappHonoWebhook(
         profileName: name,
         toolCallId,
         toolCalls,
+        timestamp, // Explicit timestamp to ensure ordering
       }
     })
 
+    // Batch insert with explicit timestamps for proper ordering
     await db.insert(messages).values(newMessagesForDB)
 
     newMessagesForFeed

@@ -21,14 +21,14 @@ export async function getNextMessages(
   signal?: AbortSignal,
 ) {
   const newMessagesForFeed: ChatMessage[] = []
-  console.log(
-    'messagesFeed:',
-    inspect(messagesFeed.slice(1), {
-      depth: 3,
-      maxStringLength: null,
-      colors: true,
-    }),
-  )
+  // console.log(
+  //   'messagesFeed:',
+  //   inspect(messagesFeed.slice(1), {
+  //     depth: 3,
+  //     maxStringLength: null,
+  //     colors: true,
+  //   }),
+  // )
   const completion = await openai.chat.completions.create(
     {
       model: LLM_MODEL,
@@ -55,18 +55,19 @@ export async function getNextMessages(
 
   const { tool_calls, content } = completion.choices[0].message
 
-  console.log(
-    'LLM completion:',
-    inspect(
-      { tool_calls, tContent: content?.slice(0, 50) },
-      { depth: null, maxStringLength: null, colors: true },
-    ),
-  )
+  // console.log(
+  //   'LLM completion:',
+  //   inspect(
+  //     { tool_calls, tContent: content?.slice(0, 50) },
+  //     { depth: null, maxStringLength: null, colors: true },
+  //   ),
+  // )
 
   if (content && tool_calls && tool_calls.length > 0) {
     console.error(
       'LLM completion is returning content and tool calls at the same time. This is not expected.',
     )
+    return []
   }
 
   if (tool_calls && tool_calls.length > 0) {
@@ -95,10 +96,10 @@ export async function getNextMessages(
         parameters: JSON.parse(_arguments),
       })
 
-      console.log(
-        '### tool_calls loop',
-        inspect({ toolResponse }, { depth: 2 }),
-      )
+      // console.log(
+      //   '### tool_calls loop',
+      //   inspect({ toolResponse }, { depth: 2 }),
+      // )
 
       newMessagesForFeed.push({
         role: 'tool',
