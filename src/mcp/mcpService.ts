@@ -263,19 +263,39 @@ function findAvailableTimeSpans(
 ): AvailableTimeSpan[] {
   const availableSpans: AvailableTimeSpan[] = []
 
-  // Business hours: 9:00 - 18:00
-  const businessStart = new Date(targetDate)
-  businessStart.setHours(9, 0, 0, 0)
+  // Business hours: 9:00 - 18:00 in São Paulo timezone
+  const businessStartSP = moment
+    .tz(targetDate, 'America/Sao_Paulo')
+    .hour(9)
+    .minute(0)
+    .second(0)
+    .millisecond(0)
+  const businessStart = businessStartSP.toDate()
 
-  const businessEnd = new Date(targetDate)
-  businessEnd.setHours(18, 0, 0, 0)
+  const businessEndSP = moment
+    .tz(targetDate, 'America/Sao_Paulo')
+    .hour(18)
+    .minute(0)
+    .second(0)
+    .millisecond(0)
+  const businessEnd = businessEndSP.toDate()
 
-  // Lunch break: 12:00 - 13:00
-  const lunchStart = new Date(targetDate)
-  lunchStart.setHours(12, 0, 0, 0)
+  // Lunch break: 12:00 - 13:00 in São Paulo timezone
+  const lunchStartSP = moment
+    .tz(targetDate, 'America/Sao_Paulo')
+    .hour(12)
+    .minute(0)
+    .second(0)
+    .millisecond(0)
+  const lunchStart = lunchStartSP.toDate()
 
-  const lunchEnd = new Date(targetDate)
-  lunchEnd.setHours(13, 0, 0, 0)
+  const lunchEndSP = moment
+    .tz(targetDate, 'America/Sao_Paulo')
+    .hour(13)
+    .minute(0)
+    .second(0)
+    .millisecond(0)
+  const lunchEnd = lunchEndSP.toDate()
 
   // Collect all blocked time periods (events + lunch + outside business hours)
   const blockedPeriods = []
@@ -388,7 +408,8 @@ export async function checkEventAvailability(
     }
 
     // Check if salon is closed (Sundays and Mondays)
-    const dayOfWeek = startDate.getDay() // 0 = Sunday, 1 = Monday
+    // Use São Paulo timezone for day of week check
+    const dayOfWeek = moment.tz(startDate, 'America/Sao_Paulo').day() // 0 = Sunday, 1 = Monday
     if (dayOfWeek === 0 || dayOfWeek === 1) {
       return {
         available: false,
@@ -400,10 +421,13 @@ export async function checkEventAvailability(
     }
 
     // Check forbidden hours (12h-13h / lunch time)
-    const startHour = startDate.getHours()
-    const endHour = endDate.getHours()
-    const startMinutes = startDate.getMinutes()
-    const endMinutes = endDate.getMinutes()
+    // Convert to São Paulo timezone for hour/minute checks
+    const startDateSP = moment.tz(startDate, 'America/Sao_Paulo')
+    const endDateSP = moment.tz(endDate, 'America/Sao_Paulo')
+    const startHour = startDateSP.hour()
+    const endHour = endDateSP.hour()
+    const startMinutes = startDateSP.minute()
+    const endMinutes = endDateSP.minute()
 
     // Check if event overlaps with lunch time (12:00-13:00)
     const isStartInLunch =
@@ -417,10 +441,11 @@ export async function checkEventAvailability(
       startHour < 9 || startHour >= 18 || endHour > 18
 
     // Fetch existing events to check for conflicts and find available time spans
-    const dayStart = new Date(startDate)
-    dayStart.setHours(0, 0, 0, 0)
-    const dayEnd = new Date(startDate)
-    dayEnd.setHours(23, 59, 59, 999)
+    // Use São Paulo timezone for day boundaries
+    const dayStartSP = moment.tz(startDate, 'America/Sao_Paulo').startOf('day')
+    const dayEndSP = moment.tz(startDate, 'America/Sao_Paulo').endOf('day')
+    const dayStart = dayStartSP.toDate()
+    const dayEnd = dayEndSP.toDate()
 
     return new Promise((resolve, reject) => {
       authorize(async (auth) => {

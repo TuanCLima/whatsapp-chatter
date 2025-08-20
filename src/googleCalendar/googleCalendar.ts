@@ -1,5 +1,6 @@
-import { google, calendar_v3 } from 'googleapis'
-import { OAuth2Client } from 'google-auth-library'
+import type { OAuth2Client } from 'google-auth-library'
+import { type calendar_v3, google } from 'googleapis'
+import moment from 'moment-timezone'
 import { GABE_CALENDAR_ID } from '../utils/contants'
 
 /**
@@ -116,8 +117,8 @@ export async function cancelCalendarEvent({
     return { error: 'Event not found' }
   }
 
-  // Check if event end date is before 24 hours from now
-  const now = new Date()
+  // Check if event end date is before 24 hours from now (using São Paulo timezone)
+  const nowSP = moment().tz('America/Sao_Paulo')
 
   const endDate = event.end?.dateTime ?? event.end?.date
 
@@ -125,9 +126,10 @@ export async function cancelCalendarEvent({
     return { error: 'Event end date not found' }
   }
 
-  const eventEndDate = new Date(endDate)
-  const twentyFourHoursFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000)
-  if (eventEndDate < twentyFourHoursFromNow) {
+  const eventEndDateSP = moment.tz(endDate, 'America/Sao_Paulo')
+  const twentyFourHoursFromNowSP = nowSP.clone().add(24, 'hours')
+
+  if (eventEndDateSP.isBefore(twentyFourHoursFromNowSP)) {
     return {
       error:
         'Não é possível cancelar eventos com menos de 24 horas de antecedência.',
