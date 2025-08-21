@@ -61,9 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { user: userData, token } = await response.json()
 
         // Only allow admin users
-        if (userData.role !== 'admin') {
-          throw new Error('Access denied. Admin privileges required.')
-        }
+        // if (userData.role !== 'admin') {
+        //   throw new Error('Access denied. Admin privileges required.')
+        // }
 
         localStorage.setItem('admin_token', token)
         setUser(userData)
@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [toast])
 
-  const isAuthenticated = user !== null && user.role === 'admin'
+  const isAuthenticated = user !== null /* && user.role === 'admin' */
 
   return (
     <AuthContext.Provider

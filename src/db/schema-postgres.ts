@@ -26,5 +26,50 @@ export const users = pgTable('users', {
   updatedAt: timestamp('updated_at'),
 })
 
+// New table for SaaS users (app users who configure Twilio)
+export const saasUsers = pgTable('saas_users', {
+  id: text('id').primaryKey(), // UUID
+  email: text('email').notNull().unique(),
+  name: text('name').notNull(),
+  passwordHash: text('password_hash').notNull(),
+  role: text('role', { enum: ['admin', 'user'] })
+    .default('user')
+    .notNull(),
+
+  // Twilio credentials (encrypted)
+  twilioAccountSid: text('twilio_account_sid'),
+  twilioAuthToken: text('twilio_auth_token'), // This will be encrypted
+  twilioWhatsappNumber: text('twilio_whatsapp_number'),
+
+  // Webhook configuration
+  webhookPath: text('webhook_path').unique(), // e.g., "/webhook/user123"
+
+  // Subscription/billing info
+  subscriptionStatus: text('subscription_status', {
+    enum: ['trial', 'active', 'cancelled', 'expired'],
+  })
+    .default('trial')
+    .notNull(),
+
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Link WhatsApp users to SaaS users
+export const userSaasUserMapping = pgTable('user_saas_user_mapping', {
+  id: serial('id').primaryKey(),
+  phoneNumber: text('phone_number').notNull(),
+  saasUserId: text('saas_user_id')
+    .notNull()
+    .references(() => saasUsers.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 export type InsertUser = typeof users.$inferInsert
 export type User = typeof users.$inferSelect
+
+export type InsertSaasUser = typeof saasUsers.$inferInsert
+export type SaasUser = typeof saasUsers.$inferSelect
+
+export type InsertUserSaasUserMapping = typeof userSaasUserMapping.$inferInsert
+export type UserSaasUserMapping = typeof userSaasUserMapping.$inferSelect

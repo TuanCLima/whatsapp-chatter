@@ -36,7 +36,9 @@
   "dependencies": {
     "@cloudflare/workers-types": "^4.20250403.0",
     "@libsql/client": "^0.15.8",
+    "@types/bcryptjs": "^3.0.0",
     "axios": "^1.8.4",
+    "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -46,6 +48,7 @@
     "google-auth-library": "^9.15.1",
     "googleapis": "^148.0.0",
     "http-proxy-middleware": "^3.0.5",
+    "lru-cache": "^11.1.0",
     "moment-timezone": "^0.5.48",
     "openai": "^4.90.0",
     "postgres": "^3.4.7",

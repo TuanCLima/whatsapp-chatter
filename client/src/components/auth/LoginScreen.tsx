@@ -1,7 +1,7 @@
+import { Loader2, Lock, Mail } from 'lucide-react'
 import { useState } from 'react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Card,
   CardContent,
@@ -9,14 +9,16 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, Lock, Mail } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { useAuth } from '@/context/AuthContext'
+import RegistrationPage from './RegistrationPage'
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [showRegistration, setShowRegistration] = useState(false)
   const { login, isLoading } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,6 +35,20 @@ export default function LoginScreen() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     }
+  }
+
+  const handleRegistrationSuccess = () => {
+    setShowRegistration(false)
+    setError('')
+  }
+
+  if (showRegistration) {
+    return (
+      <RegistrationPage
+        onSuccess={handleRegistrationSuccess}
+        onBackToLogin={() => setShowRegistration(false)}
+      />
+    )
   }
 
   return (
@@ -119,9 +135,18 @@ export default function LoginScreen() {
               </Button>
             </form>
 
-            <div className="mt-4 text-center">
+            <div className="mt-4 text-center space-y-2">
+              <Button
+                type="button"
+                variant="link"
+                onClick={() => setShowRegistration(true)}
+                disabled={isLoading}
+                className="text-blue-400 hover:text-blue-300"
+              >
+                Don't have an account? Sign up
+              </Button>
               <p className="text-sm text-slate-400">
-                Contact your administrator if you need access
+                Need help? Contact your administrator
               </p>
             </div>
           </CardContent>

@@ -2,7 +2,7 @@ import path from 'node:path'
 import express from 'express'
 import Twilio from 'twilio'
 import mcpRouter from './server/mcpServer'
-import { whatsappHonoWebhook } from './webhook'
+import { whatsappHonoWebhook, whatsappSaasWebhook } from './webhook'
 import 'dotenv/config'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
@@ -10,6 +10,8 @@ import { and, desc, eq, ne, or } from 'drizzle-orm'
 // import { createProxyMiddleware } from 'http-proxy-middleware'
 import { db } from './db'
 import { messages, users } from './db/schema-postgres'
+import { authService } from './services/AuthService'
+import { twilioClientPool } from './services/TwilioClientPool'
 import type { Contact, Conversation, Message } from './types/types'
 import {
   getUniqueWhatsAppContacts,
@@ -36,7 +38,7 @@ const app = express()
 // CORS: reflect request origin and allow credentials so cookies can be set/sent in dev and prod
 app.use(
   cors({
-    origin: (origin, callback) => callback(null, true),
+    origin: (_origin, callback) => callback(null, true),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
@@ -214,6 +216,208 @@ app.delete(
 )
 
 app.post('/webhook', whatsappHonoWebhook)
+
+// SaaS webhook route with dynamic path
+app.post('/webhook/:webhookPath', whatsappSaasWebhook)
+
+// User authentication routes
+app.post('/auth/register', async (req, res) => {
+  try {
+    const { email, name, password } = req.body
+
+    if (!email || !name || !password) {
+      res.status(400).json({ error: 'Email, name, and password are required' })
+      return
+    }
+
+    const user = await authService.createUser({ email, name, password })
+
+    // Remove sensitive fields
+    const { passwordHash: _, twilioAuthToken: __, ...safeUser } = user
+
+    res.status(201).json({ user: safeUser })
+  } catch (error) {
+    console.error('Registration error:', error)
+
+    if (error instanceof Error && error.message === 'User already exists') {
+      res.status(409).json({ error: error.message })
+    } else {
+      res.status(500).json({ error: 'Failed to create user' })
+    }
+  }
+})
+
+app.post('/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body
+
+    if (!email || !password) {
+      res.status(400).json({ error: 'Email and password are required' })
+      return
+    }
+
+    const result = await authService.login(email, password)
+
+    // Set HTTP-only cookie for admin access
+    res.cookie('admin_token', result.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    })
+
+    res.json(result)
+  } catch (error) {
+    console.error('Login error:', error)
+
+    if (error instanceof Error && error.message === 'Invalid credentials') {
+      res.status(401).json({ error: error.message })
+    } else {
+      res.status(500).json({ error: 'Login failed' })
+    }
+  }
+})
+
+app.get('/auth/verify', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization
+    const token = authHeader?.startsWith('Bearer ')
+      ? authHeader.substring(7)
+      : req.cookies?.admin_token
+
+    if (!token) {
+      res.status(401).json({ error: 'No token provided' })
+      return
+    }
+
+    const user = await authService.verifyToken(token)
+
+    if (!user) {
+      res.status(401).json({ error: 'Invalid or expired token' })
+      return
+    }
+
+    // Remove sensitive fields
+    const { passwordHash: _, twilioAuthToken: __, ...safeUser } = user
+
+    res.json(safeUser)
+  } catch (error) {
+    console.error('Token verification error:', error)
+    res.status(401).json({ error: 'Token verification failed' })
+  }
+})
+
+app.post('/auth/logout', (_req, res) => {
+  res.clearCookie('admin_token')
+  res.json({ message: 'Logged out successfully' })
+})
+
+// Twilio credentials management
+const authenticateUser = async (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization
+    const token = authHeader?.startsWith('Bearer ')
+      ? authHeader.substring(7)
+      : req.cookies?.admin_token
+
+    if (!token) {
+      res.status(401).json({ error: 'No token provided' })
+      return
+    }
+
+    const user = await authService.verifyToken(token)
+
+    if (!user) {
+      res.status(401).json({ error: 'Invalid or expired token' })
+      return
+    }
+
+    req.user = {
+      userId: user.id,
+      role: user.role,
+      exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
+    }
+    next()
+  } catch (error) {
+    console.error('Authentication error:', error)
+    res.status(401).json({ error: 'Authentication failed' })
+  }
+}
+
+app.get('/api/twilio/credentials', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user?.userId
+    if (!userId) {
+      res.status(401).json({ error: 'User not authenticated' })
+      return
+    }
+
+    const user = await authService.getUserById(userId)
+    if (!user) {
+      res.status(404).json({ error: 'User not found' })
+      return
+    }
+
+    res.json({
+      configured: !!(
+        user.twilioAccountSid &&
+        user.twilioAuthToken &&
+        user.twilioWhatsappNumber
+      ),
+      accountSid: user.twilioAccountSid,
+      whatsappNumber: user.twilioWhatsappNumber,
+      webhookPath: user.webhookPath,
+    })
+  } catch (error) {
+    console.error('Error fetching Twilio credentials:', error)
+    res.status(500).json({ error: 'Failed to fetch credentials' })
+  }
+})
+
+app.post('/api/twilio/credentials', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user?.userId
+    if (!userId) {
+      res.status(401).json({ error: 'User not authenticated' })
+      return
+    }
+
+    const { accountSid, authToken, whatsappNumber } = req.body
+
+    if (!accountSid || !authToken || !whatsappNumber) {
+      res.status(400).json({
+        error: 'Account SID, Auth Token, and WhatsApp number are required',
+      })
+      return
+    }
+
+    // Validate Twilio credentials
+    const isValid = await twilioClientPool.validateCredentials(
+      accountSid,
+      authToken,
+    )
+    if (!isValid) {
+      res.status(400).json({ error: 'Invalid Twilio credentials' })
+      return
+    }
+
+    await twilioClientPool.saveUserCredentials(
+      userId,
+      accountSid,
+      authToken,
+      whatsappNumber,
+    )
+
+    res.json({ message: 'Twilio credentials saved successfully' })
+  } catch (error) {
+    console.error('Error saving Twilio credentials:', error)
+    res.status(500).json({ error: 'Failed to save credentials' })
+  }
+})
 
 // Serve React UI for all other routes
 
