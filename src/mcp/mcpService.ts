@@ -307,7 +307,7 @@ function findAvailableTimeSpans(
     type: 'lunch',
   })
 
-  // Add existing events as blocked periods (with 5-minute buffer)
+  // Add existing events as blocked periods (with 0-minute buffer)
   const bufferMinutes = 0
   for (const event of existingEvents) {
     if (!event.start?.dateTime || !event.end?.dateTime) continue
@@ -573,6 +573,240 @@ export async function checkEventAvailability(
   }
 }
 
+export async function suggestEventTimes(params: SuggestEventTimesProps) {
+  const { serviceDurationMinutes, daysToConsider = 14 } = params
+
+  try {
+    const currentDateSP = moment().tz('America/Sao_Paulo')
+    const endDateSP = currentDateSP.clone().add(daysToConsider, 'days')
+
+    const timeMin = currentDateSP.startOf('day').toISOString()
+    const timeMax = endDateSP.endOf('day').toISOString()
+
+    return new Promise((resolve, reject) => {
+      authorize(async (auth) => {
+        try {
+          // Fetch all events in the time range
+          const events = await getGoogleCalendarEvents({
+            calendarId: GABE_CALENDAR_ID,
+            timeMin,
+            timeMax,
+            singleEvents: true,
+            orderBy: 'startTime',
+            auth,
+          })
+
+          const availableChunks: AvailableTimeSpan[] = []
+          const suggestions: TimeSuggestion[] = []
+
+          // Group events by date for processing
+          const eventsByDate: Record<string, unknown[]> = {}
+          for (const event of events) {
+            if (!event.start?.dateTime) continue
+            const eventDate = moment
+              .tz(event.start.dateTime, 'America/Sao_Paulo')
+              .format('YYYY-MM-DD')
+            if (!eventsByDate[eventDate]) {
+              eventsByDate[eventDate] = []
+            }
+            eventsByDate[eventDate].push(event)
+          }
+
+          // Process each day in the range
+          for (let i = 0; i < daysToConsider; i++) {
+            const currentDay = currentDateSP.clone().add(i, 'days')
+            const dayOfWeek = currentDay.day() // 0 = Sunday, 6 = Saturday
+            const dateString = currentDay.format('YYYY-MM-DD')
+
+            // Skip Sundays and Mondays (salon is closed)
+            if (dayOfWeek === 0 || dayOfWeek === 1) {
+              continue
+            }
+
+            // Skip dates in the past (if current time is past business hours)
+            if (currentDay.isBefore(moment().tz('America/Sao_Paulo'), 'day')) {
+              continue
+            }
+
+            const dayEvents = eventsByDate[dateString] || []
+            const targetDate = currentDay.toDate()
+
+            // Find available time spans for this day
+            const dayAvailableSpans = findAvailableTimeSpans(
+              targetDate,
+              serviceDurationMinutes,
+              dayEvents as unknown[],
+            )
+
+            // Add to overall available chunks
+            availableChunks.push(...dayAvailableSpans)
+
+            // Generate suggestions based on available spans
+            for (const span of dayAvailableSpans) {
+              const spanStart = moment.tz(span.startTime, 'America/Sao_Paulo')
+              const spanEnd = moment.tz(span.endTime, 'America/Sao_Paulo')
+
+              // Generate suggestions within this span
+              // Try to suggest times that group events together (prefer times that are close to existing events)
+              const existingEventsInDay = dayEvents.filter((e: unknown) => {
+                const event = e as {
+                  start?: { dateTime?: string }
+                  end?: { dateTime?: string }
+                }
+                return event.start?.dateTime && event.end?.dateTime
+              })
+
+              // If there are existing events, try to suggest times adjacent to them
+              if (existingEventsInDay.length > 0) {
+                for (const event of existingEventsInDay) {
+                  const eventData = event as {
+                    start: { dateTime: string }
+                    end: { dateTime: string }
+                  }
+                  const eventStart = moment.tz(
+                    eventData.start.dateTime,
+                    'America/Sao_Paulo',
+                  )
+                  const eventEnd = moment.tz(
+                    eventData.end.dateTime,
+                    'America/Sao_Paulo',
+                  )
+
+                  // Suggest time right after this event (if it fits in the span)
+                  const afterEvent = eventEnd.clone().add(15, 'minutes') // 15-minute buffer
+                  const afterEventEnd = afterEvent
+                    .clone()
+                    .add(serviceDurationMinutes, 'minutes')
+
+                  if (
+                    afterEvent.isSameOrAfter(spanStart) &&
+                    afterEventEnd.isSameOrBefore(spanEnd)
+                  ) {
+                    suggestions.push({
+                      startTime: afterEvent.toISOString(),
+                      endTime: afterEventEnd.toISOString(),
+                      date: dateString,
+                      dayOfWeek: currentDay.format('dddd'),
+                      isWeekend: dayOfWeek === 6, // Saturday
+                    })
+                  }
+
+                  // Suggest time right before this event (if it fits in the span)
+                  const beforeEventEnd = eventStart
+                    .clone()
+                    .subtract(15, 'minutes')
+                  const beforeEvent = beforeEventEnd
+                    .clone()
+                    .subtract(serviceDurationMinutes, 'minutes')
+
+                  if (
+                    beforeEvent.isSameOrAfter(spanStart) &&
+                    beforeEventEnd.isSameOrBefore(spanEnd)
+                  ) {
+                    suggestions.push({
+                      startTime: beforeEvent.toISOString(),
+                      endTime: beforeEventEnd.toISOString(),
+                      date: dateString,
+                      dayOfWeek: currentDay.format('dddd'),
+                      isWeekend: dayOfWeek === 6,
+                    })
+                  }
+                }
+              }
+
+              // Always suggest the earliest available time in the span
+              const earliestEnd = spanStart
+                .clone()
+                .add(serviceDurationMinutes, 'minutes')
+              if (earliestEnd.isSameOrBefore(spanEnd)) {
+                suggestions.push({
+                  startTime: spanStart.toISOString(),
+                  endTime: earliestEnd.toISOString(),
+                  date: dateString,
+                  dayOfWeek: currentDay.format('dddd'),
+                  isWeekend: dayOfWeek === 6,
+                })
+              }
+
+              // Suggest times at regular intervals (every 30 minutes)
+              const suggestionTime = spanStart.clone()
+              while (
+                suggestionTime
+                  .clone()
+                  .add(serviceDurationMinutes, 'minutes')
+                  .isSameOrBefore(spanEnd)
+              ) {
+                const suggestionEnd = suggestionTime
+                  .clone()
+                  .add(serviceDurationMinutes, 'minutes')
+
+                suggestions.push({
+                  startTime: suggestionTime.toISOString(),
+                  endTime: suggestionEnd.toISOString(),
+                  date: dateString,
+                  dayOfWeek: currentDay.format('dddd'),
+                  isWeekend: dayOfWeek === 6,
+                })
+
+                suggestionTime.add(30, 'minutes')
+              }
+            }
+          }
+
+          // Remove duplicate suggestions and sort them
+          const uniqueSuggestions = suggestions.filter(
+            (suggestion, index, self) =>
+              index ===
+              self.findIndex((s) => s.startTime === suggestion.startTime),
+          )
+
+          // Sort suggestions: weekdays first, then by date and time
+          uniqueSuggestions.sort((a, b) => {
+            // Prioritize weekdays over weekends (Saturday)
+            if (a.isWeekend !== b.isWeekend) {
+              return a.isWeekend ? 1 : -1
+            }
+
+            // Then sort by start time
+            return (
+              new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+            )
+          })
+
+          // Limit to a reasonable number of suggestions (e.g., 20)
+          const limitedSuggestions = uniqueSuggestions.slice(0, 20)
+
+          resolve({
+            success: true,
+            serviceDurationMinutes,
+            daysConsidered: daysToConsider,
+            availableChunks: availableChunks.slice(0, 50), // Limit available chunks to prevent overwhelming response
+            suggestions: limitedSuggestions,
+            summary: {
+              totalAvailableChunks: availableChunks.length,
+              totalSuggestions: limitedSuggestions.length,
+              weekdaySuggestions: limitedSuggestions.filter((s) => !s.isWeekend)
+                .length,
+              weekendSuggestions: limitedSuggestions.filter((s) => s.isWeekend)
+                .length,
+            },
+          })
+        } catch (error) {
+          reject(error)
+        }
+      })
+    })
+  } catch (error) {
+    console.error('Error suggesting event times:', error)
+    return {
+      success: false,
+      error: 'Erro ao sugerir horários. Por favor, tente novamente.',
+      availableChunks: [],
+      suggestions: [],
+    }
+  }
+}
+
 export type FetchCalendarEventsProps = {
   timeMin: string
   timeMax: string
@@ -619,6 +853,19 @@ export type AvailableTimeSpan = {
 export type CheckEventCancellationEligibilityProps = {
   eventId: string
   userPhone: string
+}
+
+export type SuggestEventTimesProps = {
+  serviceDurationMinutes: number
+  daysToConsider?: number // defaults to 14 days if not provided
+}
+
+export type TimeSuggestion = {
+  startTime: string
+  endTime: string
+  date: string
+  dayOfWeek: string
+  isWeekend: boolean
 }
 
 export type ServiceItem = {
@@ -707,6 +954,11 @@ export type MCPFunctions = {
     function: (params: CancelCalendarEventProps) => Promise<any>
     description: string
     parameters: CancelCalendarEventProps
+  }
+  suggestEventTimes: {
+    function: (params: SuggestEventTimesProps) => Promise<any>
+    description: string
+    parameters: SuggestEventTimesProps
   }
 }
 
@@ -884,6 +1136,15 @@ export const mcpFunctions: MCPFunctions = {
       eventId: 'string',
     },
   },
+  suggestEventTimes: {
+    function: suggestEventTimes,
+    description:
+      'Sugerir horários disponíveis para agendamento considerando a disponibilidade da agenda, duração do serviço e preferências de agrupamento de eventos. Evita sugerir sábados quando possível e agrupa eventos próximos uns dos outros.',
+    parameters: {
+      serviceDurationMinutes: 120, // example number, will be overridden by actual parameter
+      daysToConsider: 14, // optional, defaults to 14
+    },
+  },
 }
 
 // MCP function call
@@ -893,7 +1154,8 @@ export async function handlerMPCRequest(
     | Maybe<Record<string, unknown>>
     | FetchCalendarEventsProps
     | CheckEventAvailabilityProps
-    | CheckEventCancellationEligibilityProps,
+    | CheckEventCancellationEligibilityProps
+    | SuggestEventTimesProps,
 ) {
   if (!mcpFunctions[functionName]) {
     throw new Error(`Function ${functionName} not found`)
@@ -927,6 +1189,10 @@ export async function handlerMPCRequest(
       case 'cancelCalendarEvent':
         return mcpFunctions[functionName].function(
           parameters as CancelCalendarEventProps,
+        )
+      case 'suggestEventTimes':
+        return mcpFunctions[functionName].function(
+          parameters as SuggestEventTimesProps,
         )
     }
   } catch (error) {

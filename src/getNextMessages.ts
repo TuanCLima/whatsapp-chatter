@@ -12,6 +12,7 @@ import {
   getProfessionalLinkContactToAttachInAnswerTool,
   getSalonInfoTool,
   servicesTool,
+  suggestEventTimesTool,
 } from './mcp/toolConfig/toolConfig'
 import type { ChatMessage } from './types/types'
 import { LLM_MODEL, openai } from './webhook'
@@ -21,14 +22,7 @@ export async function getNextMessages(
   signal?: AbortSignal,
 ) {
   const newMessagesForFeed: ChatMessage[] = []
-  // console.log(
-  //   'messagesFeed:',
-  //   inspect(messagesFeed.slice(1), {
-  //     depth: 3,
-  //     maxStringLength: null,
-  //     colors: true,
-  //   }),
-  // )
+
   const completion = await openai.chat.completions.create(
     {
       model: LLM_MODEL,
@@ -45,6 +39,7 @@ export async function getNextMessages(
         createEventTool,
         getProfessionalLinkContactToAttachInAnswerTool,
         cancelEventTool,
+        suggestEventTimesTool,
       ],
       tool_choice: 'auto',
     },
