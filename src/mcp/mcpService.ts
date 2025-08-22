@@ -799,6 +799,7 @@ export async function suggestEventTimes(params: SuggestEventTimesProps) {
                 .tz(chunk.endTime, 'America/Sao_Paulo')
                 .format('YYYY-MM-DD HH:mm:ss'),
             }))
+          // Limit to a reasonable number of suggestions (e.g., 20)
 
           resolve({
             success: true,
