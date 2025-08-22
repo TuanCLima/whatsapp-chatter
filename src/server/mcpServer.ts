@@ -1,15 +1,19 @@
-import express, { Request, Response } from 'express'
+import fs from 'node:fs'
+import path from 'node:path'
 import cors from 'cors'
-import { getSaoPauloDate, MCPFunctions, mcpFunctions } from '../mcp/mcpService'
+import express, { type Request, type Response } from 'express'
+import { google } from 'googleapis'
+import { authorize } from '../googleCalendar/googleAuth'
 import {
   cancelCalendarEvent,
   createCalendarEvent,
   getGoogleCalendarEvents,
 } from '../googleCalendar/googleCalendar'
-import { authorize } from '../googleCalendar/googleAuth'
-import path from 'path'
-import fs from 'fs'
-import { google } from 'googleapis'
+import {
+  getSaoPauloDate,
+  type MCPFunctions,
+  mcpFunctions,
+} from '../mcp/mcpService'
 import { GABE_CALENDAR_ID } from '../utils/contants'
 
 const router = express.Router()
@@ -68,6 +72,7 @@ router.post(
         case 'checkAndCancelEventIfEligible':
         case 'createCalendarEvent':
         case 'cancelCalendarEvent':
+        case 'suggestEventTimes':
           result = await mcpFunctions[functionName].function(parameters)
       }
 
