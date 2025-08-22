@@ -12,6 +12,7 @@ enum FunctionName {
   checkAndCancelEventIfEligible = 'checkAndCancelEventIfEligible',
   createCalendarEvent = 'createCalendarEvent',
   cancelCalendarEvent = 'cancelCalendarEvent',
+  suggestEventTimes = 'suggestEventTimes',
 }
 
 const dateTool: ChatCompletionTool = {
@@ -303,6 +304,32 @@ const cancelEventTool: ChatCompletionTool = {
   },
 }
 
+const suggestEventTimesTool: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: FunctionName.suggestEventTimes,
+    description:
+      'Sugerir horários disponíveis para agendamento considerando a agenda atual, duração do serviço e preferências inteligentes de agrupamento. Esta ferramenta analisa a disponibilidade em múltiplos dias, evita sugerir sábados quando possível (por ser o dia mais procurado), e tenta agrupar eventos para otimizar a agenda.',
+    parameters: {
+      type: 'object',
+      properties: {
+        serviceDurationMinutes: {
+          type: 'integer',
+          description:
+            'Duração do serviço em minutos para o qual se deseja sugerir horários.',
+        },
+        daysToConsider: {
+          type: 'integer',
+          description:
+            'Número de dias a partir de hoje para considerar na busca por horários. Se não fornecido, considera 14 dias por padrão.',
+          default: 14,
+        },
+      },
+      required: ['serviceDurationMinutes'],
+    },
+  },
+}
+
 export {
   dateTool,
   servicesTool,
@@ -315,5 +342,6 @@ export {
   checkAndCancelEventIfEligibleTool,
   createEventTool,
   cancelEventTool,
+  suggestEventTimesTool,
   FunctionName,
 }
