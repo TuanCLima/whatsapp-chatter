@@ -1,4 +1,4 @@
-import { Database, LogOut, Settings } from 'lucide-react'
+import { Database, LogOut, Settings, Bot } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -39,6 +39,12 @@ export default function AdminHeader() {
             className="text-xs text-slate-300 hover:text-white flex items-center gap-1"
           >
             <Settings className="h-4 w-4" /> Config
+          </Link>
+          <Link
+            to="/assistant-config"
+            className="text-xs text-slate-300 hover:text-white flex items-center gap-1"
+          >
+            <Bot className="h-4 w-4" /> Assistant
           </Link>
         </div>
 

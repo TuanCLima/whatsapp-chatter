@@ -5,6 +5,7 @@ import AdminHeader from '@/components/auth/AdminHeader'
 import LoadingScreen from '@/components/auth/LoadingScreen'
 import LoginScreen from '@/components/auth/LoginScreen'
 import ChatArea from '@/components/chat/ChatArea'
+import AssistantConfigPage from '@/components/config/AssistantConfigPage'
 import TwilioConfigPage from '@/components/config/TwilioConfigPage'
 import TwilioGuard from '@/components/guards/TwilioGuard'
 import Sidebar from '@/components/sidebar/Sidebar'
@@ -74,6 +75,21 @@ function ProtectedConfigLayout() {
   )
 }
 
+function ProtectedAssistantConfigLayout() {
+  const { isAuthenticated, isLoading } = useAuth()
+
+  if (isLoading) return <LoadingScreen />
+  if (!isAuthenticated) return <LoginScreen />
+  return (
+    <div className="h-screen flex flex-col bg-background">
+      <AdminHeader />
+      <div className="flex-1 overflow-hidden">
+        <AssistantConfigPage />
+      </div>
+    </div>
+  )
+}
+
 function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="whatsapp-theme">
@@ -83,6 +99,7 @@ function App() {
             <Routes>
               <Route path="/data" element={<ProtectedDataLayout />} />
               <Route path="/config" element={<ProtectedConfigLayout />} />
+              <Route path="/assistant-config" element={<ProtectedAssistantConfigLayout />} />
               <Route path="/*" element={<ProtectedChatLayout />} />
             </Routes>
           </ChatProvider>

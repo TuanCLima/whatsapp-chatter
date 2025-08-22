@@ -73,3 +73,35 @@ export type SaasUser = typeof saasUsers.$inferSelect
 
 export type InsertUserSaasUserMapping = typeof userSaasUserMapping.$inferInsert
 export type UserSaasUserMapping = typeof userSaasUserMapping.$inferSelect
+
+// Assistant configuration tables
+export const assistantPrompts = pgTable('assistant_prompts', {
+  id: serial('id').primaryKey(),
+  saasUserId: text('saas_user_id')
+    .notNull()
+    .references(() => saasUsers.id, { onDelete: 'cascade' }),
+  prompt: text('prompt').notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const assistantTools = pgTable('assistant_tools', {
+  id: serial('id').primaryKey(),
+  saasUserId: text('saas_user_id')
+    .notNull()
+    .references(() => saasUsers.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description').notNull(),
+  parameters: text('parameters').notNull(), // JSON string
+  implementation: text('implementation').notNull(), // JavaScript code
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export type InsertAssistantPrompt = typeof assistantPrompts.$inferInsert
+export type AssistantPrompt = typeof assistantPrompts.$inferSelect
+
+export type InsertAssistantTool = typeof assistantTools.$inferInsert
+export type AssistantTool = typeof assistantTools.$inferSelect

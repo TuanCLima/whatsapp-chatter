@@ -2,6 +2,7 @@ import path from 'node:path'
 import express from 'express'
 import Twilio from 'twilio'
 import mcpRouter from './server/mcpServer'
+import assistantConfigRouter from './routes/assistantConfig'
 import { whatsappHonoWebhook, whatsappSaasWebhook } from './webhook'
 import 'dotenv/config'
 import cookieParser from 'cookie-parser'
@@ -55,6 +56,7 @@ app.use(express.json())
 app.use(cookieParser())
 
 app.use('/api/mcp', mcpRouter)
+app.use('/api/assistant', assistantConfigRouter)
 
 /**
  * DRIZZLE STUDIO PROXY SETUP

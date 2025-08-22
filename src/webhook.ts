@@ -19,7 +19,7 @@ const authToken = process.env.TWILIO_AUTH_TOKEN
 const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER
 
 import { getSaoPauloDate } from './mcp/mcpService'
-import { getInitialPrompt } from './utils/utils'
+import { getInitialPrompt, getInitialPromptForPhoneNumber } from './utils/utils'
 
 // const LLM_BASE_URL = "https://api.deepseek.com";
 // export const LLM_MODEL = "deepseek-chat";
@@ -159,10 +159,12 @@ export async function whatsappHonoWebhook(
     .where(eq(messages.phoneNumber, from))
     .orderBy(messages.timestamp)
 
+  const customPrompt = await getInitialPromptForPhoneNumber(from)
+  
   const initialMessageCommon: InsertMessage = {
     phoneNumber: from,
     role: 'system',
-    content: getInitialPrompt(),
+    content: customPrompt,
   }
 
   messagesFeed.unshift({
@@ -397,10 +399,12 @@ export async function whatsappSaasWebhook(
       .where(eq(messages.phoneNumber, from))
       .orderBy(messages.timestamp)
 
+    const customPrompt = await getInitialPromptForPhoneNumber(from)
+
     const initialMessageCommon: InsertMessage = {
       phoneNumber: from,
       role: 'system',
-      content: getInitialPrompt(),
+      content: customPrompt,
     }
 
     messagesFeed.unshift({
