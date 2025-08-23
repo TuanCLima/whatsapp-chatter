@@ -1,7 +1,11 @@
 import 'dotenv/config'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../db'
-import { assistantPrompts, assistantTools, saasUsers } from '../db/schema-postgres'
+import {
+  assistantPrompts,
+  assistantTools,
+  saasUsers,
+} from '../db/schema-postgres'
 import { FALLBACK_PROMPT } from '../utils/contants'
 
 export class AssistantConfigService {
@@ -19,11 +23,13 @@ export class AssistantConfigService {
         })
         .from(assistantPrompts)
         .innerJoin(saasUsers, eq(assistantPrompts.saasUserId, saasUsers.id))
-        .where(and(
-          eq(assistantPrompts.isActive, true)
-          // TODO: We need to join with user_saas_user_mapping to connect phone numbers to SaaS users
-          // For now, we'll use the first active prompt we find
-        ))
+        .where(
+          and(
+            eq(assistantPrompts.isActive, true),
+            // TODO: We need to join with user_saas_user_mapping to connect phone numbers to SaaS users
+            // For now, we'll use the first active prompt we find
+          ),
+        )
         .limit(1)
 
       if (result.length > 0) {
@@ -49,10 +55,12 @@ export class AssistantConfigService {
           prompt: assistantPrompts.prompt,
         })
         .from(assistantPrompts)
-        .where(and(
-          eq(assistantPrompts.saasUserId, userId),
-          eq(assistantPrompts.isActive, true)
-        ))
+        .where(
+          and(
+            eq(assistantPrompts.saasUserId, userId),
+            eq(assistantPrompts.isActive, true),
+          ),
+        )
         .limit(1)
 
       if (result.length > 0) {
@@ -76,14 +84,16 @@ export class AssistantConfigService {
       const tools = await db
         .select()
         .from(assistantTools)
-        .where(and(
-          eq(assistantTools.saasUserId, userId),
-          eq(assistantTools.isActive, true)
-        ))
+        .where(
+          and(
+            eq(assistantTools.saasUserId, userId),
+            eq(assistantTools.isActive, true),
+          ),
+        )
 
-      return tools.map(tool => ({
+      return tools.map((tool) => ({
         ...tool,
-        parameters: JSON.parse(tool.parameters)
+        parameters: JSON.parse(tool.parameters),
       }))
     } catch (error) {
       console.error('Error fetching custom tools:', error)
@@ -97,8 +107,27 @@ export class AssistantConfigService {
   async getToolsForPhoneNumber(phoneNumber: string) {
     try {
       // TODO: Implement proper phone number to SaaS user mapping
-      // For now, return empty array
-      return []
+      // For now, get tools from the first SaaS user (temporary solution)
+      const firstSaasUser = await db.select().from(saasUsers).limit(1)
+
+      if (firstSaasUser.length === 0) {
+        return []
+      }
+
+      const tools = await db
+        .select()
+        .from(assistantTools)
+        .where(
+          and(
+            eq(assistantTools.saasUserId, firstSaasUser[0].id),
+            eq(assistantTools.isActive, true),
+          ),
+        )
+
+      return tools.map((tool) => ({
+        ...tool,
+        parameters: JSON.parse(tool.parameters),
+      }))
     } catch (error) {
       console.error('Error fetching custom tools for phone number:', error)
       return []

@@ -14,33 +14,53 @@ import {
   servicesTool,
   suggestEventTimesTool,
 } from './mcp/toolConfig/toolConfig'
+import {
+  executeCustomTool,
+  getCustomToolImplementation,
+  getToolsForPhoneNumber,
+} from './services/CustomToolExecutor'
 import type { ChatMessage } from './types/types'
 import { LLM_MODEL, openai } from './webhook'
 
 export async function getNextMessages(
   messagesFeed: ChatMessage[],
+  phoneNumber?: string,
   signal?: AbortSignal,
 ) {
   const newMessagesForFeed: ChatMessage[] = []
+
+  // Get built-in tools
+  const builtInTools = [
+    dateTool,
+    getSalonInfoTool,
+    servicesTool,
+    cancellationRulesConfigTool,
+    fetchEventsTool,
+    checkEventAvailabilityTool,
+    checkEventCancellationEligibilityTool,
+    checkAndCancelEventIfEligibleTool,
+    createEventTool,
+    getProfessionalLinkContactToAttachInAnswerTool,
+    cancelEventTool,
+    suggestEventTimesTool,
+  ]
+
+  // Get all tools including custom ones
+  const allTools = phoneNumber
+    ? await getToolsForPhoneNumber(phoneNumber, builtInTools)
+    : builtInTools
+
+  console.log(
+    phoneNumber,
+    'tools names:',
+    allTools.map((t) => t.function.name),
+  )
 
   const completion = await openai.chat.completions.create(
     {
       model: LLM_MODEL,
       messages: messagesFeed,
-      tools: [
-        dateTool,
-        getSalonInfoTool,
-        servicesTool,
-        cancellationRulesConfigTool,
-        fetchEventsTool,
-        checkEventAvailabilityTool,
-        checkEventCancellationEligibilityTool,
-        checkAndCancelEventIfEligibleTool,
-        createEventTool,
-        getProfessionalLinkContactToAttachInAnswerTool,
-        cancelEventTool,
-        suggestEventTimesTool,
-      ],
+      tools: allTools,
       tool_choice: 'auto',
     },
     {
@@ -86,10 +106,38 @@ export async function getNextMessages(
         ],
       })
 
-      const toolResponse = await toolCall({
-        functionName,
-        parameters: JSON.parse(_arguments),
-      })
+      let toolResponse: unknown
+
+      // Check if this is a custom tool
+      const customImplementation = phoneNumber
+        ? await getCustomToolImplementation(
+            functionName,
+            undefined,
+            phoneNumber,
+          )
+        : null
+
+      if (customImplementation) {
+        // Execute custom tool
+        try {
+          toolResponse = await executeCustomTool(
+            functionName,
+            JSON.parse(_arguments),
+            customImplementation,
+          )
+        } catch (error) {
+          console.error(`Error executing custom tool ${functionName}:`, error)
+          toolResponse = {
+            error: `Tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          }
+        }
+      } else {
+        // Execute built-in tool via MCP server
+        toolResponse = await toolCall({
+          functionName,
+          parameters: JSON.parse(_arguments),
+        })
+      }
 
       // console.log(
       //   '### tool_calls loop',
@@ -109,6 +157,7 @@ export async function getNextMessages(
     try {
       const newMessages = await getNextMessages(
         [...messagesFeed, ...newMessagesForFeed],
+        phoneNumber,
         signal,
       )
       newMessagesForFeed.push(...newMessages)
