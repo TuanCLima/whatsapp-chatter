@@ -160,7 +160,6 @@ export async function whatsappHonoWebhook(
     .orderBy(messages.timestamp)
 
   const customPrompt = await getInitialPromptForPhoneNumber(from)
-  
   const initialMessageCommon: InsertMessage = {
     phoneNumber: from,
     role: 'system',
@@ -248,6 +247,7 @@ export async function whatsappHonoWebhook(
   try {
     const newMessagesForFeed = await getNextMessages(
       chatMessages,
+      from,
       abortController.signal,
     )
 
@@ -487,6 +487,7 @@ export async function whatsappSaasWebhook(
 
     const newMessagesForFeed = await getNextMessages(
       chatMessages,
+      from,
       abortController.signal,
     )
 
