@@ -44,6 +44,14 @@ export const saasUsers = pgTable('saas_users', {
   // Webhook configuration
   webhookPath: text('webhook_path').unique(), // e.g., "/webhook/user123"
 
+  // Google Calendar integration
+  googleRefreshToken: text('google_refresh_token'),
+  googleAccessToken: text('google_access_token'),
+  googleTokenExpiry: timestamp('google_token_expiry'),
+  googleCalendarEnabled: boolean('google_calendar_enabled')
+    .default(false)
+    .notNull(),
+
   // Subscription/billing info
   subscriptionStatus: text('subscription_status', {
     enum: ['trial', 'active', 'cancelled', 'expired'],
@@ -105,3 +113,20 @@ export type AssistantPrompt = typeof assistantPrompts.$inferSelect
 
 export type InsertAssistantTool = typeof assistantTools.$inferInsert
 export type AssistantTool = typeof assistantTools.$inferSelect
+
+// Predefined tools configuration table
+export const predefinedToolsConfig = pgTable('predefined_tools_config', {
+  id: serial('id').primaryKey(),
+  saasUserId: text('saas_user_id')
+    .notNull()
+    .references(() => saasUsers.id, { onDelete: 'cascade' }),
+  toolType: text('tool_type').notNull(), // 'calendar_management', 'email_automation', etc.
+  enabled: boolean('enabled').default(false).notNull(),
+  configData: text('config_data'), // JSON string for tool-specific configuration
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export type InsertPredefinedToolsConfig =
+  typeof predefinedToolsConfig.$inferInsert
+export type PredefinedToolsConfig = typeof predefinedToolsConfig.$inferSelect

@@ -1,19 +1,25 @@
 import path from 'node:path'
 import express from 'express'
 import Twilio from 'twilio'
-import mcpRouter from './server/mcpServer'
 import assistantConfigRouter from './routes/assistantConfig'
+import predefinedToolsRouter from './routes/predefinedTools'
+import mcpRouter from './server/mcpServer'
 import { whatsappHonoWebhook, whatsappSaasWebhook } from './webhook'
 import 'dotenv/config'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import { and, desc, eq, ne, or } from 'drizzle-orm'
-// import { createProxyMiddleware } from 'http-proxy-middleware'
 import { db } from './db'
-import { messages, users } from './db/schema-postgres'
+import {
+  messages,
+  saasUsers,
+  userSaasUserMapping,
+  users,
+} from './db/schema-postgres'
 import { authService } from './services/AuthService'
 import { twilioClientPool } from './services/TwilioClientPool'
 import type { Contact, Conversation, Message } from './types/types'
+import { FRONTEND_LOCALHOST, PRODUCTION_DOMAIN } from './utils/contants'
 import {
   getUniqueWhatsAppContacts,
   getWhatsAppConversationByContactId,
@@ -57,6 +63,57 @@ app.use(cookieParser())
 
 app.use('/api/mcp', mcpRouter)
 app.use('/api/assistant', assistantConfigRouter)
+app.use('/api/predefined-tools', predefinedToolsRouter)
+
+// OAuth callback route for Google Calendar authentication
+app.get('/oauth/callback', (req, res) => {
+  const code = req.query.code as string
+  const error = req.query.error as string
+
+  // Get the frontend origin based on environment
+  const frontendOrigin =
+    process.env.NODE_ENV === 'production'
+      ? PRODUCTION_DOMAIN
+      : FRONTEND_LOCALHOST
+
+  // Create an HTML page that sends the message to the parent window
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>OAuth Callback</title>
+    </head>
+    <body>
+      <script>
+        try {
+          if (window.opener) {
+            const data = ${JSON.stringify({ code, error })};
+            const frontendOrigin = '${frontendOrigin}';
+            console.log('Sending OAuth data to parent:', data, 'Target origin:', frontendOrigin);
+            if (data.code) {
+              window.opener.postMessage({
+                type: 'GOOGLE_AUTH_SUCCESS',
+                code: data.code
+              }, frontendOrigin);
+            } else if (data.error) {
+              window.opener.postMessage({
+                type: 'GOOGLE_AUTH_ERROR',
+                error: data.error
+              }, frontendOrigin);
+            }
+          }
+        } catch (e) {
+          console.error('Error sending message to parent:', e);
+        }
+        setTimeout(() => window.close(), 1000);
+      </script>
+      <p>Authentication ${code ? 'successful' : 'failed'}. This window will close automatically.</p>
+    </body>
+    </html>
+  `
+
+  res.send(html)
+})
 
 /**
  * DRIZZLE STUDIO PROXY SETUP
@@ -213,6 +270,101 @@ app.delete(
     } catch (error) {
       console.error('Error clearing phone messages (admin):', error)
       res.status(500).json({ error: 'Failed to clear user messages' })
+    }
+  },
+)
+
+// Check and create missing user-SaaS user mappings
+app.get(
+  '/admin/db/check-missing-mappings',
+  authenticateAdmin,
+  async (_req, res) => {
+    try {
+      // Get all WhatsApp users
+      const allUsers = await db.select().from(users)
+
+      // Get all existing mappings
+      const allMappings = await db.select().from(userSaasUserMapping)
+      const mappedPhoneNumbers = new Set(allMappings.map((m) => m.phoneNumber))
+
+      // Find users without mappings
+      const unmappedUsers = allUsers.filter(
+        (user) => !mappedPhoneNumbers.has(user.phoneNumber),
+      )
+
+      res.json({
+        totalUsers: allUsers.length,
+        mappedUsers: allMappings.length,
+        unmappedUsers: unmappedUsers.length,
+        unmappedPhoneNumbers: unmappedUsers.map((u) => u.phoneNumber),
+      })
+    } catch (error) {
+      console.error('Error checking missing mappings:', error)
+      res.status(500).json({ error: 'Failed to check missing mappings' })
+    }
+  },
+)
+
+// Create missing mappings for all unmapped users to the first SaaS user (for migration purposes)
+app.post(
+  '/admin/db/create-missing-mappings',
+  authenticateAdmin,
+  async (req, res) => {
+    try {
+      const { saasUserId } = req.body as { saasUserId?: string }
+
+      if (!saasUserId) {
+        res
+          .status(400)
+          .json({ error: 'saasUserId is required in request body' })
+        return
+      }
+
+      // Verify SaaS user exists
+      const saasUser = await db
+        .select()
+        .from(saasUsers)
+        .where(eq(saasUsers.id, saasUserId))
+        .limit(1)
+
+      if (saasUser.length === 0) {
+        res.status(404).json({ error: 'SaaS user not found' })
+        return
+      }
+
+      // Get all WhatsApp users
+      const allUsers = await db.select().from(users)
+
+      // Get all existing mappings
+      const allMappings = await db.select().from(userSaasUserMapping)
+      const mappedPhoneNumbers = new Set(allMappings.map((m) => m.phoneNumber))
+
+      // Find users without mappings
+      const unmappedUsers = allUsers.filter(
+        (user) => !mappedPhoneNumbers.has(user.phoneNumber),
+      )
+
+      if (unmappedUsers.length === 0) {
+        res.json({ message: 'No unmapped users found', created: 0 })
+        return
+      }
+
+      // Create mappings for unmapped users
+      const newMappings = unmappedUsers.map((user) => ({
+        phoneNumber: user.phoneNumber,
+        saasUserId: saasUserId,
+      }))
+
+      await db.insert(userSaasUserMapping).values(newMappings)
+
+      res.json({
+        message: 'Missing mappings created successfully',
+        created: newMappings.length,
+        mappedTo: saasUserId,
+      })
+    } catch (error) {
+      console.error('Error creating missing mappings:', error)
+      res.status(500).json({ error: 'Failed to create missing mappings' })
     }
   },
 )

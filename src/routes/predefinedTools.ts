@@ -1,0 +1,209 @@
+import express from 'express'
+import { predefinedToolsService } from '../services/PredefinedToolsService'
+import { getSaasGoogleCalendarService } from '../services/SaasGoogleCalendarService'
+
+const router = express.Router()
+
+// Middleware to authenticate user (this should be extracted to a shared file)
+const authenticateUser = async (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization
+    const token = authHeader?.startsWith('Bearer ')
+      ? authHeader.substring(7)
+      : req.cookies?.admin_token
+
+    if (!token) {
+      res.status(401).json({ error: 'No token provided' })
+      return
+    }
+
+    // Simple token validation (in production, use proper JWT library)
+    const payload = JSON.parse(Buffer.from(token, 'base64').toString())
+
+    if (payload.exp < Date.now()) {
+      res.status(401).json({ error: 'Token expired' })
+      return
+    }
+
+    req.user = {
+      userId: payload.userId,
+      role: payload.role,
+      exp: payload.exp,
+    }
+    next()
+  } catch (error) {
+    console.error('Authentication error:', error)
+    res.status(401).json({ error: 'Authentication failed' })
+  }
+}
+
+/**
+ * Get all predefined tools configuration for the authenticated user
+ */
+router.get('/', authenticateUser, async (req, res) => {
+  try {
+    const saasUserId = req.user?.userId
+
+    if (!saasUserId) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
+    const tools =
+      await predefinedToolsService.getUserPredefinedTools(saasUserId)
+    res.json({ tools })
+  } catch (error) {
+    console.error('Error fetching predefined tools:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+/**
+ * Get specific tool configuration
+ */
+router.get('/:toolType', authenticateUser, async (req, res) => {
+  try {
+    const saasUserId = req.user?.userId
+    const { toolType } = req.params
+
+    if (!saasUserId) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
+    const config = await predefinedToolsService.getToolConfig(
+      saasUserId,
+      toolType,
+    )
+    res.json({ config })
+  } catch (error) {
+    console.error('Error fetching tool config:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+/**
+ * Update tool configuration
+ */
+router.put('/:toolType', authenticateUser, async (req, res) => {
+  try {
+    const saasUserId = req.user?.userId
+    const { toolType } = req.params
+    const { enabled, configData } = req.body
+
+    if (!saasUserId) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
+    const config = await predefinedToolsService.updateToolConfig(
+      saasUserId,
+      toolType,
+      enabled,
+      configData,
+    )
+
+    res.json({ config })
+  } catch (error) {
+    console.error('Error updating tool config:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+/**
+ * Get Google Calendar authorization URL
+ */
+router.get('/calendar/auth-url', authenticateUser, async (req, res) => {
+  try {
+    const saasUserId = req.user?.userId
+
+    if (!saasUserId) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
+    const authUrl = getSaasGoogleCalendarService().generateAuthUrl()
+    res.json({ authUrl })
+  } catch (error) {
+    console.error('Error generating auth URL:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+/**
+ * Handle Google Calendar OAuth callback
+ */
+router.post('/calendar/oauth-callback', authenticateUser, async (req, res) => {
+  try {
+    const saasUserId = req.user?.userId
+    const { code } = req.body
+
+    if (!saasUserId) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
+    if (!code) {
+      res.status(400).json({ error: 'Authorization code is required' })
+      return
+    }
+
+    await getSaasGoogleCalendarService().exchangeCodeForTokens(code, saasUserId)
+    res.json({
+      success: true,
+      message: 'Google Calendar authorized successfully',
+    })
+  } catch (error) {
+    console.error('Error handling OAuth callback:', error)
+    res.status(500).json({ error: 'Failed to authorize Google Calendar' })
+  }
+})
+
+/**
+ * Check calendar tool status
+ */
+router.get('/calendar/status', authenticateUser, async (req, res) => {
+  try {
+    const saasUserId = req.user?.userId
+
+    if (!saasUserId) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
+    const status = await predefinedToolsService.isCalendarToolReady(saasUserId)
+    res.json(status)
+  } catch (error) {
+    console.error('Error checking calendar status:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+/**
+ * Revoke Google Calendar access
+ */
+router.delete('/calendar/access', authenticateUser, async (req, res) => {
+  try {
+    const saasUserId = req.user?.userId
+
+    if (!saasUserId) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
+    await getSaasGoogleCalendarService().revokeAccess(saasUserId)
+    res.json({
+      success: true,
+      message: 'Google Calendar access revoked successfully',
+    })
+  } catch (error) {
+    console.error('Error revoking calendar access:', error)
+    res.status(500).json({ error: 'Failed to revoke calendar access' })
+  }
+})
+
+export default router

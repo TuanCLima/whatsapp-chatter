@@ -1,9 +1,9 @@
 import 'dotenv/config'
 import * as vm from 'node:vm'
 import type { ChatCompletionTool } from 'openai/resources/chat'
-import { db } from '../db'
 import type { AssistantTool } from '../db/schema-postgres'
 import { assistantConfigService } from './AssistantConfigService'
+import { predefinedToolsService } from './PredefinedToolsService'
 
 export interface CustomToolDefinition {
   id: string
@@ -145,17 +145,20 @@ export async function getToolsForPhoneNumber(
   builtInTools: ChatCompletionTool[],
 ): Promise<ChatCompletionTool[]> {
   try {
-    // Get custom tools for this phone number (this will need the SaaS user mapping)
-    const customTools =
+    // Get tools for this phone number (this will need the SaaS user mapping)
+    const toolsData =
       await assistantConfigService.getToolsForPhoneNumber(phoneNumber)
 
     // Convert custom tools to OpenAI format
-    const convertedCustomTools = customTools
+    const convertedCustomTools = toolsData.customTools
       .map((tool) => convertToOpenAITool(tool))
       .filter((tool): tool is ChatCompletionTool => tool !== null)
 
-    // Combine built-in tools with custom tools
-    return [...builtInTools, ...convertedCustomTools]
+    // Convert predefined tools to ChatCompletionTool format (they're already in the right format)
+    const predefinedTools = toolsData.predefinedTools as ChatCompletionTool[]
+
+    // Combine built-in tools with custom tools and predefined tools
+    return [...builtInTools, ...convertedCustomTools, ...predefinedTools]
   } catch (error) {
     console.error('Error getting tools for phone number:', error)
     // Return only built-in tools if there's an error
@@ -171,16 +174,19 @@ export async function getToolsForUserId(
   builtInTools: ChatCompletionTool[],
 ): Promise<ChatCompletionTool[]> {
   try {
-    // Get custom tools for this user
-    const customTools = await assistantConfigService.getToolsForUserId(userId)
+    // Get tools for this user
+    const toolsData = await assistantConfigService.getToolsForUserId(userId)
 
     // Convert custom tools to OpenAI format
-    const convertedCustomTools = customTools
+    const convertedCustomTools = toolsData.customTools
       .map((tool) => convertToOpenAITool(tool))
       .filter((tool): tool is ChatCompletionTool => tool !== null)
 
-    // Combine built-in tools with custom tools
-    return [...builtInTools, ...convertedCustomTools]
+    // Convert predefined tools to ChatCompletionTool format (they're already in the right format)
+    const predefinedTools = toolsData.predefinedTools as ChatCompletionTool[]
+
+    // Combine built-in tools with custom tools and predefined tools
+    return [...builtInTools, ...convertedCustomTools, ...predefinedTools]
   } catch (error) {
     console.error('Error getting tools for user ID:', error)
     // Return only built-in tools if there's an error
@@ -197,19 +203,70 @@ export async function getCustomToolImplementation(
   phoneNumber?: string,
 ): Promise<string | null> {
   try {
-    let customTools: AssistantTool[] = []
-
     if (userId) {
-      customTools = await assistantConfigService.getToolsForUserId(userId)
+      const toolsData = await assistantConfigService.getToolsForUserId(userId)
+      const tool = toolsData.customTools.find((t) => t.name === toolName)
+      return tool ? tool.implementation : null
     } else if (phoneNumber) {
-      customTools =
+      const toolsData =
         await assistantConfigService.getToolsForPhoneNumber(phoneNumber)
+      const tool = toolsData.customTools.find((t) => t.name === toolName)
+      return tool ? tool.implementation : null
     }
 
-    const tool = customTools.find((t) => t.name === toolName)
-    return tool ? tool.implementation : null
+    return null
   } catch (error) {
     console.error('Error getting custom tool implementation:', error)
     return null
   }
+}
+
+const predefinedToolNames = [
+  'fetchCalendarEvents',
+  'createCalendarEvent',
+  'checkEventAvailability',
+  'suggestEventTimes',
+  'cancelCalendarEvent',
+  'checkAndCancelEventIfEligible',
+  'checkEventCancellationEligibility',
+]
+
+/**
+ * Check if a tool name is a predefined tool and execute it
+ */
+export async function executePredefinedTool(
+  toolName: string,
+  parameters: Record<string, unknown>,
+  userId?: string,
+  _phoneNumber?: string,
+): Promise<unknown | null> {
+  try {
+    if (!predefinedToolNames.includes(toolName)) {
+      return null // Not a predefined tool
+    }
+
+    // For now, we only have calendar tools, so we need a user ID
+    if (!userId) {
+      // Try to get user ID from phone number (this will need proper mapping implementation)
+      // For now, we can't execute predefined tools without a user ID
+      throw new Error('User ID required for predefined tool execution')
+    }
+
+    // Execute the predefined tool
+    return await predefinedToolsService.executeCalendarFunction(
+      userId,
+      toolName,
+      parameters,
+    )
+  } catch (error) {
+    console.error('Error executing predefined tool:', error)
+    throw error
+  }
+}
+
+/**
+ * Check if a tool name is a predefined tool
+ */
+export function isPredefinedTool(toolName: string): boolean {
+  return predefinedToolNames.includes(toolName)
 }

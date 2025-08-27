@@ -1,5 +1,3 @@
-import fs from 'node:fs'
-import path from 'node:path'
 import cors from 'cors'
 import express, { type Request, type Response } from 'express'
 import { google } from 'googleapis'
@@ -199,45 +197,6 @@ router.post('/cancel-event', async (req, res) => {
       return
     }
   })
-})
-
-const TOKEN_PATH = path.join(__dirname, '..', 'token.json')
-
-// Callback route to handle the redirect from Google
-router.get('/oauth2callback', async (req, res) => {
-  const code = req.query.code as string
-
-  if (!code) {
-    res.status(400).send('Authorization code not found')
-    return
-  }
-
-  try {
-    // Load client secrets
-    const credentials = JSON.parse(
-      fs.readFileSync(path.join(__dirname, '..', 'credentials.json'), 'utf-8'),
-    )
-    const { client_id, client_secret, redirect_uris } = credentials.web
-
-    const oAuth2Client = new google.auth.OAuth2(
-      client_id,
-      client_secret,
-      redirect_uris[0],
-    )
-
-    // Exchange the authorization code for tokens
-    const { tokens } = await oAuth2Client.getToken(code)
-    oAuth2Client.setCredentials(tokens)
-
-    // Save the token to a file for future use
-    fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens))
-    console.log('Token stored to', TOKEN_PATH)
-
-    res.send('Authorization successful! You can close this page.')
-  } catch (error) {
-    console.error('Error handling OAuth callback:', error)
-    res.status(500).send('An error occurred during the authorization process.')
-  }
 })
 
 export default router

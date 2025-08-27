@@ -4,7 +4,13 @@ import 'dotenv/config'
 import { eq } from 'drizzle-orm'
 import type { Request, Response } from 'express'
 import { db } from './db'
-import { type InsertMessage, messages, users } from './db/schema-postgres'
+import {
+  type InsertMessage,
+  messages,
+  saasUsers,
+  userSaasUserMapping,
+  users,
+} from './db/schema-postgres'
 import { getNextMessages } from './getNextMessages'
 import { twilioClientPool } from './services/TwilioClientPool'
 import type { ChatMessage } from './types/types'
@@ -19,7 +25,7 @@ const authToken = process.env.TWILIO_AUTH_TOKEN
 const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER
 
 import { getSaoPauloDate } from './mcp/mcpService'
-import { getInitialPrompt, getInitialPromptForPhoneNumber } from './utils/utils'
+import { getInitialPromptForPhoneNumber } from './utils/utils'
 
 // const LLM_BASE_URL = "https://api.deepseek.com";
 // export const LLM_MODEL = "deepseek-chat";
@@ -361,6 +367,19 @@ export async function whatsappSaasWebhook(
     const { client: userClient, credentials } =
       await twilioClientPool.getClientByWebhookPath(webhookPath)
 
+    // Get the SaaS user ID for this webhook path
+    const saasUser = await db
+      .select()
+      .from(saasUsers)
+      .where(eq(saasUsers.webhookPath, webhookPath))
+      .limit(1)
+
+    if (!saasUser.length) {
+      throw new Error('SaaS user not found for webhook path')
+    }
+
+    const saasUserId = saasUser[0].id
+
     // --- Early exit for audio messages ---
     try {
       const numMediaRaw = body.NumMedia
@@ -425,11 +444,32 @@ export async function whatsappSaasWebhook(
         profileName: name,
         conversationDisabled: false,
       })
+
+      // Create the mapping between this WhatsApp user and the SaaS user
+      await db.insert(userSaasUserMapping).values({
+        phoneNumber: from,
+        saasUserId: saasUserId,
+      })
     } else if (existingUser[0].profileName !== name) {
       await db
         .update(users)
         .set({ profileName: name })
         .where(eq(users.phoneNumber, from))
+
+      // Check if mapping already exists for this phone number
+      const existingMapping = await db
+        .select()
+        .from(userSaasUserMapping)
+        .where(eq(userSaasUserMapping.phoneNumber, from))
+        .limit(1)
+
+      // Create mapping if it doesn't exist
+      if (existingMapping.length === 0) {
+        await db.insert(userSaasUserMapping).values({
+          phoneNumber: from,
+          saasUserId: saasUserId,
+        })
+      }
     }
 
     // Check if conversation is disabled for this user

@@ -1,26 +1,52 @@
-import { inspect } from 'node:util'
+import { eq } from 'drizzle-orm'
+import { db } from './db'
+import { userSaasUserMapping } from './db/schema-postgres'
 import { toolCall } from './mcp/toolCall'
 import {
-  cancelEventTool,
-  cancellationRulesConfigTool,
-  checkAndCancelEventIfEligibleTool,
-  checkEventAvailabilityTool,
-  checkEventCancellationEligibilityTool,
-  createEventTool,
   dateTool,
-  fetchEventsTool,
   getProfessionalLinkContactToAttachInAnswerTool,
   getSalonInfoTool,
   servicesTool,
-  suggestEventTimesTool,
 } from './mcp/toolConfig/toolConfig'
 import {
   executeCustomTool,
+  executePredefinedTool,
   getCustomToolImplementation,
   getToolsForPhoneNumber,
+  isPredefinedTool,
 } from './services/CustomToolExecutor'
 import type { ChatMessage } from './types/types'
 import { LLM_MODEL, openai } from './webhook'
+
+/**
+ * Get SaaS user ID from phone number using the user mapping table
+ */
+async function getSaasUserIdFromPhoneNumber(
+  phoneNumber: string,
+): Promise<string | null> {
+  try {
+    const result = await db
+      .select({
+        saasUserId: userSaasUserMapping.saasUserId,
+      })
+      .from(userSaasUserMapping)
+      .where(eq(userSaasUserMapping.phoneNumber, phoneNumber))
+      .limit(1)
+
+    return result.length > 0 ? result[0].saasUserId : null
+  } catch (error) {
+    console.error('Error getting SaaS user ID from phone number:', error)
+    return null
+  }
+}
+
+// Get built-in tools
+const builtInTools = [
+  dateTool,
+  getSalonInfoTool,
+  servicesTool,
+  getProfessionalLinkContactToAttachInAnswerTool,
+]
 
 export async function getNextMessages(
   messagesFeed: ChatMessage[],
@@ -29,26 +55,10 @@ export async function getNextMessages(
 ) {
   const newMessagesForFeed: ChatMessage[] = []
 
-  // Get built-in tools
-  const builtInTools = [
-    dateTool,
-    getSalonInfoTool,
-    servicesTool,
-    cancellationRulesConfigTool,
-    fetchEventsTool,
-    checkEventAvailabilityTool,
-    checkEventCancellationEligibilityTool,
-    checkAndCancelEventIfEligibleTool,
-    createEventTool,
-    getProfessionalLinkContactToAttachInAnswerTool,
-    cancelEventTool,
-    suggestEventTimesTool,
-  ]
-
   // Get all tools including custom ones
   const allTools = phoneNumber
     ? await getToolsForPhoneNumber(phoneNumber, builtInTools)
-    : builtInTools
+    : []
 
   const completion = await openai.chat.completions.create(
     {
@@ -63,14 +73,6 @@ export async function getNextMessages(
   )
 
   const { tool_calls, content } = completion.choices[0].message
-
-  // console.log(
-  //   'LLM completion:',
-  //   inspect(
-  //     { tool_calls, tContent: content?.slice(0, 50) },
-  //     { depth: null, maxStringLength: null, colors: true },
-  //   ),
-  // )
 
   if (content && tool_calls && tool_calls.length > 0) {
     console.error(
@@ -123,6 +125,33 @@ export async function getNextMessages(
           console.error(`Error executing custom tool ${functionName}:`, error)
           toolResponse = {
             error: `Tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          }
+        }
+      } else if (isPredefinedTool(functionName)) {
+        // Execute predefined tool (like calendar functions)
+        try {
+          // Get the SaaS user ID from phone number
+          const userId = phoneNumber
+            ? await getSaasUserIdFromPhoneNumber(phoneNumber)
+            : null
+
+          if (!userId) {
+            throw new Error('User not found or not linked to SaaS account')
+          }
+
+          toolResponse = await executePredefinedTool(
+            functionName,
+            JSON.parse(_arguments),
+            userId,
+            phoneNumber,
+          )
+        } catch (error) {
+          console.error(
+            `Error executing predefined tool ${functionName}:`,
+            error,
+          )
+          toolResponse = {
+            error: `Predefined tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
           }
         }
       } else {

@@ -7,6 +7,7 @@ import {
   saasUsers,
 } from '../db/schema-postgres'
 import { FALLBACK_PROMPT } from '../utils/contants'
+import { predefinedToolsService } from './PredefinedToolsService'
 
 export class AssistantConfigService {
   /**
@@ -78,10 +79,12 @@ export class AssistantConfigService {
 
   /**
    * Get all active tools for a SaaS user by their user ID
+   * Includes both custom tools and enabled predefined tools
    */
   async getToolsForUserId(userId: string) {
     try {
-      const tools = await db
+      // Get custom tools
+      const customTools = await db
         .select()
         .from(assistantTools)
         .where(
@@ -91,46 +94,82 @@ export class AssistantConfigService {
           ),
         )
 
-      return tools.map((tool) => ({
+      const formattedCustomTools = customTools.map((tool) => ({
         ...tool,
         parameters: JSON.parse(tool.parameters),
       }))
+
+      // Get predefined tools (like calendar management)
+      const predefinedTools =
+        await predefinedToolsService.getCalendarToolsForLLM(userId)
+
+      return {
+        customTools: formattedCustomTools,
+        predefinedTools,
+        allTools: [...formattedCustomTools, ...predefinedTools],
+      }
     } catch (error) {
-      console.error('Error fetching custom tools:', error)
-      return []
+      console.error('Error fetching tools:', error)
+      return {
+        customTools: [],
+        predefinedTools: [],
+        allTools: [],
+      }
     }
   }
 
   /**
    * Get all active tools for a phone number (via SaaS user mapping)
+   * Includes both custom tools and enabled predefined tools
    */
-  async getToolsForPhoneNumber(phoneNumber: string) {
+  async getToolsForPhoneNumber(_phoneNumber: string) {
     try {
       // TODO: Implement proper phone number to SaaS user mapping
       // For now, get tools from the first SaaS user (temporary solution)
       const firstSaasUser = await db.select().from(saasUsers).limit(1)
 
       if (firstSaasUser.length === 0) {
-        return []
+        return {
+          customTools: [],
+          predefinedTools: [],
+          allTools: [],
+        }
       }
 
-      const tools = await db
+      const userId = firstSaasUser[0].id
+
+      // Get custom tools
+      const customTools = await db
         .select()
         .from(assistantTools)
         .where(
           and(
-            eq(assistantTools.saasUserId, firstSaasUser[0].id),
+            eq(assistantTools.saasUserId, userId),
             eq(assistantTools.isActive, true),
           ),
         )
 
-      return tools.map((tool) => ({
+      const formattedCustomTools = customTools.map((tool) => ({
         ...tool,
         parameters: JSON.parse(tool.parameters),
       }))
+
+      // Get predefined tools (like calendar management)
+      const predefinedTools =
+        await predefinedToolsService.getCalendarToolsForLLM(userId)
+
+      return {
+        customTools: formattedCustomTools,
+        predefinedTools,
+        allTools: [...formattedCustomTools, ...predefinedTools],
+      }
     } catch (error) {
-      console.error('Error fetching custom tools for phone number:', error)
-      return []
+      console.error('Error fetching tools for phone number:', error)
+      return {
+        customTools: [],
+        predefinedTools: [],
+        allTools: [],
+      }
     }
   }
 }

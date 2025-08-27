@@ -17,7 +17,7 @@ import {
 } from '../utils/contants'
 
 // Helper function to format time in São Paulo timezone
-function formatTimeInSaoPaulo(
+export function formatTimeInSaoPaulo(
   dateString: string,
   format: string = 'HH:mm',
 ): string {
@@ -25,7 +25,7 @@ function formatTimeInSaoPaulo(
 }
 
 // Helper function to format date in São Paulo timezone
-function formatDateInSaoPaulo(
+export function formatDateInSaoPaulo(
   dateString: string,
   format: string = 'DD/MM/YYYY',
 ): string {
@@ -256,7 +256,7 @@ export async function checkAndCancelEventIfEligible(
 }
 
 // Helper function to find available time spans in a day
-function findAvailableTimeSpans(
+export function findAvailableTimeSpans(
   targetDate: Date,
   serviceDurationMinutes: number,
   existingEvents: any[],

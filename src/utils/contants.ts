@@ -17,6 +17,9 @@ export enum Atendentes {
   KARINA = 'Karina',
 }
 
+export const PRODUCTION_DOMAIN = 'https://hono-api-2w97.onrender.com/'
+export const FRONTEND_LOCALHOST = 'http://localhost:5173'
+
 export const SERVICES: ServiceItem[] = [
   {
     name: 'Corte',
