@@ -140,7 +140,7 @@ export class SaasGoogleCalendarService {
     const oAuth2Client = this.createOAuth2Client()
 
     console.log('Exchanging code for tokens:', {
-      code: code.substring(0, 20) + '...', // Log first 20 chars for debugging
+      code: `${code.substring(0, 20)}...`, // Log first 20 chars for debugging
       saasUserId,
       redirect_uri:
         this.credentials?.web?.redirect_uris?.[

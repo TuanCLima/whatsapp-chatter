@@ -4,31 +4,57 @@ import { db } from '../db'
 import {
   assistantPrompts,
   assistantTools,
-  saasUsers,
+  userSaasUserMapping,
 } from '../db/schema-postgres'
 import { FALLBACK_PROMPT } from '../utils/contants'
 import { predefinedToolsService } from './PredefinedToolsService'
 
 export class AssistantConfigService {
   /**
+   * Helper method to get SaaS user ID from phone number
+   */
+  private async getSaasUserIdByPhoneNumber(
+    phoneNumber: string,
+  ): Promise<string | null> {
+    try {
+      const userMapping = await db
+        .select({
+          saasUserId: userSaasUserMapping.saasUserId,
+        })
+        .from(userSaasUserMapping)
+        .where(eq(userSaasUserMapping.phoneNumber, phoneNumber))
+        .limit(1)
+
+      return userMapping.length > 0 ? userMapping[0].saasUserId : null
+    } catch (error) {
+      console.error('Error fetching SaaS user ID by phone number:', error)
+      return null
+    }
+  }
+
+  /**
    * Get the active prompt for a SaaS user by their phone number
    * Falls back to environment variable or default prompt if no custom prompt exists
    */
   async getPromptForPhoneNumber(phoneNumber: string): Promise<string> {
     try {
-      // First, find the SaaS user associated with this phone number
-      // We need to look this up via the user_saas_user_mapping table
+      const saasUserId = await this.getSaasUserIdByPhoneNumber(phoneNumber)
+
+      if (!saasUserId) {
+        // No SaaS user found for this phone number, fall back to default
+        return process.env.MYPROMPT ?? FALLBACK_PROMPT
+      }
+
+      // Get the active prompt for this SaaS user
       const result = await db
         .select({
           prompt: assistantPrompts.prompt,
         })
         .from(assistantPrompts)
-        .innerJoin(saasUsers, eq(assistantPrompts.saasUserId, saasUsers.id))
         .where(
           and(
+            eq(assistantPrompts.saasUserId, saasUserId),
             eq(assistantPrompts.isActive, true),
-            // TODO: We need to join with user_saas_user_mapping to connect phone numbers to SaaS users
-            // For now, we'll use the first active prompt we find
           ),
         )
         .limit(1)
@@ -122,13 +148,11 @@ export class AssistantConfigService {
    * Get all active tools for a phone number (via SaaS user mapping)
    * Includes both custom tools and enabled predefined tools
    */
-  async getToolsForPhoneNumber(_phoneNumber: string) {
+  async getToolsForPhoneNumber(phoneNumber: string) {
     try {
-      // TODO: Implement proper phone number to SaaS user mapping
-      // For now, get tools from the first SaaS user (temporary solution)
-      const firstSaasUser = await db.select().from(saasUsers).limit(1)
+      const saasUserId = await this.getSaasUserIdByPhoneNumber(phoneNumber)
 
-      if (firstSaasUser.length === 0) {
+      if (!saasUserId) {
         return {
           customTools: [],
           predefinedTools: [],
@@ -136,15 +160,13 @@ export class AssistantConfigService {
         }
       }
 
-      const userId = firstSaasUser[0].id
-
       // Get custom tools
       const customTools = await db
         .select()
         .from(assistantTools)
         .where(
           and(
-            eq(assistantTools.saasUserId, userId),
+            eq(assistantTools.saasUserId, saasUserId),
             eq(assistantTools.isActive, true),
           ),
         )
@@ -156,7 +178,7 @@ export class AssistantConfigService {
 
       // Get predefined tools (like calendar management)
       const predefinedTools =
-        await predefinedToolsService.getCalendarToolsForLLM(userId)
+        await predefinedToolsService.getCalendarToolsForLLM(saasUserId)
 
       return {
         customTools: formattedCustomTools,
