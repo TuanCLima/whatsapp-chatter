@@ -44,7 +44,7 @@ async function getSaasUserIdFromPhoneNumber(
 const builtInTools = [
   dateTool,
   getSalonInfoTool,
-  servicesTool,
+  // servicesTool,
   getProfessionalLinkContactToAttachInAnswerTool,
 ]
 

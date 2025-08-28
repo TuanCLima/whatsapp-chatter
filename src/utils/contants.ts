@@ -11,12 +11,6 @@ export const GABE_CALENDAR_ID =
 export const FALLBACK_PROMPT =
   'Você é um assistente de salão de baleza. Responda sempre em português. Atualmente o salão está em manutenção. Se entrarem em contato. Diga que o atendimento por whatsapp está temporariamente fora de serviço.'
 
-export enum Atendentes {
-  GABE = 'Gabe',
-  RAFA = 'Rafa',
-  KARINA = 'Karina',
-}
-
 export const PRODUCTION_DOMAIN = 'https://hono-api-2w97.onrender.com/'
 export const FRONTEND_LOCALHOST = 'http://localhost:5173'
 
@@ -30,7 +24,7 @@ export const SERVICES: ServiceItem[] = [
       'Por enquanto não trabalhamos com cortes curtos estilo tapered cut, que precisem do acabamento da máquina no geral.',
     ],
     timeToExecuteInMinutes: 90,
-    performedBy: [Atendentes.GABE, Atendentes.RAFA],
+    performedBy: ['Gabe', 'Rafa'],
   },
   {
     name: 'Combo corte e tratamento',
@@ -38,7 +32,7 @@ export const SERVICES: ServiceItem[] = [
     options: ['hidratação', 'nutrição'],
     details: ['Inclui uma das opções descritas'],
     timeToExecuteInMinutes: 105,
-    performedBy: [Atendentes.GABE, Atendentes.RAFA],
+    performedBy: ['Gabe', 'Rafa'],
   },
   {
     name: 'Combo corte e tratamento 2',
@@ -46,7 +40,7 @@ export const SERVICES: ServiceItem[] = [
     options: ['reconstrução', 'acidificação'],
     details: ['Inclui uma das opções descritas'],
     timeToExecuteInMinutes: 110,
-    performedBy: [Atendentes.GABE, Atendentes.RAFA],
+    performedBy: ['Gabe', 'Rafa'],
   },
   {
     name: 'Finalização',
@@ -57,42 +51,42 @@ export const SERVICES: ServiceItem[] = [
       /* "⁠Para orçamento de finalização, pedimos uma foto do seu cabelo de costas solto e seco, ou para comparecer presencialmente.", */
     ],
     timeToExecuteInMinutes: 60,
-    performedBy: [Atendentes.GABE, Atendentes.RAFA],
+    performedBy: ['Gabe', 'Rafa'],
   },
   {
     name: 'Hidratação',
     description: '⁠',
     details: ['Inclui uma finalização'],
     timeToExecuteInMinutes: 75,
-    performedBy: [Atendentes.GABE, Atendentes.RAFA],
+    performedBy: ['Gabe', 'Rafa'],
   },
   {
     name: 'Nutrição',
     description: '⁠',
     details: ['Inclui uma finalização'],
     timeToExecuteInMinutes: 75,
-    performedBy: [Atendentes.GABE, Atendentes.RAFA],
+    performedBy: ['Gabe', 'Rafa'],
   },
   {
     name: 'Reconstrução',
     description: '⁠',
     details: ['Inclui uma finalização'],
     timeToExecuteInMinutes: 75,
-    performedBy: [Atendentes.GABE, Atendentes.RAFA],
+    performedBy: ['Gabe', 'Rafa'],
   },
   {
     name: 'Acidificação',
     description: '⁠',
     details: ['Inclui uma finalização'],
     timeToExecuteInMinutes: 90,
-    performedBy: [Atendentes.GABE, Atendentes.RAFA],
+    performedBy: ['Gabe', 'Rafa'],
   },
   {
     name: 'Detox capilar',
     description: '⁠',
     details: ['Inclui uma finalização'],
     timeToExecuteInMinutes: 90,
-    performedBy: [Atendentes.GABE, Atendentes.RAFA],
+    performedBy: ['Gabe', 'Rafa'],
   },
   {
     name: 'Pacote de cronograma capilar',
@@ -103,49 +97,49 @@ export const SERVICES: ServiceItem[] = [
       'A duração especificada é por sessão',
     ],
     timeToExecuteInMinutes: 80,
-    performedBy: [Atendentes.GABE, Atendentes.RAFA],
+    performedBy: ['Gabe', 'Rafa'],
   },
   {
     name: 'Coloração: Iluminado',
     description: '⁠',
     details: ['Inclui tratamento, tonalização, finalização e secagem'],
-    performedBy: [Atendentes.RAFA],
+    performedBy: ['Rafa'],
   },
   {
     name: 'Coloração: Loiro',
     description: '⁠',
     details: ['Inclui tratamento, tonalização, finalização e secagem'],
-    performedBy: [Atendentes.RAFA],
+    performedBy: ['Rafa'],
   },
   {
     name: 'Coloração: Ruivo',
     description: '⁠',
     details: ['Inclui tratamento, tonalização, finalização e secagem'],
-    performedBy: [Atendentes.RAFA],
+    performedBy: ['Rafa'],
   },
   {
     name: 'Retoque de Raiz',
     description: '⁠',
     details: ['Inclui lavagem, finalização e secagem'],
-    performedBy: [Atendentes.RAFA],
+    performedBy: ['Rafa'],
   },
   {
     name: 'Penteados',
     description: '⁠',
     details: [],
-    performedBy: [Atendentes.KARINA],
+    performedBy: ['Karina'],
   },
   {
     name: 'Maquiagens',
     description: '⁠',
     details: [],
-    performedBy: [Atendentes.KARINA],
+    performedBy: ['Karina'],
   },
   {
     name: 'Tranças',
     description: '⁠',
     details: [],
-    performedBy: [Atendentes.KARINA],
+    performedBy: ['Karina'],
   },
 ]
 
@@ -169,15 +163,15 @@ export const SALON_INFO: SalonInfo = {
 export const LINK_INFO: LinkInfo = [
   {
     professionalLink: '',
-    professionalName: Atendentes.GABE,
+    professionalName: 'Gabe',
   },
   {
     professionalLink: '',
-    professionalName: Atendentes.RAFA,
+    professionalName: 'Rafa',
   },
   {
     professionalLink: '',
-    professionalName: Atendentes.KARINA,
+    professionalName: 'Karina',
   },
 ]
 
