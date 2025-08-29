@@ -13,6 +13,20 @@ export interface CalendarToolConfig {
     start: string
     end: string
   }
+  lunchTime?: {
+    start: string
+    end: string
+  }
+  allowedWeekDays?: {
+    monday: boolean
+    tuesday: boolean
+    wednesday: boolean
+    thursday: boolean
+    friday: boolean
+    saturday: boolean
+    sunday: boolean
+  }
+  bufferTimeBetweenEvents?: number // in minutes
   timeZone?: string
 }
 
@@ -52,11 +66,14 @@ export class PredefinedToolsService {
   async getToolConfig(
     toolType: string,
   ): Promise<{ config: PredefinedToolConfig | null }> {
-    const response = await fetch(`${API_BASE_URL}/api/predefined-tools/${toolType}`, {
-      method: 'GET',
-      headers: await this.getAuthHeaders(),
-      credentials: 'include',
-    })
+    const response = await fetch(
+      `${API_BASE_URL}/api/predefined-tools/${toolType}`,
+      {
+        method: 'GET',
+        headers: await this.getAuthHeaders(),
+        credentials: 'include',
+      },
+    )
 
     if (!response.ok) {
       throw new Error('Failed to fetch tool config')
@@ -73,15 +90,18 @@ export class PredefinedToolsService {
     enabled: boolean,
     configData?: Record<string, unknown>,
   ): Promise<{ config: PredefinedToolConfig }> {
-    const response = await fetch(`${API_BASE_URL}/api/predefined-tools/${toolType}`, {
-      method: 'PUT',
-      headers: await this.getAuthHeaders(),
-      credentials: 'include',
-      body: JSON.stringify({
-        enabled,
-        configData,
-      }),
-    })
+    const response = await fetch(
+      `${API_BASE_URL}/api/predefined-tools/${toolType}`,
+      {
+        method: 'PUT',
+        headers: await this.getAuthHeaders(),
+        credentials: 'include',
+        body: JSON.stringify({
+          enabled,
+          configData,
+        }),
+      },
+    )
 
     if (!response.ok) {
       throw new Error('Failed to update tool config')
@@ -94,11 +114,14 @@ export class PredefinedToolsService {
    * Get Google Calendar authorization URL
    */
   async getCalendarAuthUrl(): Promise<{ authUrl: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/predefined-tools/calendar/auth-url`, {
-      method: 'GET',
-      headers: await this.getAuthHeaders(),
-      credentials: 'include',
-    })
+    const response = await fetch(
+      `${API_BASE_URL}/api/predefined-tools/calendar/auth-url`,
+      {
+        method: 'GET',
+        headers: await this.getAuthHeaders(),
+        credentials: 'include',
+      },
+    )
 
     if (!response.ok) {
       throw new Error('Failed to get calendar auth URL')
@@ -113,12 +136,15 @@ export class PredefinedToolsService {
   async completeCalendarAuth(
     code: string,
   ): Promise<{ success: boolean; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/predefined-tools/calendar/oauth-callback`, {
-      method: 'POST',
-      headers: await this.getAuthHeaders(),
-      credentials: 'include',
-      body: JSON.stringify({ code }),
-    })
+    const response = await fetch(
+      `${API_BASE_URL}/api/predefined-tools/calendar/oauth-callback`,
+      {
+        method: 'POST',
+        headers: await this.getAuthHeaders(),
+        credentials: 'include',
+        body: JSON.stringify({ code }),
+      },
+    )
 
     if (!response.ok) {
       throw new Error('Failed to complete calendar auth')
@@ -131,11 +157,14 @@ export class PredefinedToolsService {
    * Get calendar tool status
    */
   async getCalendarStatus(): Promise<CalendarToolStatus> {
-    const response = await fetch(`${API_BASE_URL}/api/predefined-tools/calendar/status`, {
-      method: 'GET',
-      headers: await this.getAuthHeaders(),
-      credentials: 'include',
-    })
+    const response = await fetch(
+      `${API_BASE_URL}/api/predefined-tools/calendar/status`,
+      {
+        method: 'GET',
+        headers: await this.getAuthHeaders(),
+        credentials: 'include',
+      },
+    )
 
     if (!response.ok) {
       throw new Error('Failed to get calendar status')
@@ -148,11 +177,14 @@ export class PredefinedToolsService {
    * Revoke Google Calendar access
    */
   async revokeCalendarAccess(): Promise<{ success: boolean; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/api/predefined-tools/calendar/access`, {
-      method: 'DELETE',
-      headers: await this.getAuthHeaders(),
-      credentials: 'include',
-    })
+    const response = await fetch(
+      `${API_BASE_URL}/api/predefined-tools/calendar/access`,
+      {
+        method: 'DELETE',
+        headers: await this.getAuthHeaders(),
+        credentials: 'include',
+      },
+    )
 
     if (!response.ok) {
       throw new Error('Failed to revoke calendar access')

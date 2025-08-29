@@ -6,7 +6,7 @@ import {
   Settings,
   XCircle,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -37,6 +37,17 @@ export default function PredefinedToolsPage() {
   const [calendarConfig, setCalendarConfig] = useState<CalendarToolConfig>({
     defaultCalendarId: 'primary',
     workingHours: { start: '09:00', end: '17:00' },
+    lunchTime: { start: '12:00', end: '13:00' },
+    allowedWeekDays: {
+      monday: true,
+      tuesday: true,
+      wednesday: true,
+      thursday: true,
+      friday: true,
+      saturday: true,
+      sunday: false,
+    },
+    bufferTimeBetweenEvents: 0,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   })
   const [isLoading, setIsLoading] = useState(false)
@@ -44,7 +55,7 @@ export default function PredefinedToolsPage() {
   const { toast } = useToast()
 
   // Load data on component mount
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
       const [toolsResponse, statusResponse] = await Promise.all([
@@ -71,11 +82,11 @@ export default function PredefinedToolsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     loadData()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadData])
 
   const handleCalendarAuth = async () => {
     setIsAuthenticating(true)
@@ -402,6 +413,111 @@ export default function PredefinedToolsPage() {
                       }
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="lunchTimeStart">Lunch Time Start</Label>
+                    <Input
+                      id="lunchTimeStart"
+                      type="time"
+                      value={calendarConfig.lunchTime?.start || '12:00'}
+                      onChange={(e) =>
+                        setCalendarConfig((prev) => ({
+                          ...prev,
+                          lunchTime: {
+                            ...prev.lunchTime!,
+                            start: e.target.value,
+                          },
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="lunchTimeEnd">Lunch Time End</Label>
+                    <Input
+                      id="lunchTimeEnd"
+                      type="time"
+                      value={calendarConfig.lunchTime?.end || '13:00'}
+                      onChange={(e) =>
+                        setCalendarConfig((prev) => ({
+                          ...prev,
+                          lunchTime: {
+                            ...prev.lunchTime!,
+                            end: e.target.value,
+                          },
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bufferTime">
+                      Buffer Time Between Events (minutes)
+                    </Label>
+                    <Input
+                      id="bufferTime"
+                      type="number"
+                      min="0"
+                      value={calendarConfig.bufferTimeBetweenEvents || 0}
+                      onChange={(e) =>
+                        setCalendarConfig((prev) => ({
+                          ...prev,
+                          bufferTimeBetweenEvents:
+                            parseInt(e.target.value) || 0,
+                        }))
+                      }
+                      placeholder="0"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Buffer time to leave between scheduled events
+                    </p>
+                  </div>
+                </div>
+
+                {/* Allowed Week Days */}
+                <div className="space-y-3">
+                  <Label>Allowed Days for Scheduling</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { key: 'monday', label: 'Monday' },
+                      { key: 'tuesday', label: 'Tuesday' },
+                      { key: 'wednesday', label: 'Wednesday' },
+                      { key: 'thursday', label: 'Thursday' },
+                      { key: 'friday', label: 'Friday' },
+                      { key: 'saturday', label: 'Saturday' },
+                      { key: 'sunday', label: 'Sunday' },
+                    ].map((day) => (
+                      <div
+                        key={day.key}
+                        className="flex items-center space-x-2"
+                      >
+                        <Switch
+                          id={day.key}
+                          checked={
+                            calendarConfig.allowedWeekDays?.[
+                              day.key as keyof typeof calendarConfig.allowedWeekDays
+                            ] || false
+                          }
+                          onCheckedChange={(checked) =>
+                            setCalendarConfig((prev) => ({
+                              ...prev,
+                              allowedWeekDays: {
+                                ...prev.allowedWeekDays!,
+                                [day.key]: checked,
+                              },
+                            }))
+                          }
+                        />
+                        <Label htmlFor={day.key} className="text-sm">
+                          {day.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Select which days of the week are available for scheduling
+                    events
+                  </p>
                 </div>
 
                 <Button
