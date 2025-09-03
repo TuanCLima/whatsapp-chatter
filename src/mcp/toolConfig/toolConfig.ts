@@ -6,6 +6,7 @@ enum FunctionName {
   getCalendarEventCancellationRules = 'getCalendarEventCancellationRules',
   getSalonInfo = 'getSalonInfo',
   getProfessionalLinkContactToAttachInAnswer = 'getProfessionalLinkContactToAttachInAnswer',
+  sendServicePrices = 'sendServicePrices',
   fetchCalendarEvents = 'fetchCalendarEvents',
   checkEventAvailability = 'checkEventAvailability',
   checkEventCancellationEligibility = 'checkEventCancellationEligibility',
@@ -78,6 +79,26 @@ const getProfessionalLinkContactToAttachInAnswerTool: ChatCompletionTool = {
       type: 'object',
       properties: {},
       required: [],
+    },
+  },
+}
+
+const sendServicePricesTool: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: FunctionName.sendServicePrices,
+    description:
+      'Enviar imagem com os preços dos serviços para o cliente via WhatsApp. Use esta ferramenta quando o cliente solicitar informações sobre preços dos serviços.',
+    parameters: {
+      type: 'object',
+      properties: {
+        userPhoneNumber: {
+          type: 'string',
+          description:
+            'O número de telefone do cliente (formato WhatsApp com whatsapp: prefix)',
+        },
+      },
+      required: ['userPhoneNumber'],
     },
   },
 }
@@ -336,6 +357,7 @@ export {
   cancellationRulesConfigTool,
   getSalonInfoTool,
   getProfessionalLinkContactToAttachInAnswerTool,
+  sendServicePricesTool,
   fetchEventsTool,
   checkEventAvailabilityTool,
   checkEventCancellationEligibilityTool,

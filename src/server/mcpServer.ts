@@ -73,6 +73,7 @@ router.post(
         case 'createCalendarEvent':
         case 'cancelCalendarEvent':
         case 'suggestEventTimes':
+        case 'sendServicePrices':
           result = await mcpFunctions[functionName].function(parameters)
       }
 

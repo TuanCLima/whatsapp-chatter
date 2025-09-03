@@ -11,6 +11,7 @@ import {
   fetchEventsTool,
   getProfessionalLinkContactToAttachInAnswerTool,
   getSalonInfoTool,
+  sendServicePricesTool,
   servicesTool,
   suggestEventTimesTool,
 } from './mcp/toolConfig/toolConfig'
@@ -38,6 +39,7 @@ export async function getNextMessages(
         checkAndCancelEventIfEligibleTool,
         createEventTool,
         getProfessionalLinkContactToAttachInAnswerTool,
+        sendServicePricesTool,
         cancelEventTool,
         suggestEventTimesTool,
       ],

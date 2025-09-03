@@ -25,3 +25,15 @@ for (let i = 1; i <= N; i++) {
 }
 
 console.log('✅ vCard files generated successfully in dist/public.')
+
+// Copy static assets to dist/public
+const publicSourcePath = path.join(__dirname, '../../public')
+if (fs.existsSync(publicSourcePath)) {
+  const files = fs.readdirSync(publicSourcePath)
+  for (const file of files) {
+    const sourcePath = path.join(publicSourcePath, file)
+    const destPath = path.join(distPublicPath, file)
+    fs.copyFileSync(sourcePath, destPath)
+    console.log(`✅ Copied ${file} to dist/public`)
+  }
+}
