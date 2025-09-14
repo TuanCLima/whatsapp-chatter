@@ -2,12 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db } from './db'
 import { userSaasUserMapping } from './db/schema-postgres'
 import { toolCall } from './mcp/toolCall'
-import {
-  dateTool,
-  getProfessionalLinkContactToAttachInAnswerTool,
-  getSalonInfoTool,
-  servicesTool,
-} from './mcp/toolConfig/toolConfig'
+import { dateTool, getSalonInfoTool } from './mcp/toolConfig/toolConfig'
 import {
   executeCustomTool,
   executePredefinedTool,
@@ -41,16 +36,11 @@ async function getSaasUserIdFromPhoneNumber(
 }
 
 // Get built-in tools
-const builtInTools = [
-  dateTool,
-  getSalonInfoTool,
-  // servicesTool,
-  getProfessionalLinkContactToAttachInAnswerTool,
-]
+const builtInTools = [dateTool, getSalonInfoTool]
 
 export async function getNextMessages(
   messagesFeed: ChatMessage[],
-  phoneNumber?: string,
+  phoneNumber: string,
   signal?: AbortSignal,
 ) {
   const newMessagesForFeed: ChatMessage[] = []
@@ -74,11 +64,11 @@ export async function getNextMessages(
 
   const { tool_calls, content } = completion.choices[0].message
 
-  if (content && tool_calls && tool_calls.length > 0) {
-    console.error(
-      'LLM completion is returning content and tool calls at the same time. This is not expected.',
-    )
-    return []
+  if (content) {
+    newMessagesForFeed.push({
+      role: 'assistant',
+      content,
+    })
   }
 
   if (tool_calls && tool_calls.length > 0) {
@@ -142,8 +132,8 @@ export async function getNextMessages(
           toolResponse = await executePredefinedTool(
             functionName,
             JSON.parse(_arguments),
-            userId,
             phoneNumber,
+            userId,
           )
         } catch (error) {
           console.error(
@@ -189,13 +179,6 @@ export async function getNextMessages(
     } catch (error) {
       console.error('Error calling MCP server:', error)
     }
-  }
-
-  if (content) {
-    newMessagesForFeed.push({
-      role: 'assistant',
-      content,
-    })
   }
 
   return newMessagesForFeed

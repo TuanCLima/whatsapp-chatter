@@ -229,6 +229,7 @@ const predefinedToolNames = [
   'cancelCalendarEvent',
   'checkAndCancelEventIfEligible',
   'checkEventCancellationEligibility',
+  'forwardContact',
 ]
 
 /**
@@ -237,8 +238,8 @@ const predefinedToolNames = [
 export async function executePredefinedTool(
   toolName: string,
   parameters: Record<string, unknown>,
+  _phoneNumber: string,
   userId?: string,
-  _phoneNumber?: string,
 ): Promise<unknown | null> {
   try {
     if (!predefinedToolNames.includes(toolName)) {
@@ -257,6 +258,7 @@ export async function executePredefinedTool(
       userId,
       toolName,
       parameters,
+      _phoneNumber,
     )
   } catch (error) {
     console.error('Error executing predefined tool:', error)

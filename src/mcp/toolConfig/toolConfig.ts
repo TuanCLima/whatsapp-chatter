@@ -68,20 +68,6 @@ const getSalonInfoTool: ChatCompletionTool = {
   },
 }
 
-const getProfessionalLinkContactToAttachInAnswerTool: ChatCompletionTool = {
-  type: 'function',
-  function: {
-    name: FunctionName.getProfessionalLinkContactToAttachInAnswer,
-    description:
-      'Buscar o link de contato do profissional para incluir na resposta',
-    parameters: {
-      type: 'object',
-      properties: {},
-      required: [],
-    },
-  },
-}
-
 const fetchEventsTool: ChatCompletionTool = {
   type: 'function',
   function: {
@@ -335,7 +321,6 @@ export {
   servicesTool,
   cancellationRulesConfigTool,
   getSalonInfoTool,
-  getProfessionalLinkContactToAttachInAnswerTool,
   fetchEventsTool,
   checkEventAvailabilityTool,
   checkEventCancellationEligibilityTool,

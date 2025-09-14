@@ -130,3 +130,21 @@ export const predefinedToolsConfig = pgTable('predefined_tools_config', {
 export type InsertPredefinedToolsConfig =
   typeof predefinedToolsConfig.$inferInsert
 export type PredefinedToolsConfig = typeof predefinedToolsConfig.$inferSelect
+
+// Contacts table for the forwardContact tool
+export const contacts = pgTable('contacts', {
+  id: serial('id').primaryKey(),
+  saasUserId: text('saas_user_id')
+    .notNull()
+    .references(() => saasUsers.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  phoneNumber: text('phone_number').notNull(),
+  email: text('email'),
+  company: text('company'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export type InsertContact = typeof contacts.$inferInsert
+export type Contact = typeof contacts.$inferSelect

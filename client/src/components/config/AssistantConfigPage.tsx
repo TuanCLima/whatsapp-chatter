@@ -1,4 +1,13 @@
-import { Bot, Calendar, Code, Plus, Save, Settings, Trash2 } from 'lucide-react'
+import {
+  Bot,
+  Calendar,
+  Code,
+  Plus,
+  Save,
+  Settings,
+  Trash2,
+  Users,
+} from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
@@ -19,6 +28,10 @@ import {
   type Tool,
   type ToolParameter,
 } from '@/services/AssistantConfigService'
+import {
+  type PredefinedToolConfig,
+  predefinedToolsService,
+} from '@/services/PredefinedToolsService'
 import PredefinedToolsPage from './PredefinedToolsPage'
 
 type ConfigSection = 'prompt' | 'tools' | 'predefined-tools' | 'settings'
@@ -27,7 +40,12 @@ export default function AssistantConfigPage() {
   const [activeSection, setActiveSection] = useState<ConfigSection>('prompt')
   const [prompt, setPrompt] = useState('')
   const [tools, setTools] = useState<Tool[]>([])
+  const [predefinedTools, setPredefinedTools] = useState<
+    PredefinedToolConfig[]
+  >([])
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null)
+  const [selectedPredefinedTool, setSelectedPredefinedTool] =
+    useState<PredefinedToolConfig | null>(null)
   const [isCreatingTool, setIsCreatingTool] = useState(false)
   const [, setIsLoading] = useState(false)
   const { toast } = useToast()
@@ -45,14 +63,17 @@ export default function AssistantConfigPage() {
     const loadData = async () => {
       setIsLoading(true)
       try {
-        // Load prompt and tools in parallel
-        const [promptResponse, toolsResponse] = await Promise.all([
-          assistantConfigService.getPrompt(),
-          assistantConfigService.getTools(),
-        ])
+        // Load prompt, tools, and predefined tools in parallel
+        const [promptResponse, toolsResponse, predefinedToolsResponse] =
+          await Promise.all([
+            assistantConfigService.getPrompt(),
+            assistantConfigService.getTools(),
+            predefinedToolsService.getPredefinedTools(),
+          ])
 
         setPrompt(promptResponse.prompt)
         setTools(toolsResponse.tools)
+        setPredefinedTools(predefinedToolsResponse.tools)
       } catch (error) {
         console.error('Error loading data:', error)
         toast({
@@ -190,6 +211,7 @@ export default function AssistantConfigPage() {
 
   const editTool = (tool: Tool) => {
     setSelectedTool(tool)
+    setSelectedPredefinedTool(null)
     setNewTool({
       name: tool.name,
       description: tool.description,
@@ -198,6 +220,37 @@ export default function AssistantConfigPage() {
     })
     setIsCreatingTool(true)
     setActiveSection('tools')
+  }
+
+  const selectPredefinedTool = (tool: PredefinedToolConfig) => {
+    setSelectedPredefinedTool(tool)
+    setSelectedTool(null)
+    setIsCreatingTool(false)
+    setActiveSection('predefined-tools')
+  }
+
+  const getPredefinedToolDisplayName = (toolType: string): string => {
+    switch (toolType) {
+      case 'calendar_management':
+        return 'Google Calendar'
+      case 'contact_management':
+        return 'Contact Management'
+      default:
+        return toolType
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (l) => l.toUpperCase())
+    }
+  }
+
+  const getPredefinedToolIcon = (toolType: string) => {
+    switch (toolType) {
+      case 'calendar_management':
+        return Calendar
+      case 'contact_management':
+        return Users
+      default:
+        return Settings
+    }
   }
 
   const savePrompt = async () => {
@@ -239,6 +292,7 @@ export default function AssistantConfigPage() {
                 setActiveSection('prompt')
                 setIsCreatingTool(false)
                 setSelectedTool(null)
+                setSelectedPredefinedTool(null)
               }}
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${
                 activeSection === 'prompt' && !isCreatingTool
@@ -256,6 +310,7 @@ export default function AssistantConfigPage() {
                 setActiveSection('tools')
                 setIsCreatingTool(false)
                 setSelectedTool(null)
+                setSelectedPredefinedTool(null)
               }}
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${
                 activeSection === 'tools' && !isCreatingTool && !selectedTool
@@ -273,9 +328,10 @@ export default function AssistantConfigPage() {
                 setActiveSection('predefined-tools')
                 setIsCreatingTool(false)
                 setSelectedTool(null)
+                setSelectedPredefinedTool(null)
               }}
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${
-                activeSection === 'predefined-tools' && !isCreatingTool
+                activeSection === 'predefined-tools' && !selectedPredefinedTool
                   ? 'bg-secondary text-foreground'
                   : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
               }`}
@@ -290,6 +346,7 @@ export default function AssistantConfigPage() {
                 setActiveSection('settings')
                 setIsCreatingTool(false)
                 setSelectedTool(null)
+                setSelectedPredefinedTool(null)
               }}
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${
                 activeSection === 'settings' && !isCreatingTool
@@ -317,6 +374,7 @@ export default function AssistantConfigPage() {
                     onClick={() => {
                       setIsCreatingTool(true)
                       setSelectedTool(null)
+                      setSelectedPredefinedTool(null)
                       setNewTool({
                         name: '',
                         description: '',
@@ -360,6 +418,51 @@ export default function AssistantConfigPage() {
                 {tools.length === 0 && (
                   <p className="text-xs text-muted-foreground px-3 py-2">
                     No custom tools yet. Click + to create one.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Predefined Tools list */}
+          {activeSection === 'predefined-tools' && (
+            <>
+              <Separator className="my-4" />
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Predefined Tools
+                  </span>
+                </div>
+
+                {predefinedTools.map((tool) => {
+                  const IconComponent = getPredefinedToolIcon(tool.toolType)
+                  return (
+                    <div key={tool.id || tool.toolType} className="group">
+                      <button
+                        type="button"
+                        onClick={() => selectPredefinedTool(tool)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${
+                          selectedPredefinedTool?.toolType === tool.toolType
+                            ? 'bg-secondary text-foreground'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                        }`}
+                      >
+                        <IconComponent className="h-4 w-4" />
+                        <span className="truncate flex-1 text-left">
+                          {getPredefinedToolDisplayName(tool.toolType)}
+                        </span>
+                        {tool.enabled && (
+                          <div className="h-2 w-2 bg-green-500 rounded-full" />
+                        )}
+                      </button>
+                    </div>
+                  )
+                })}
+
+                {predefinedTools.length === 0 && (
+                  <p className="text-xs text-muted-foreground px-3 py-2">
+                    No predefined tools available.
                   </p>
                 )}
               </div>
@@ -431,6 +534,7 @@ export default function AssistantConfigPage() {
                 onClick={() => {
                   setIsCreatingTool(true)
                   setSelectedTool(null)
+                  setSelectedPredefinedTool(null)
                   setNewTool({
                     name: '',
                     description: '',
@@ -589,6 +693,7 @@ export default function AssistantConfigPage() {
                 onClick={() => {
                   setIsCreatingTool(false)
                   setSelectedTool(null)
+                  setSelectedPredefinedTool(null)
                   setNewTool({
                     name: '',
                     description: '',
@@ -635,7 +740,24 @@ export default function AssistantConfigPage() {
       <div className="flex-1 p-6 overflow-auto">
         {activeSection === 'prompt' && renderPromptConfig()}
         {activeSection === 'tools' && renderToolConfig()}
-        {activeSection === 'predefined-tools' && <PredefinedToolsPage />}
+        {activeSection === 'predefined-tools' && !selectedPredefinedTool && (
+          <PredefinedToolsPage />
+        )}
+        {activeSection === 'predefined-tools' && selectedPredefinedTool && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-2xl font-semibold mb-2">
+                {getPredefinedToolDisplayName(selectedPredefinedTool.toolType)}
+              </h3>
+              <p className="text-muted-foreground">
+                Configure the{' '}
+                {getPredefinedToolDisplayName(selectedPredefinedTool.toolType)}{' '}
+                integration.
+              </p>
+            </div>
+            <PredefinedToolsPage />
+          </div>
+        )}
         {activeSection === 'settings' && renderSettingsConfig()}
       </div>
     </div>

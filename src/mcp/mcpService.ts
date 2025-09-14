@@ -1,4 +1,7 @@
+import { and, eq, or } from 'drizzle-orm'
 import moment from 'moment-timezone'
+import { db } from '../db'
+import { contacts } from '../db/schema-postgres'
 import { authorize } from '../googleCalendar/googleAuth'
 import {
   cancelCalendarEvent,
@@ -6,15 +9,17 @@ import {
   getCalendarEventById,
   getGoogleCalendarEvents,
 } from '../googleCalendar/googleCalendar'
+import { twilioClientPool } from '../services/TwilioClientPool'
 import type { Maybe } from '../types/types'
 import {
-  type Atendentes,
   CALENDAR_EVENT_CANCELLATION_RULES,
   GABE_CALENDAR_ID,
   LINK_INFO,
+  PRODUCTION_DOMAIN,
   SALON_INFO,
   SERVICES,
 } from '../utils/contants'
+import { noWhatsPhoneNumber } from '../utils/utils'
 
 // Helper function to format time in São Paulo timezone
 export function formatTimeInSaoPaulo(
@@ -74,6 +79,96 @@ export function getProfessionalLinkContactToAttachInAnswer() {
 
 export function getCalendarEventCancellationRules() {
   return CALENDAR_EVENT_CANCELLATION_RULES
+}
+
+export type ForwardContactProps = {
+  contactName?: string
+  phoneNumberOfContactToSend: string
+  phoneNumberOfSender: string
+}
+
+export async function forwardContact(params: ForwardContactProps) {
+  const { contactName, phoneNumberOfContactToSend, phoneNumberOfSender } =
+    params
+
+  // Remove "whatsapp:" prefix if it exists
+  const contactPhoneNumber = noWhatsPhoneNumber(phoneNumberOfContactToSend)
+  const senderPhoneNumber = noWhatsPhoneNumber(phoneNumberOfSender)
+
+  try {
+    // Search for the contact by name
+    const contact = await db
+      .select()
+      .from(contacts)
+      .where(
+        and(
+          eq(contacts.isActive, true),
+          or(
+            eq(contacts.phoneNumber, contactPhoneNumber),
+            eq(contacts.name, contactName || ''),
+          ),
+        ),
+      )
+      .limit(1)
+
+    if (!contact.length) {
+      return {
+        success: false,
+        error: 'Contact not found',
+        message: `Contato "${contactName}" não encontrado. Verifique se o nome está correto ou se o contato foi cadastrado.`,
+      }
+    }
+
+    const contactData = contact[0]
+
+    // Generate the VCF URL
+    const baseUrl =
+      process.env.NODE_ENV === 'production'
+        ? PRODUCTION_DOMAIN
+        : (process.env.NGROK_URL ?? 'http://localhost:3000')
+    const vcfUrl = `${baseUrl}/api/contacts/${contactData.id}/vcf`
+
+    // Get the Twilio client for this SaaS user
+    const client = await twilioClientPool.getClient(contactData.saasUserId)
+
+    const accountPhoneNumber = noWhatsPhoneNumber(
+      await twilioClientPool.getPhoneNumberInfo(contactData.saasUserId),
+    )
+
+    if (!senderPhoneNumber) {
+      return {
+        success: false,
+        error: 'WhatsApp number not configured',
+        message: 'Número do WhatsApp não configurado para este usuário.',
+      }
+    }
+
+    // Send the contact via WhatsApp
+    await client.messages.create({
+      from: `whatsapp:${accountPhoneNumber}`,
+      to: `whatsapp:${senderPhoneNumber}`,
+      mediaUrl: [vcfUrl],
+    })
+
+    return {
+      success: true,
+      contact: {
+        name: contactData.name,
+        phoneNumber: contactData.phoneNumber,
+        email: contactData.email,
+        company: contactData.company,
+      },
+      message: `Contato ${contactData.name} foi enviado com sucesso para ${senderPhoneNumber}.`,
+    }
+  } catch (error) {
+    console.error('Error forwarding contact:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      message:
+        'Erro ao enviar contato. Tente novamente ou verifique se as configurações do Twilio estão corretas.',
+    }
+  }
 }
 
 export async function checkEventCancellationEligibility(
@@ -901,7 +996,7 @@ export type ServiceItem = {
   details: string[]
   description?: string
   // priceInReais?: number
-  performedBy?: Atendentes[]
+  performedBy?: string[]
   options?: string[]
   // sendContactCard?: boolean;
   // scheduleCalendarEvent?: boolean;
@@ -986,6 +1081,21 @@ export type MCPFunctions = {
     function: (params: SuggestEventTimesProps) => Promise<any>
     description: string
     parameters: SuggestEventTimesProps
+  }
+  forwardContact: {
+    function: (params: ForwardContactProps) => Promise<{
+      success: boolean
+      contact?: {
+        name: string
+        phoneNumber: string
+        email?: string | null
+        company?: string | null
+      }
+      message: string
+      error?: string
+    }>
+    description: string
+    parameters: ForwardContactProps
   }
 }
 
@@ -1172,6 +1282,16 @@ export const mcpFunctions: MCPFunctions = {
       daysToConsider: 14, // optional, defaults to 14
     },
   },
+  forwardContact: {
+    function: forwardContact,
+    description:
+      'Encaminhar contato. Use esta ferramento de forma síncrona. Isto é, exemplo: para mandar: 1. Mensagem, 2. Encaminhamento, 3. Mensagem. Chame esta ferramenta após enviar a mensagem 1 e antes de enviar a mensagem 3.',
+    parameters: {
+      contactName: 'string',
+      phoneNumberOfContactToSend: 'string',
+      phoneNumberOfSender: 'string',
+    },
+  },
 }
 
 // MCP function call
@@ -1182,7 +1302,8 @@ export async function handlerMPCRequest(
     | FetchCalendarEventsProps
     | CheckEventAvailabilityProps
     | CheckEventCancellationEligibilityProps
-    | SuggestEventTimesProps,
+    | SuggestEventTimesProps
+    | ForwardContactProps,
 ) {
   if (!mcpFunctions[functionName]) {
     throw new Error(`Function ${functionName} not found`)
@@ -1220,6 +1341,10 @@ export async function handlerMPCRequest(
       case 'suggestEventTimes':
         return mcpFunctions[functionName].function(
           parameters as SuggestEventTimesProps,
+        )
+      case 'forwardContact':
+        return mcpFunctions[functionName].function(
+          parameters as ForwardContactProps,
         )
     }
   } catch (error) {

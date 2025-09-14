@@ -27,6 +27,7 @@ import {
   type CalendarToolStatus,
   predefinedToolsService,
 } from '@/services/PredefinedToolsService'
+import ContactsManagementPage from './ContactsManagementPage'
 
 export default function PredefinedToolsPage() {
   const [calendarStatus, setCalendarStatus] = useState<CalendarToolStatus>({
@@ -571,6 +572,9 @@ export default function PredefinedToolsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Contact Management Tool */}
+      <ContactsManagementPage />
 
       {/* Future tools can be added here */}
       <Card className="border-dashed">

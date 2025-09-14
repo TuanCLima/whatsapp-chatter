@@ -713,6 +713,7 @@ export class SaasGoogleCalendarService {
     serviceDurationMinutes: number, // in minutes
     daysToConsider = 14,
     calendarId?: string,
+    workingHours: { start: string; end: string } | undefined,
   ) {
     try {
       const userConfig = await this.getUserCalendarConfig(saasUserId)

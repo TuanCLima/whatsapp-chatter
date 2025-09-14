@@ -2,6 +2,7 @@ import path from 'node:path'
 import express from 'express'
 import Twilio from 'twilio'
 import assistantConfigRouter from './routes/assistantConfig'
+import contactsRouter from './routes/contacts'
 import predefinedToolsRouter from './routes/predefinedTools'
 import mcpRouter from './server/mcpServer'
 import { whatsappHonoWebhook, whatsappSaasWebhook } from './webhook'
@@ -64,6 +65,7 @@ app.use(cookieParser())
 app.use('/api/mcp', mcpRouter)
 app.use('/api/assistant', assistantConfigRouter)
 app.use('/api/predefined-tools', predefinedToolsRouter)
+app.use('/api/contacts', contactsRouter)
 
 // OAuth callback route for Google Calendar authentication
 app.get('/oauth/callback', (req, res) => {

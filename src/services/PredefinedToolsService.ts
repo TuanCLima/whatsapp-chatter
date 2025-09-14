@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import { db } from '../db'
 import { predefinedToolsConfig, saasUsers } from '../db/schema-postgres'
+import { forwardContact } from '../mcp/mcpService'
 import { getSaasGoogleCalendarService } from './SaasGoogleCalendarService'
 
 export interface PredefinedToolConfig {
@@ -55,6 +56,8 @@ export interface CalendarFunctionParameters {
   userPhone?: string
   proposedStartTime?: string
   proposedEndTime?: string
+  contactName?: string
+  phoneNumberOfContactToSend?: string
 }
 
 export interface CalendarTool {
@@ -559,12 +562,74 @@ export class PredefinedToolsService {
   }
 
   /**
+   * Check if user has contact management tool enabled
+   */
+  async isContactToolReady(
+    saasUserId: string,
+  ): Promise<{ ready: boolean; enabled: boolean }> {
+    try {
+      // Check if tool is enabled
+      const toolConfig = await this.getToolConfig(
+        saasUserId,
+        'contact_management',
+      )
+      const enabled = toolConfig?.enabled || false
+
+      return {
+        ready: enabled,
+        enabled,
+      }
+    } catch (error) {
+      console.error('Error checking contact tool readiness:', error)
+      return { ready: false, enabled: false }
+    }
+  }
+
+  /**
+   * Get contact management tools for LLM context
+   */
+  async getContactToolsForLLM(saasUserId: string): Promise<CalendarTool[]> {
+    const status = await this.isContactToolReady(saasUserId)
+
+    if (!status.ready) {
+      return []
+    }
+
+    return [
+      {
+        type: 'function',
+        function: {
+          name: 'forwardContact',
+          description:
+            'Encaminhar contato. Use esta ferramento de forma síncrona. Isto é, exemplo: para mandar: 1. Mensagem, 2. Encaminhamento, 3. Mensagem. Chame esta ferramenta após enviar a mensagem 1 e antes de enviar a mensagem 3.',
+          parameters: {
+            type: 'object',
+            properties: {
+              contactName: {
+                type: 'string',
+                description: 'The name of the contact to forward/share',
+              },
+              phoneNumberOfContactToSend: {
+                type: 'string',
+                description:
+                  'Número do contato a ser enviado: example: +5511911112222',
+              },
+            },
+            required: ['phoneNumberOfContactToSend'],
+          },
+        },
+      },
+    ]
+  }
+
+  /**
    * Execute calendar tool function
    */
   async executeCalendarFunction(
     saasUserId: string,
     functionName: string,
     parameters: CalendarFunctionParameters,
+    twilioSenderNumber: string,
   ): Promise<unknown> {
     const status = await this.isCalendarToolReady(saasUserId)
 
@@ -661,6 +726,13 @@ export class PredefinedToolsService {
             parameters.eventId!,
             parameters.calendarId,
           )
+
+        case 'forwardContact':
+          return await forwardContact({
+            contactName: parameters.contactName,
+            phoneNumberOfContactToSend: parameters.phoneNumberOfContactToSend!,
+            phoneNumberOfSender: twilioSenderNumber,
+          })
 
         default:
           throw new Error(`Unknown calendar function: ${functionName}`)

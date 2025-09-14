@@ -8,7 +8,7 @@ POST http://localhost:3000/send-message
 Content-Type: application/json
 
 {
-  "to": "+5511966493808",
+  "to": "+5511999999999",
   "message": "Hello from Twilio WhatsApp API!"
 }
 
@@ -17,7 +17,15 @@ Content-Type: application/json
 POST http://localhost:3000/webhook
 Content-Type: application/x-www-form-urlencoded
 
-From=whatsapp%3A%2B14155239999&To=whatsapp%3A%2B5511999999999&Body=Hello%20from%20Twilio%20WhatsApp%20API%21
+From=whatsapp%3A%2B14155238886&To=whatsapp%3A%2B5511999999999&Body=Hello%20from%20Twilio%20WhatsApp%20API%21
+
+
+###
+// url encoded webhook post
+POST https://bc9b6ae1888a.ngrok-free.app/webhook/c1eb908b-9da2-4a9b-b6f7-5841043e2a8f
+Content-Type: application/x-www-form-urlencoded
+
+From=whatsapp%3A%2B14155238886&To=whatsapp%3A%2B5511999999999&Body=Hello%20from%20Twilio%20WhatsApp%20API%21
 
 
 

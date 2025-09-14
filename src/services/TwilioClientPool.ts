@@ -72,6 +72,11 @@ class TwilioClientPool {
     return client
   }
 
+  async getPhoneNumberInfo(userId: string): Promise<string> {
+    const credentials = await this.getUserCredentials(userId)
+    return credentials.whatsappNumber
+  }
+
   async getClientByWebhookPath(webhookPath: string): Promise<{
     client: ReturnType<typeof Twilio>
     credentials: UserTwilioCredentials

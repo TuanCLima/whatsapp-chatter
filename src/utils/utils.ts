@@ -1,6 +1,6 @@
 import { getSaoPauloDate } from '../mcp/mcpService'
-import { FALLBACK_PROMPT } from './contants'
 import { assistantConfigService } from '../services/AssistantConfigService'
+import { FALLBACK_PROMPT } from './contants'
 
 export const getInitialPrompt = () => {
   const currentTime = getSaoPauloDate()
@@ -17,10 +17,11 @@ IMPORTANTE: Você tem acesso a uma ferramenta chamada "getSaoPauloDate" que pode
 
 export const getInitialPromptForPhoneNumber = async (phoneNumber: string) => {
   const currentTime = getSaoPauloDate()
-  
+
   // Get custom prompt for this phone number, falls back to environment or default
-  const basePrompt = await assistantConfigService.getPromptForPhoneNumber(phoneNumber)
-  
+  const basePrompt =
+    await assistantConfigService.getPromptForPhoneNumber(phoneNumber)
+
   const timeAwarePrompt = `${basePrompt}
 
 INFORMAÇÃO DE TEMPO ATUAL:
@@ -33,5 +34,13 @@ IMPORTANTE: Você tem acesso a uma ferramenta chamada "getSaoPauloDate" que pode
 }
 
 export const dateToTimestamp = (date: Date): string => {
-  return new Date(date).toISOString().replace('T', ' ').replace('Z', '').substring(0, 23)
+  return new Date(date)
+    .toISOString()
+    .replace('T', ' ')
+    .replace('Z', '')
+    .substring(0, 23)
+}
+
+export const noWhatsPhoneNumber = (phoneNumber: string): string => {
+  return phoneNumber.replace('whatsapp:', '')
 }

@@ -1,13 +1,13 @@
 import 'dotenv/config'
-import express from 'express'
 import { and, desc, eq } from 'drizzle-orm'
+import express from 'express'
 import { db } from '../db'
 import { assistantPrompts, assistantTools } from '../db/schema-postgres'
 
 const router = express.Router()
 
 // Middleware to authenticate user (this should be extracted to a shared file)
-const authenticateUser = async (
+export const authenticateUser = async (
   req: express.Request,
   res: express.Response,
   next: express.NextFunction,
@@ -57,7 +57,12 @@ router.get('/prompt', authenticateUser, async (req, res) => {
     const activePrompt = await db
       .select()
       .from(assistantPrompts)
-      .where(and(eq(assistantPrompts.saasUserId, userId), eq(assistantPrompts.isActive, true)))
+      .where(
+        and(
+          eq(assistantPrompts.saasUserId, userId),
+          eq(assistantPrompts.isActive, true),
+        ),
+      )
       .orderBy(desc(assistantPrompts.createdAt))
       .limit(1)
 
@@ -93,7 +98,12 @@ router.post('/prompt', authenticateUser, async (req, res) => {
     await db
       .update(assistantPrompts)
       .set({ isActive: false, updatedAt: new Date() })
-      .where(and(eq(assistantPrompts.saasUserId, userId), eq(assistantPrompts.isActive, true)))
+      .where(
+        and(
+          eq(assistantPrompts.saasUserId, userId),
+          eq(assistantPrompts.isActive, true),
+        ),
+      )
 
     // Insert new prompt
     const newPrompt = await db
@@ -105,10 +115,10 @@ router.post('/prompt', authenticateUser, async (req, res) => {
       })
       .returning()
 
-    res.json({ 
-      message: 'Prompt saved successfully', 
+    res.json({
+      message: 'Prompt saved successfully',
       prompt: newPrompt[0].prompt,
-      id: newPrompt[0].id 
+      id: newPrompt[0].id,
     })
   } catch (error) {
     console.error('Error saving prompt:', error)
@@ -130,13 +140,18 @@ router.get('/tools', authenticateUser, async (req, res) => {
     const tools = await db
       .select()
       .from(assistantTools)
-      .where(and(eq(assistantTools.saasUserId, userId), eq(assistantTools.isActive, true)))
+      .where(
+        and(
+          eq(assistantTools.saasUserId, userId),
+          eq(assistantTools.isActive, true),
+        ),
+      )
       .orderBy(desc(assistantTools.createdAt))
 
     // Parse parameters JSON for each tool
-    const parsedTools = tools.map(tool => ({
+    const parsedTools = tools.map((tool) => ({
       ...tool,
-      parameters: JSON.parse(tool.parameters)
+      parameters: JSON.parse(tool.parameters),
     }))
 
     res.json({ tools: parsedTools })
@@ -160,11 +175,13 @@ router.get('/tools/:id', authenticateUser, async (req, res) => {
     const tool = await db
       .select()
       .from(assistantTools)
-      .where(and(
-        eq(assistantTools.id, parseInt(toolId)),
-        eq(assistantTools.saasUserId, userId),
-        eq(assistantTools.isActive, true)
-      ))
+      .where(
+        and(
+          eq(assistantTools.id, parseInt(toolId)),
+          eq(assistantTools.saasUserId, userId),
+          eq(assistantTools.isActive, true),
+        ),
+      )
       .limit(1)
 
     if (tool.length === 0) {
@@ -175,7 +192,7 @@ router.get('/tools/:id', authenticateUser, async (req, res) => {
     // Parse parameters JSON
     const parsedTool = {
       ...tool[0],
-      parameters: JSON.parse(tool[0].parameters)
+      parameters: JSON.parse(tool[0].parameters),
     }
 
     res.json({ tool: parsedTool })
@@ -197,8 +214,8 @@ router.post('/tools', authenticateUser, async (req, res) => {
     const { name, description, parameters, implementation } = req.body
 
     if (!name || !description || !parameters || !implementation) {
-      res.status(400).json({ 
-        error: 'Name, description, parameters, and implementation are required' 
+      res.status(400).json({
+        error: 'Name, description, parameters, and implementation are required',
       })
       return
     }
@@ -224,12 +241,12 @@ router.post('/tools', authenticateUser, async (req, res) => {
 
     const parsedTool = {
       ...newTool[0],
-      parameters: JSON.parse(newTool[0].parameters)
+      parameters: JSON.parse(newTool[0].parameters),
     }
 
-    res.status(201).json({ 
-      message: 'Tool created successfully', 
-      tool: parsedTool
+    res.status(201).json({
+      message: 'Tool created successfully',
+      tool: parsedTool,
     })
   } catch (error) {
     console.error('Error creating tool:', error)
@@ -251,8 +268,8 @@ router.put('/tools/:id', authenticateUser, async (req, res) => {
     const { name, description, parameters, implementation } = req.body
 
     if (!name || !description || !parameters || !implementation) {
-      res.status(400).json({ 
-        error: 'Name, description, parameters, and implementation are required' 
+      res.status(400).json({
+        error: 'Name, description, parameters, and implementation are required',
       })
       return
     }
@@ -267,11 +284,13 @@ router.put('/tools/:id', authenticateUser, async (req, res) => {
     const existingTool = await db
       .select()
       .from(assistantTools)
-      .where(and(
-        eq(assistantTools.id, parseInt(toolId)),
-        eq(assistantTools.saasUserId, userId),
-        eq(assistantTools.isActive, true)
-      ))
+      .where(
+        and(
+          eq(assistantTools.id, parseInt(toolId)),
+          eq(assistantTools.saasUserId, userId),
+          eq(assistantTools.isActive, true),
+        ),
+      )
       .limit(1)
 
     if (existingTool.length === 0) {
@@ -294,12 +313,12 @@ router.put('/tools/:id', authenticateUser, async (req, res) => {
 
     const parsedTool = {
       ...updatedTool[0],
-      parameters: JSON.parse(updatedTool[0].parameters)
+      parameters: JSON.parse(updatedTool[0].parameters),
     }
 
-    res.json({ 
-      message: 'Tool updated successfully', 
-      tool: parsedTool
+    res.json({
+      message: 'Tool updated successfully',
+      tool: parsedTool,
     })
   } catch (error) {
     console.error('Error updating tool:', error)
@@ -322,11 +341,13 @@ router.delete('/tools/:id', authenticateUser, async (req, res) => {
     const existingTool = await db
       .select()
       .from(assistantTools)
-      .where(and(
-        eq(assistantTools.id, parseInt(toolId)),
-        eq(assistantTools.saasUserId, userId),
-        eq(assistantTools.isActive, true)
-      ))
+      .where(
+        and(
+          eq(assistantTools.id, parseInt(toolId)),
+          eq(assistantTools.saasUserId, userId),
+          eq(assistantTools.isActive, true),
+        ),
+      )
       .limit(1)
 
     if (existingTool.length === 0) {

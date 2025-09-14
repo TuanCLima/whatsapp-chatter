@@ -125,9 +125,14 @@ export class AssistantConfigService {
         parameters: JSON.parse(tool.parameters),
       }))
 
-      // Get predefined tools (like calendar management)
-      const predefinedTools =
+      // Get predefined tools (like calendar management and contact management)
+      const calendarTools =
         await predefinedToolsService.getCalendarToolsForLLM(userId)
+
+      const contactTools =
+        await predefinedToolsService.getContactToolsForLLM(userId)
+
+      const predefinedTools = [...calendarTools, ...contactTools]
 
       return {
         customTools: formattedCustomTools,
@@ -176,9 +181,14 @@ export class AssistantConfigService {
         parameters: JSON.parse(tool.parameters),
       }))
 
-      // Get predefined tools (like calendar management)
-      const predefinedTools =
+      // Get predefined tools (like calendar management and contact management)
+      const calendarTools =
         await predefinedToolsService.getCalendarToolsForLLM(saasUserId)
+
+      const contactTools =
+        await predefinedToolsService.getContactToolsForLLM(saasUserId)
+
+      const predefinedTools = [...calendarTools, ...contactTools]
 
       return {
         customTools: formattedCustomTools,

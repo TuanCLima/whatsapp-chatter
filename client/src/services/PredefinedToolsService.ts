@@ -36,6 +36,27 @@ export interface CalendarToolStatus {
   enabled: boolean
 }
 
+export interface Contact {
+  id: number
+  saasUserId: string
+  name: string
+  phoneNumber: string
+  email?: string | null
+  company?: string | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ContactsToolConfig {
+  contacts?: Contact[]
+}
+
+export interface ContactsToolStatus {
+  enabled: boolean
+  contactCount: number
+}
+
 export class PredefinedToolsService {
   private async getAuthHeaders(): Promise<HeadersInit> {
     return {
@@ -202,6 +223,125 @@ export class PredefinedToolsService {
   ): Promise<{ config: PredefinedToolConfig }> {
     return this.updateToolConfig(
       'calendar_management',
+      enabled,
+      config as Record<string, unknown>,
+    )
+  }
+
+  // ===== CONTACTS MANAGEMENT =====
+
+  /**
+   * Get all contacts for the authenticated user
+   */
+  async getContacts(): Promise<{ contacts: Contact[] }> {
+    const response = await fetch(`${API_BASE_URL}/api/contacts`, {
+      method: 'GET',
+      headers: await this.getAuthHeaders(),
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch contacts')
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Create a new contact
+   */
+  async createContact(contact: {
+    name: string
+    phoneNumber: string
+    email?: string
+    company?: string
+  }): Promise<{ contact: Contact }> {
+    const response = await fetch(`${API_BASE_URL}/api/contacts`, {
+      method: 'POST',
+      headers: await this.getAuthHeaders(),
+      credentials: 'include',
+      body: JSON.stringify(contact),
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to create contact')
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Update an existing contact
+   */
+  async updateContact(
+    contactId: number,
+    updates: {
+      name?: string
+      phoneNumber?: string
+      email?: string
+      company?: string
+    },
+  ): Promise<{ contact: Contact }> {
+    const response = await fetch(`${API_BASE_URL}/api/contacts/${contactId}`, {
+      method: 'PUT',
+      headers: await this.getAuthHeaders(),
+      credentials: 'include',
+      body: JSON.stringify(updates),
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to update contact')
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Delete a contact
+   */
+  async deleteContact(contactId: number): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/contacts/${contactId}`, {
+      method: 'DELETE',
+      headers: await this.getAuthHeaders(),
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to delete contact')
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Get contacts tool status
+   */
+  async getContactsStatus(): Promise<ContactsToolStatus> {
+    try {
+      const contactsResponse = await this.getContacts()
+      const toolConfig = await this.getToolConfig('contact_management')
+
+      return {
+        enabled: toolConfig.config?.enabled || false,
+        contactCount: contactsResponse.contacts.length,
+      }
+    } catch {
+      return {
+        enabled: false,
+        contactCount: 0,
+      }
+    }
+  }
+
+  /**
+   * Enable/disable contacts management tool
+   */
+  async toggleContactsTool(
+    enabled: boolean,
+    config?: ContactsToolConfig,
+  ): Promise<{ config: PredefinedToolConfig }> {
+    return this.updateToolConfig(
+      'contact_management',
       enabled,
       config as Record<string, unknown>,
     )
