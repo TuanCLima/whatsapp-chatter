@@ -49,8 +49,6 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (text: string) => {
-      console.log('Sending message:', text, activeContactId)
-
       if (!activeContactId || !text.trim()) {
         throw new Error('No active contact or empty message')
       }

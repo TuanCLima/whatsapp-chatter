@@ -401,8 +401,30 @@ export class SaasGoogleCalendarService {
             ? new Date(credentials.expiry_date)
             : undefined,
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error refreshing token:', error)
+
+        // Handle specific invalid_grant error
+        if (error && typeof error === 'object' && 'response' in error) {
+          const gaxiosError = error as any
+          if (gaxiosError.response?.data?.error === 'invalid_grant') {
+            // Clear invalid tokens from database
+            await db
+              .update(saasUsers)
+              .set({
+                googleAccessToken: null,
+                googleRefreshToken: null,
+                googleTokenExpiry: null,
+                updatedAt: new Date(),
+              })
+              .where(eq(saasUsers.id, saasUserId))
+
+            throw new Error(
+              'Google Calendar authorization has expired. Please re-connect your Google Calendar account.',
+            )
+          }
+        }
+
         throw new Error('Failed to refresh Google Calendar access token')
       }
     }
@@ -445,6 +467,31 @@ export class SaasGoogleCalendarService {
       return response.data.items || []
     } catch (error: unknown) {
       console.error('Calendar ID that failed:', effectiveCalendarId)
+
+      // Handle authorization errors
+      if (error && typeof error === 'object' && 'response' in error) {
+        const gaxiosError = error as any
+        if (
+          gaxiosError.response?.status === 401 ||
+          gaxiosError.response?.data?.error === 'invalid_grant'
+        ) {
+          // Clear invalid tokens from database
+          await db
+            .update(saasUsers)
+            .set({
+              googleAccessToken: null,
+              googleRefreshToken: null,
+              googleTokenExpiry: null,
+              updatedAt: new Date(),
+            })
+            .where(eq(saasUsers.id, saasUserId))
+
+          throw new Error(
+            'Google Calendar authorization has expired. Please re-connect your Google Calendar account.',
+          )
+        }
+      }
+
       throw error
     }
   }
@@ -712,8 +759,8 @@ export class SaasGoogleCalendarService {
     saasUserId: string,
     serviceDurationMinutes: number, // in minutes
     daysToConsider = 14,
+    _workingHours: { start: string; end: string } | undefined,
     calendarId?: string,
-    workingHours: { start: string; end: string } | undefined,
   ) {
     try {
       const userConfig = await this.getUserCalendarConfig(saasUserId)

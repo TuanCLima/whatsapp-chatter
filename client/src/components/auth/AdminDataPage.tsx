@@ -136,7 +136,6 @@ export function AdminDataPage() {
   async function clearUserData(phoneNumber: string) {
     if (!confirm(`Delete user ${phoneNumber} and their messages?`)) return
     try {
-      console.log('/admin/db/messages-per-user clearUserData', { phoneNumber })
       const res = await fetch(
         `${API_BASE_URL}/admin/db/messages-per-user?phoneNumber=${encodeURIComponent(phoneNumber)}`,
         {

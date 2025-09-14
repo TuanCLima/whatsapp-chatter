@@ -67,8 +67,7 @@ app.use('/api/assistant', assistantConfigRouter)
 app.use('/api/predefined-tools', predefinedToolsRouter)
 app.use('/api/contacts', contactsRouter)
 
-// OAuth callback route for Google Calendar authentication
-app.get('/oauth/callback', (req, res) => {
+const oauthCallback = (req: express.Request, res: express.Response) => {
   const code = req.query.code as string
   const error = req.query.error as string
 
@@ -115,7 +114,10 @@ app.get('/oauth/callback', (req, res) => {
   `
 
   res.send(html)
-})
+}
+
+// OAuth callback route for Google Calendar authentication
+app.get('/oauth2callback', oauthCallback)
 
 /**
  * DRIZZLE STUDIO PROXY SETUP

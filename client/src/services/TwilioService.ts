@@ -1,7 +1,7 @@
 // This service would handle all Twilio-related functionality
 // It would interface with a backend service that actually makes the API calls to Twilio
 
-import { Message } from '@/types'
+import type { Message } from '@/types'
 
 class TwilioService {
   private apiUrl: string

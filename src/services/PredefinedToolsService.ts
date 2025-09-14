@@ -348,7 +348,7 @@ export class PredefinedToolsService {
                   location: {
                     type: 'string',
                     description:
-                      'Adicionar link do contato do whatsapp como link de forma que quando clicado abra o whatsapp o formato é https://wa.me/[numero do telefone]. Exemplo: https://wa.me/5511999999999',
+                      'Adicionar link do usuário (que é o campo phoneNumber da mensagem inicial do sistema) que está falando com o assistente no seguinte formato, de forma que quando clicado abra o whatsapp. O formato é https://wa.me/[numero do telefone]. Exemplo: https://wa.me/5511999999999',
                   },
                   description: {
                     type: 'string',
@@ -696,8 +696,8 @@ export class PredefinedToolsService {
             saasUserId,
             parameters.serviceDurationMinutes!,
             parameters.daysToConsider,
-            parameters.calendarId,
             parameters.workingHours,
+            parameters.calendarId,
           )
 
         case 'cancelCalendarEvent':
