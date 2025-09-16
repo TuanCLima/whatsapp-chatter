@@ -56,14 +56,15 @@ router.post(
 
     let result: any
     try {
-      switch (functionName) {
-        case 'getSaoPauloDate':
+      switch (
+        functionName
+        // case 'getSaoPauloDate':
         // case 'getAllServicesTable':
-        case 'getSalonInfo':
-          // case 'getCalendarEventCancellationRules':
-          // case 'getProfessionalLinkContactToAttachInAnswer':
-          result = mcpFunctions[functionName].function()
-          break
+        // case 'getSalonInfo':
+        // case 'getCalendarEventCancellationRules':
+        // case 'getProfessionalLinkContactToAttachInAnswer':
+        // result = mcpFunctions[functionName].function()
+        // break
         // case 'fetchCalendarEvents':
         // case 'checkEventAvailability':
         // case 'checkEventCancellationEligibility':
@@ -73,6 +74,7 @@ router.post(
         // case 'suggestEventTimes':
         // case 'forwardContact':
         //   result = await mcpFunctions[functionName].function(parameters)
+      ) {
       }
 
       res.json(result)

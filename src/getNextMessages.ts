@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { db } from './db'
 import { userSaasUserMapping } from './db/schema-postgres'
 import { toolCall } from './mcp/toolCall'
-import { dateTool, getSalonInfoTool } from './mcp/toolConfig/toolConfig'
+import { dateTool } from './mcp/toolConfig/toolConfig'
 import {
   executeCustomTool,
   executePredefinedTool,
@@ -36,7 +36,7 @@ async function getSaasUserIdFromPhoneNumber(
 }
 
 // Get built-in tools
-const builtInTools = [dateTool, getSalonInfoTool]
+const builtInTools = [dateTool]
 
 export async function getNextMessages(
   messagesFeed: ChatMessage[],
