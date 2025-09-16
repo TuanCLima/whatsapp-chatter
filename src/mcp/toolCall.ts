@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { PORT } from '..'
-import { CallLLMProps } from '../types/types'
+import type { CallLLMProps } from '../types/types'
 
 export async function toolCall({
   functionName,

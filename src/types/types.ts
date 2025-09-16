@@ -1,5 +1,5 @@
-import OpenAI from 'openai'
-import { FetchCalendarEventsProps } from '../mcp/mcpService'
+import type OpenAI from 'openai'
+import type { FetchCalendarEventsProps } from '../mcp/mcpService'
 
 type Maybe<T> = T | undefined | null
 

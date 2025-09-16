@@ -5,7 +5,7 @@ import assistantConfigRouter from './routes/assistantConfig'
 import contactsRouter from './routes/contacts'
 import predefinedToolsRouter from './routes/predefinedTools'
 import mcpRouter from './server/mcpServer'
-import { whatsappHonoWebhook, whatsappSaasWebhook } from './webhook'
+import { whatsappSaasWebhook } from './webhook'
 import 'dotenv/config'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
@@ -373,8 +373,6 @@ app.post(
   },
 )
 
-app.post('/webhook', whatsappHonoWebhook)
-
 // SaaS webhook route with dynamic path
 app.post('/webhook/:webhookPath', whatsappSaasWebhook)
 
@@ -435,6 +433,65 @@ app.post('/auth/login', async (req, res) => {
     }
   }
 })
+
+// // Authentication endpoints
+// app.post('/auth/login', async (req, res) => {
+//   const { email, password } = req.body
+
+//   if (!email || !password) {
+//     res.status(400).json({ error: 'Email and password are required' })
+//     return
+//   }
+
+//   if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+//     res.status(500).json({ error: 'Admin credentials not configured' })
+//     return
+//   }
+
+//   // Simple hardcoded admin credentials for demo
+//   // In production, you would hash passwords and store in database
+//   const adminCredentials = {
+//     email: process.env.ADMIN_EMAIL,
+//     password: process.env.ADMIN_PASSWORD, // In production, this should be hashed
+//     user: {
+//       id: '1',
+//       email: process.env.ADMIN_EMAIL,
+//       role: 'admin' as const,
+//       name: 'Admin User',
+//     },
+//   }
+
+//   if (
+//     email === adminCredentials.email &&
+//     password === adminCredentials.password
+//   ) {
+//     // Generate a simple JWT token (in production, use proper JWT library)
+//     const token = Buffer.from(
+//       JSON.stringify({
+//         userId: adminCredentials.user.id,
+//         role: adminCredentials.user.role,
+//         exp: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+//       }),
+//     ).toString('base64')
+
+//     // Set HttpOnly cookie so normal browser navigation to protected routes works
+//     const isProd = process.env.NODE_ENV === 'production'
+//     res.cookie('admin_token', token, {
+//       httpOnly: true,
+//       secure: isProd, // secure cookies in prod
+//       sameSite: isProd ? 'lax' : 'lax',
+//       maxAge: 24 * 60 * 60 * 1000,
+//       path: '/',
+//     })
+
+//     res.json({
+//       user: adminCredentials.user,
+//       token: token,
+//     })
+//   } else {
+//     res.status(401).json({ error: 'Invalid credentials' })
+//   }
+// })
 
 app.get('/auth/verify', async (req, res) => {
   try {
@@ -838,65 +895,6 @@ app.put('/users/:phoneNumber/conversation', async (req, res) => {
   } catch (error) {
     console.error('Error updating conversation status:', error)
     res.status(500).json({ error: 'Failed to update conversation status' })
-  }
-})
-
-// Authentication endpoints
-app.post('/auth/login', async (req, res) => {
-  const { email, password } = req.body
-
-  if (!email || !password) {
-    res.status(400).json({ error: 'Email and password are required' })
-    return
-  }
-
-  if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
-    res.status(500).json({ error: 'Admin credentials not configured' })
-    return
-  }
-
-  // Simple hardcoded admin credentials for demo
-  // In production, you would hash passwords and store in database
-  const adminCredentials = {
-    email: process.env.ADMIN_EMAIL,
-    password: process.env.ADMIN_PASSWORD, // In production, this should be hashed
-    user: {
-      id: '1',
-      email: process.env.ADMIN_EMAIL,
-      role: 'admin' as const,
-      name: 'Admin User',
-    },
-  }
-
-  if (
-    email === adminCredentials.email &&
-    password === adminCredentials.password
-  ) {
-    // Generate a simple JWT token (in production, use proper JWT library)
-    const token = Buffer.from(
-      JSON.stringify({
-        userId: adminCredentials.user.id,
-        role: adminCredentials.user.role,
-        exp: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
-      }),
-    ).toString('base64')
-
-    // Set HttpOnly cookie so normal browser navigation to protected routes works
-    const isProd = process.env.NODE_ENV === 'production'
-    res.cookie('admin_token', token, {
-      httpOnly: true,
-      secure: isProd, // secure cookies in prod
-      sameSite: isProd ? 'lax' : 'lax',
-      maxAge: 24 * 60 * 60 * 1000,
-      path: '/',
-    })
-
-    res.json({
-      user: adminCredentials.user,
-      token: token,
-    })
-  } else {
-    res.status(401).json({ error: 'Invalid credentials' })
   }
 })
 
