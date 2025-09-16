@@ -31,7 +31,7 @@ export default function TwilioGuard({ children }: TwilioGuardProps) {
 
   const checkTwilioStatus = useCallback(async () => {
     try {
-      const token = localStorage.getItem('admin_token')
+      const token = localStorage.getItem('auth_token')
       const response = await fetch(`${API_BASE_URL}/api/twilio/credentials`, {
         headers: {
           Authorization: `Bearer ${token}`,

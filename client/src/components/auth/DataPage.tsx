@@ -27,7 +27,7 @@ interface DbMessage {
   toolCalls: string | null
 }
 
-export function AdminDataPage() {
+export function DataPage() {
   const { isAuthenticated } = useAuth()
   const [users, setUsers] = useState<DbUser[]>([])
   const [messages, setMessages] = useState<DbMessage[]>([])
@@ -37,14 +37,14 @@ export function AdminDataPage() {
   const [phoneFilter, setPhoneFilter] = useState('')
   const [search, setSearch] = useState('')
   const token =
-    typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null
+    typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
 
   useEffect(() => {
     if (!isAuthenticated) return
     const fetchUsers = async () => {
       try {
         setLoadingUsers(true)
-        const res = await fetch(`${API_BASE_URL}/admin/db/users`, {
+        const res = await fetch(`${API_BASE_URL}/api/db/users`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         })
         if (!res.ok) throw new Error('Failed to load users')
@@ -66,7 +66,7 @@ export function AdminDataPage() {
           typeof window !== 'undefined'
             ? window.location.origin
             : 'http://localhost'
-        const url = new URL(`${API_BASE_URL}/admin/db/messages`, base)
+        const url = new URL(`${API_BASE_URL}/api/db/messages`, base)
         if (pn) url.searchParams.set('phoneNumber', pn)
         url.searchParams.set('limit', '500')
         const apiUrl = base ? url.toString().replace(base, '') : url.toString()
@@ -103,7 +103,7 @@ export function AdminDataPage() {
   async function clearAllMessages() {
     if (!confirm('Delete ALL messages? This cannot be undone.')) return
     try {
-      const res = await fetch(`${API_BASE_URL}/admin/db/clear-all-messages`, {
+      const res = await fetch(`${API_BASE_URL}/api/db/clear-all-messages`, {
         method: 'DELETE',
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       })
@@ -119,7 +119,7 @@ export function AdminDataPage() {
       return
     try {
       const res = await fetch(
-        `${API_BASE_URL}/admin/db/clear-all-users-and-messages`,
+        `${API_BASE_URL}/api/db/clear-all-users-and-messages`,
         {
           method: 'DELETE',
           headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -137,7 +137,7 @@ export function AdminDataPage() {
     if (!confirm(`Delete user ${phoneNumber} and their messages?`)) return
     try {
       const res = await fetch(
-        `${API_BASE_URL}/admin/db/messages-per-user?phoneNumber=${encodeURIComponent(phoneNumber)}`,
+        `${API_BASE_URL}/api/db/messages-per-user?phoneNumber=${encodeURIComponent(phoneNumber)}`,
         {
           method: 'DELETE',
           headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -355,4 +355,4 @@ export function AdminDataPage() {
   )
 }
 
-export default AdminDataPage
+export default DataPage

@@ -119,31 +119,15 @@ const oauthCallback = (req: express.Request, res: express.Response) => {
 // OAuth callback route for Google Calendar authentication
 app.get('/oauth2callback', oauthCallback)
 
-/**
- * DRIZZLE STUDIO PROXY SETUP
- *
- * This sets up a protected proxy route to access Drizzle Studio at:
- * https://your-server.com/admin/drizzle
- *
- * Requirements:
- * 1. User must be authenticated with admin token (via Bearer token in Authorization header)
- * 2. Drizzle Studio must be running locally at https://local.drizzle.studio
- *
- * Usage:
- * - Login via /auth/login to get admin token
- * - Access /admin/drizzle with Authorization: Bearer <token> header
- * - Or access through your admin UI that includes the token
- */
-
 // Authentication middleware for protected routes
-const authenticateAdmin = (
+const _authenticateUser = (
   req: express.Request,
   res: express.Response,
   next: express.NextFunction,
 ): void => {
   // Accept token from Authorization header, HttpOnly cookie, or query param for flexibility
   const authHeader = req.headers.authorization
-  const cookieToken = req.cookies?.admin_token as string | undefined
+  const cookieToken = req.cookies?.auth_token as string | undefined
   const queryToken = (req.query?.t || req.query?.token) as string | undefined
   const presentedToken =
     (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined) ||
@@ -166,12 +150,7 @@ const authenticateAdmin = (
       return
     }
 
-    if (payload.role !== 'admin') {
-      res.status(403).json({ error: 'Insufficient privileges' })
-      return
-    }
-
-    console.log('Authenticating admin payload', payload)
+    console.log('Authenticating user payload', payload)
 
     // Add user info to request for use in next middleware
     req.user = payload
@@ -182,7 +161,7 @@ const authenticateAdmin = (
   }
 }
 
-app.get('/admin/db/users', authenticateAdmin, async (_req, res) => {
+app.get('/api/db/users', _authenticateUser, async (_req, res) => {
   try {
     const allUsers = await db
       .select()
@@ -190,12 +169,12 @@ app.get('/admin/db/users', authenticateAdmin, async (_req, res) => {
       .orderBy(desc(users.createdAt))
     res.json(allUsers)
   } catch (error) {
-    console.error('Error fetching users (admin):', error)
+    console.error('Error fetching users:', error)
     res.status(500).json({ error: 'Failed to fetch users' })
   }
 })
 
-app.get('/admin/db/messages', authenticateAdmin, async (req, res) => {
+app.get('/api/db/messages', _authenticateUser, async (req, res) => {
   try {
     const { phoneNumber, limit = '500' } = req.query as {
       phoneNumber?: string
@@ -218,30 +197,30 @@ app.get('/admin/db/messages', authenticateAdmin, async (req, res) => {
 
     res.json(rows)
   } catch (error) {
-    console.error('Error fetching messages (admin):', error)
+    console.error('Error fetching messages:', error)
     res.status(500).json({ error: 'Failed to fetch messages' })
   }
 })
 
-// Clear ALL messages (dangerous) - admin only
+// Clear ALL messages (dangerous) - user only
 app.delete(
-  '/admin/db/clear-all-messages',
-  authenticateAdmin,
+  '/api/db/clear-all-messages',
+  _authenticateUser,
   async (_req, res) => {
     try {
       // Delete all rows from messages table
       await db.delete(messages)
       res.json({ success: true })
     } catch (error) {
-      console.error('Error clearing messages (admin):', error)
+      console.error('Error clearing messages:', error)
       res.status(500).json({ error: 'Failed to clear messages' })
     }
   },
 )
 
 app.delete(
-  '/admin/db/clear-all-users-and-messages',
-  authenticateAdmin,
+  '/api/db/clear-all-users-and-messages',
+  _authenticateUser,
   async (_req, res) => {
     try {
       // Delete all rows from users table
@@ -249,39 +228,35 @@ app.delete(
       await db.delete(messages)
       res.json({ success: true })
     } catch (error) {
-      console.error('Error clearing users or messages (admin):', error)
+      console.error('Error clearing users or messages:', error)
       res.status(500).json({ error: 'Failed to clear users and messages' })
     }
   },
 )
 
 // Clear messages for a specific phone number (?phoneNumber=... required)
-app.delete(
-  '/admin/db/messages-per-user',
-  authenticateAdmin,
-  async (req, res) => {
-    try {
-      const { phoneNumber } = req.query as { phoneNumber?: string }
+app.delete('/api/db/messages-per-user', _authenticateUser, async (req, res) => {
+  try {
+    const { phoneNumber } = req.query as { phoneNumber?: string }
 
-      console.log('/admin/db/messages-per-user', { phoneNumber })
+    console.log('/api/db/messages-per-user', { phoneNumber })
 
-      if (!phoneNumber) {
-        res.status(400).json({ error: 'phoneNumber query param required' })
-        return
-      }
-      await db.delete(messages).where(eq(messages.phoneNumber, phoneNumber))
-      res.json({ success: true })
-    } catch (error) {
-      console.error('Error clearing phone messages (admin):', error)
-      res.status(500).json({ error: 'Failed to clear user messages' })
+    if (!phoneNumber) {
+      res.status(400).json({ error: 'phoneNumber query param required' })
+      return
     }
-  },
-)
+    await db.delete(messages).where(eq(messages.phoneNumber, phoneNumber))
+    res.json({ success: true })
+  } catch (error) {
+    console.error('Error clearing phone messages:', error)
+    res.status(500).json({ error: 'Failed to clear user messages' })
+  }
+})
 
 // Check and create missing user-SaaS user mappings
 app.get(
-  '/admin/db/check-missing-mappings',
-  authenticateAdmin,
+  '/api/db/check-missing-mappings',
+  _authenticateUser,
   async (_req, res) => {
     try {
       // Get all WhatsApp users
@@ -311,8 +286,8 @@ app.get(
 
 // Create missing mappings for all unmapped users to the first SaaS user (for migration purposes)
 app.post(
-  '/admin/db/create-missing-mappings',
-  authenticateAdmin,
+  '/api/db/create-missing-mappings',
+  _authenticateUser,
   async (req, res) => {
     try {
       const { saasUserId } = req.body as { saasUserId?: string }
@@ -414,8 +389,8 @@ app.post('/auth/login', async (req, res) => {
 
     const result = await authService.login(email, password)
 
-    // Set HTTP-only cookie for admin access
-    res.cookie('admin_token', result.token, {
+    // Set HTTP-only cookie for user access
+    res.cookie('auth_token', result.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -434,71 +409,12 @@ app.post('/auth/login', async (req, res) => {
   }
 })
 
-// // Authentication endpoints
-// app.post('/auth/login', async (req, res) => {
-//   const { email, password } = req.body
-
-//   if (!email || !password) {
-//     res.status(400).json({ error: 'Email and password are required' })
-//     return
-//   }
-
-//   if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
-//     res.status(500).json({ error: 'Admin credentials not configured' })
-//     return
-//   }
-
-//   // Simple hardcoded admin credentials for demo
-//   // In production, you would hash passwords and store in database
-//   const adminCredentials = {
-//     email: process.env.ADMIN_EMAIL,
-//     password: process.env.ADMIN_PASSWORD, // In production, this should be hashed
-//     user: {
-//       id: '1',
-//       email: process.env.ADMIN_EMAIL,
-//       role: 'admin' as const,
-//       name: 'Admin User',
-//     },
-//   }
-
-//   if (
-//     email === adminCredentials.email &&
-//     password === adminCredentials.password
-//   ) {
-//     // Generate a simple JWT token (in production, use proper JWT library)
-//     const token = Buffer.from(
-//       JSON.stringify({
-//         userId: adminCredentials.user.id,
-//         role: adminCredentials.user.role,
-//         exp: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
-//       }),
-//     ).toString('base64')
-
-//     // Set HttpOnly cookie so normal browser navigation to protected routes works
-//     const isProd = process.env.NODE_ENV === 'production'
-//     res.cookie('admin_token', token, {
-//       httpOnly: true,
-//       secure: isProd, // secure cookies in prod
-//       sameSite: isProd ? 'lax' : 'lax',
-//       maxAge: 24 * 60 * 60 * 1000,
-//       path: '/',
-//     })
-
-//     res.json({
-//       user: adminCredentials.user,
-//       token: token,
-//     })
-//   } else {
-//     res.status(401).json({ error: 'Invalid credentials' })
-//   }
-// })
-
 app.get('/auth/verify', async (req, res) => {
   try {
     const authHeader = req.headers.authorization
     const token = authHeader?.startsWith('Bearer ')
       ? authHeader.substring(7)
-      : req.cookies?.admin_token
+      : req.cookies?.auth_token
 
     if (!token) {
       res.status(401).json({ error: 'No token provided' })
@@ -523,7 +439,7 @@ app.get('/auth/verify', async (req, res) => {
 })
 
 app.post('/auth/logout', (_req, res) => {
-  res.clearCookie('admin_token')
+  res.clearCookie('auth_token')
   res.json({ message: 'Logged out successfully' })
 })
 
@@ -537,7 +453,7 @@ const authenticateUser = async (
     const authHeader = req.headers.authorization
     const token = authHeader?.startsWith('Bearer ')
       ? authHeader.substring(7)
-      : req.cookies?.admin_token
+      : req.cookies?.auth_token
 
     if (!token) {
       res.status(401).json({ error: 'No token provided' })
@@ -900,47 +816,9 @@ app.put('/users/:phoneNumber/conversation', async (req, res) => {
 
 // Optional: logout clears the cookie
 app.post('/auth/logout', (_req, res) => {
-  res.clearCookie('admin_token', { path: '/' })
+  res.clearCookie('auth_token', { path: '/' })
   res.json({ success: true })
 })
-
-app.get('/auth/verify', (req, res) => {
-  const authHeader = req.headers.authorization
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'No token provided' })
-    return
-  }
-
-  const token = authHeader.substring(7)
-
-  try {
-    // Decode the simple token (in production, use proper JWT verification)
-    const payload = JSON.parse(Buffer.from(token, 'base64').toString())
-
-    if (payload.exp < Date.now()) {
-      res.status(401).json({ error: 'Token expired' })
-      return
-    }
-
-    if (payload.role !== 'admin') {
-      res.status(403).json({ error: 'Insufficient privileges' })
-      return
-    }
-
-    // Return user data
-    res.json({
-      id: payload.userId,
-      email: 'admin@example.com',
-      role: payload.role,
-      name: 'Admin User',
-    })
-  } catch (_error) {
-    res.status(401).json({ error: 'Invalid token' })
-  }
-})
-
-// Protected Drizzle Studio proxy route
 
 // Google token health check endpoint
 app.get('/api/token-health', async (_req, res) => {

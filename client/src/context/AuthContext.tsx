@@ -3,7 +3,7 @@ import { createContext, useContext } from 'react'
 export interface User {
   id: string
   email: string
-  role: 'admin' | 'user'
+  role: 'user'
   name: string
 }
 

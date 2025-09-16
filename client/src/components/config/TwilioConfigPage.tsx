@@ -42,7 +42,7 @@ export default function TwilioConfigPage() {
 
   const fetchCredentials = useCallback(async () => {
     try {
-      const token = localStorage.getItem('admin_token')
+      const token = localStorage.getItem('auth_token')
       const response = await fetch(`${API_BASE_URL}/api/twilio/credentials`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -90,7 +90,7 @@ export default function TwilioConfigPage() {
 
     setIsSaving(true)
     try {
-      const token = localStorage.getItem('admin_token')
+      const token = localStorage.getItem('auth_token')
       const response = await fetch(`${API_BASE_URL}/api/twilio/credentials`, {
         method: 'POST',
         headers: {

@@ -14,7 +14,7 @@ const authenticateUser = async (
     const authHeader = req.headers.authorization
     const token = authHeader?.startsWith('Bearer ')
       ? authHeader.substring(7)
-      : req.cookies?.admin_token
+      : req.cookies?.auth_token
 
     if (!token) {
       res.status(401).json({ error: 'No token provided' })

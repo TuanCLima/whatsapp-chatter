@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import AdminDataPage from '@/components/auth/AdminDataPage'
-import AdminHeader from '@/components/auth/AdminHeader'
+import DataPage from '@/components/auth/DataPage'
+import Header from '@/components/auth/Header'
 import LoadingScreen from '@/components/auth/LoadingScreen'
 import LoginScreen from '@/components/auth/LoginScreen'
 import ChatArea from '@/components/chat/ChatArea'
@@ -31,7 +31,7 @@ function ProtectedChatLayout() {
   return (
     <TwilioGuard>
       <div className="h-screen flex flex-col bg-background">
-        <AdminHeader />
+        <Header />
         <div className="flex-1 flex overflow-hidden">
           <Sidebar
             mobileMenuOpen={mobileMenuOpen}
@@ -51,9 +51,9 @@ function ProtectedDataLayout() {
   return (
     <TwilioGuard>
       <div className="h-screen flex flex-col bg-background">
-        <AdminHeader />
+        <Header />
         <div className="flex-1 overflow-hidden">
-          <AdminDataPage />
+          <DataPage />
         </div>
       </div>
     </TwilioGuard>
@@ -67,7 +67,7 @@ function ProtectedConfigLayout() {
   if (!isAuthenticated) return <LoginScreen />
   return (
     <div className="h-screen flex flex-col bg-background">
-      <AdminHeader />
+      <Header />
       <div className="flex-1 overflow-hidden">
         <TwilioConfigPage />
       </div>
@@ -82,7 +82,7 @@ function ProtectedAssistantConfigLayout() {
   if (!isAuthenticated) return <LoginScreen />
   return (
     <div className="h-screen flex flex-col bg-background">
-      <AdminHeader />
+      <Header />
       <div className="flex-1 overflow-hidden">
         <AssistantConfigPage />
       </div>
@@ -99,7 +99,10 @@ function App() {
             <Routes>
               <Route path="/data" element={<ProtectedDataLayout />} />
               <Route path="/config" element={<ProtectedConfigLayout />} />
-              <Route path="/assistant-config" element={<ProtectedAssistantConfigLayout />} />
+              <Route
+                path="/assistant-config"
+                element={<ProtectedAssistantConfigLayout />}
+              />
               <Route path="/*" element={<ProtectedChatLayout />} />
             </Routes>
           </ChatProvider>

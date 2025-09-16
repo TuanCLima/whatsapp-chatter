@@ -62,10 +62,10 @@ export default function LoginScreen() {
               </div>
             </div>
             <CardTitle className="text-2xl font-bold text-white">
-              Admin Login
+              Sign In
             </CardTitle>
             <CardDescription className="text-slate-400">
-              Enter your credentials to access the admin panel
+              Enter your credentials to access your dashboard
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -90,7 +90,7 @@ export default function LoginScreen() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="admin@example.com"
+                    placeholder="user@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10 bg-slate-700 border-slate-600 text-white placeholder-slate-400 focus:border-blue-500"

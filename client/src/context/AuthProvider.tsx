@@ -12,7 +12,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('admin_token')
+        const token = localStorage.getItem('auth_token')
         if (token) {
           // Verify token with backend
           const response = await fetch(`${API_BASE_URL}/auth/verify`, {
@@ -25,12 +25,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userData = await response.json()
             setUser(userData)
           } else {
-            localStorage.removeItem('admin_token')
+            localStorage.removeItem('auth_token')
           }
         }
       } catch (error) {
         console.error('Auth check failed:', error)
-        localStorage.removeItem('admin_token')
+        localStorage.removeItem('auth_token')
       } finally {
         setIsLoading(false)
       }
@@ -60,12 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const { user: userData, token } = await response.json()
 
-        // Only allow admin users
-        // if (userData.role !== 'admin') {
-        //   throw new Error('Access denied. Admin privileges required.')
-        // }
-
-        localStorage.setItem('admin_token', token)
+        localStorage.setItem('auth_token', token)
         setUser(userData)
 
         toast({
@@ -100,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.warn('Logout request failed (continuing):', e)
     }
-    localStorage.removeItem('admin_token')
+    localStorage.removeItem('auth_token')
     setUser(null)
     toast({
       title: 'Logged out',
@@ -108,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }, [toast])
 
-  const isAuthenticated = user !== null /* && user.role === 'admin' */
+  const isAuthenticated = user !== null
 
   return (
     <AuthContext.Provider
