@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import { inspect } from 'util'
 import { db } from './db'
 import { userSaasUserMapping } from './db/schema-postgres'
 import { toolCall } from './mcp/toolCall'
@@ -49,6 +50,8 @@ export async function getNextMessages(
   const allTools = phoneNumber
     ? await getToolsForPhoneNumber(phoneNumber, builtInTools)
     : []
+
+  // console.log('### allTools', inspect(allTools, { depth: 4 }))
 
   const completion = await openai.chat.completions.create(
     {
