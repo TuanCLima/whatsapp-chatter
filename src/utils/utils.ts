@@ -33,14 +33,6 @@ IMPORTANTE: Você tem acesso a uma ferramenta chamada "getSaoPauloDate" que pode
   return timeAwarePrompt
 }
 
-export const dateToTimestamp = (date: Date): string => {
-  return new Date(date)
-    .toISOString()
-    .replace('T', ' ')
-    .replace('Z', '')
-    .substring(0, 23)
-}
-
 export const noWhatsPhoneNumber = (phoneNumber: string): string => {
   return phoneNumber.replace('whatsapp:', '')
 }

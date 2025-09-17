@@ -26,7 +26,6 @@ import {
   getWhatsAppConversationByContactId,
   getWhatsAppConversations,
 } from './utils/twilioMessages'
-import { dateToTimestamp } from './utils/utils'
 
 // Extend Express Request interface to include user property
 declare global {
@@ -588,7 +587,7 @@ app.get('/db/contacts', async (_req, res) => {
             latestMessage.length > 0
               ? {
                   text: latestMessage[0].content || '',
-                  timestamp: dateToTimestamp(latestMessage[0].timestamp),
+                  timestamp: latestMessage[0].timestamp.toISOString(),
                   status: 'delivered' as const,
                 }
               : undefined,
@@ -649,7 +648,7 @@ app.get('/db/conversations', async (_req, res) => {
           id: msg.id.toString(),
           text: msg.content || '',
           sender: msg.role === 'user' ? user.phoneNumber : 'assistant',
-          timestamp: dateToTimestamp(msg.timestamp),
+          timestamp: msg.timestamp.toISOString(),
           status: 'delivered' as const,
         }))
 
@@ -706,7 +705,7 @@ app.get('/db/conversations/:contactId', async (req, res) => {
       id: msg.id.toString(),
       text: msg.content || '',
       sender: msg.role === 'user' ? contactId : 'assistant',
-      timestamp: dateToTimestamp(msg.timestamp),
+      timestamp: msg.timestamp.toISOString(),
       status: 'delivered' as const,
     }))
 

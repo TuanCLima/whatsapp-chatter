@@ -1,7 +1,7 @@
-import { useChat } from '@/context/ChatContext'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { AnimatePresence, motion } from 'framer-motion'
-import { CheckCheck, Check } from 'lucide-react'
+import { Check, CheckCheck } from 'lucide-react'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useChat } from '@/context/ChatContext'
 
 interface ContactListProps {
   activeTab: 'all' | 'unread' | 'favorites' | 'groups'
@@ -20,14 +20,27 @@ export default function ContactList({
   }
 
   // Filter contacts based on active tab
-  const displayedContacts = filteredContacts.filter((contact) => {
-    if (activeTab === 'all') return true
-    if (activeTab === 'unread')
-      return contact.lastMessage?.unread && contact.lastMessage.unread > 0
-    if (activeTab === 'favorites') return false // Implement favorites logic
-    if (activeTab === 'groups') return false // Implement groups logic
-    return true
-  })
+  const displayedContacts = filteredContacts
+    .filter((contact) => {
+      if (activeTab === 'all') return true
+      if (activeTab === 'unread')
+        return contact.lastMessage?.unread && contact.lastMessage.unread > 0
+      if (activeTab === 'favorites') return false // Implement favorites logic
+      if (activeTab === 'groups') return false // Implement groups logic
+      return true
+    })
+    .sort((a, b) => {
+      const aTimestamp = a.lastMessage?.timestamp
+      const bTimestamp = b.lastMessage?.timestamp
+
+      if (aTimestamp && bTimestamp) {
+        return new Date(bTimestamp).getTime() - new Date(aTimestamp).getTime()
+      }
+
+      if (aTimestamp) return -1
+      if (bTimestamp) return 1
+      return 0
+    })
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -59,7 +72,17 @@ export default function ContactList({
                 <h3 className="font-medium text-sm truncate">{contact.name}</h3>
                 {contact.lastMessage && (
                   <span className="text-xs text-muted-foreground">
-                    {contact.lastMessage.timestamp}
+                    {new Date(contact.lastMessage.timestamp).toLocaleString(
+                      'pt-BR',
+                      {
+                        timeZone: 'America/Sao_Paulo',
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      },
+                    )}
                   </span>
                 )}
               </div>

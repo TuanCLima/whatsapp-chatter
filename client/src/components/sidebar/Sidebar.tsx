@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useChat } from '@/context/ChatContext'
-import SidebarHeader from './SidebarHeader'
 import ContactList from './ContactList'
+import SidebarHeader from './SidebarHeader'
 
 interface SidebarProps {
   mobileMenuOpen: boolean
@@ -34,6 +34,7 @@ export default function Sidebar({
       <div className="px-2 py-2 border-b border-border">
         <div className="flex space-x-1 bg-secondary rounded-md p-0.5">
           <button
+            type="button"
             onClick={() => setActiveTab('all')}
             className={`flex-1 py-1.5 text-xs font-medium rounded-sm ${
               activeTab === 'all'
@@ -44,6 +45,7 @@ export default function Sidebar({
             Tudo
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('unread')}
             className={`flex-1 py-1.5 text-xs font-medium rounded-sm ${
               activeTab === 'unread'
@@ -54,6 +56,7 @@ export default function Sidebar({
             Não lidas
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('favorites')}
             className={`flex-1 py-1.5 text-xs font-medium rounded-sm ${
               activeTab === 'favorites'
@@ -64,6 +67,7 @@ export default function Sidebar({
             Favoritas
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('groups')}
             className={`flex-1 py-1.5 text-xs font-medium rounded-sm ${
               activeTab === 'groups'
