@@ -25,12 +25,6 @@ export function convertToOpenAITool(
 ): ChatCompletionTool | null {
   let parameters: unknown
   try {
-    console.log(
-      'convertToOpenAITool params',
-      typeof dbTool.parameters,
-      '*',
-      dbTool.parameters,
-    )
     parameters =
       typeof dbTool.parameters === 'string'
         ? JSON.parse(dbTool.parameters)

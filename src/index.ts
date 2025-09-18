@@ -4,6 +4,7 @@ import Twilio from 'twilio'
 import assistantConfigRouter from './routes/assistantConfig'
 import contactsRouter from './routes/contacts'
 import predefinedToolsRouter from './routes/predefinedTools'
+import sseRouter from './routes/sse'
 import mcpRouter from './server/mcpServer'
 import { whatsappSaasWebhook } from './webhook'
 import 'dotenv/config'
@@ -65,6 +66,7 @@ app.use('/api/mcp', mcpRouter)
 app.use('/api/assistant', assistantConfigRouter)
 app.use('/api/predefined-tools', predefinedToolsRouter)
 app.use('/api/contacts', contactsRouter)
+app.use('/api/sse', sseRouter)
 
 const oauthCallback = (req: express.Request, res: express.Response) => {
   const code = req.query.code as string

@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
-import { Contact, Conversation, Maybe } from '@/types'
+import type { Contact, Conversation, Maybe } from '@/types'
+
 interface ChatContextType {
   contacts: Contact[]
   conversations: Conversation[]

@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react'
 import { API_BASE_URL } from '@/config/api'
+import { sseService } from '@/services/SSEService'
 import { userService } from '@/services/UserService'
 import type { Contact, Conversation, Maybe } from '@/types'
 import { ChatContext } from './ChatContext'
@@ -42,6 +43,70 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   const [conversations] = useState<Conversation[]>([])
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>(contacts)
+
+  // Initialize SSE connection
+  useEffect(() => {
+    const connectSSE = async () => {
+      try {
+        await sseService.connect()
+        console.log('SSE connected successfully')
+
+        // Set up message event handler
+        const unsubscribeMessage = sseService.onMessage((notification) => {
+          // Invalidate conversation queries to refetch data
+          queryClient.invalidateQueries({
+            queryKey: ['conversation', notification.phoneNumber],
+          })
+          queryClient.invalidateQueries({ queryKey: ['contacts'] })
+        })
+
+        // Set up contact update handler
+        const unsubscribeContact = sseService.onContactUpdate(() => {
+          queryClient.invalidateQueries({ queryKey: ['contacts'] })
+        })
+
+        // Cleanup function
+        return () => {
+          unsubscribeMessage()
+          unsubscribeContact()
+          sseService.disconnect()
+        }
+      } catch (error) {
+        console.error('Failed to connect SSE:', error)
+      }
+    }
+
+    const cleanup = connectSSE()
+
+    return () => {
+      cleanup.then((cleanupFn) => cleanupFn?.())
+    }
+  }, [queryClient])
+
+  // Subscribe to active contact's phone number
+  useEffect(() => {
+    for (const contact of contacts) {
+      if (contact.phoneNumber && sseService.connected) {
+        sseService
+          .subscribeToPhoneNumber(contact.phoneNumber)
+          .catch((error) => {
+            console.error('Failed to subscribe to phone number:', error)
+          })
+      }
+    }
+
+    return () => {
+      for (const contact of contacts) {
+        if (contact.phoneNumber && sseService.connected) {
+          sseService
+            .unsubscribeFromPhoneNumber(contact.phoneNumber)
+            .catch((error) => {
+              console.error('Failed to unsubscribe from phone number:', error)
+            })
+        }
+      }
+    }
+  }, [contacts])
 
   useEffect(() => {
     setFilteredContacts(contacts)

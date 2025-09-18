@@ -20,6 +20,7 @@ const IS_DEV_OTHER = process.env.NODE_ENV === 'development'
 const API_KEY = process.env.LLM_API_KEY
 
 import { getSaoPauloDate } from './mcp/mcpService'
+import { sseService } from './services/SSEService'
 import { getInitialPromptForPhoneNumber } from './utils/utils'
 
 const LLM_BASE_URL = 'https://api.openai.com/v1'
@@ -239,6 +240,15 @@ export async function whatsappSaasWebhook(
       toolCalls: null,
     } as InsertMessage)
 
+    // Emit SSE notification for new user message
+    sseService.notifyNewMessage(from, {
+      id: `${Date.now()}`, // Simple ID for now
+      content: message,
+      role: 'user',
+      timestamp: new Date().toISOString(),
+      profileName: name,
+    })
+
     // If conversation is disabled, just acknowledge receipt without processing
     if (isConversationDisabled) {
       res.json({ status: 'Received (conversation disabled)', from, message })
@@ -317,6 +327,19 @@ export async function whatsappSaasWebhook(
     })
 
     await db.insert(messages).values(newMessagesForDB)
+
+    // Emit SSE notifications for new assistant messages
+    newMessagesForDB
+      .filter((m) => m.role === 'assistant' && m.content)
+      .forEach((m) => {
+        sseService.notifyNewMessage(from, {
+          id: `${m.timestamp?.getTime() || Date.now()}`,
+          content: m.content!,
+          role: 'assistant',
+          timestamp: m.timestamp?.toISOString() || new Date().toISOString(),
+          profileName: name,
+        })
+      })
 
     // Send messages using user's Twilio credentials
     newMessagesForFeed
