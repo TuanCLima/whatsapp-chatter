@@ -43,6 +43,8 @@ router.post(
         case 'getSaoPauloDate':
           result = mcpFunctions[functionName].function()
           break
+        case 'sendServicePrices':
+          result = await mcpFunctions[functionName].function(parameters)
       }
 
       res.json(result)

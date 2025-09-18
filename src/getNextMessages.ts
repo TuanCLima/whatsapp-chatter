@@ -3,7 +3,7 @@ import { inspect } from 'util'
 import { db } from './db'
 import { userSaasUserMapping } from './db/schema-postgres'
 import { toolCall } from './mcp/toolCall'
-import { dateTool } from './mcp/toolConfig/toolConfig'
+import { dateTool, sendServicePricesTool } from './mcp/toolConfig/toolConfig'
 import {
   executeCustomTool,
   executePredefinedTool,
@@ -37,7 +37,7 @@ async function getSaasUserIdFromPhoneNumber(
 }
 
 // Get built-in tools
-const builtInTools = [dateTool]
+const builtInTools = [dateTool, sendServicePricesTool]
 
 export async function getNextMessages(
   messagesFeed: ChatMessage[],
