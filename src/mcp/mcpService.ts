@@ -9,11 +9,7 @@ import {
   getGoogleCalendarEvents,
 } from '../googleCalendar/googleCalendar'
 import { twilioClientPool } from '../services/TwilioClientPool'
-import {
-  DEPLOYMENT_URL,
-  GABE_CALENDAR_ID,
-  PRODUCTION_DOMAIN,
-} from '../utils/contants'
+import { GABE_CALENDAR_ID, PRODUCTION_DOMAIN } from '../utils/contants'
 import { noWhatsPhoneNumber } from '../utils/utils'
 
 // Helper function to format time in São Paulo timezone
@@ -146,58 +142,6 @@ export async function forwardContact(params: ForwardContactProps) {
       error: error instanceof Error ? error.message : 'Unknown error',
       message:
         'Erro ao enviar contato. Tente novamente ou verifique se as configurações do Twilio estão corretas.',
-    }
-  }
-}
-
-export async function sendServicePrices(params: SendServicePricesProps) {
-  const { userPhoneNumber } = params
-
-  try {
-    // Import Twilio client here to avoid circular dependencies
-    const Twilio = require('twilio')
-
-    const accountSid = process.env.TWILIO_ACCOUNT_SID
-    const authToken = process.env.TWILIO_AUTH_TOKEN
-    const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER
-
-    if (!accountSid || !authToken || !fromNumber) {
-      throw new Error('Missing Twilio configuration')
-    }
-
-    // Normalize phone number - ensure it has whatsapp: prefix
-    const normalizedPhoneNumber = userPhoneNumber.startsWith('whatsapp:')
-      ? userPhoneNumber
-      : `whatsapp:${userPhoneNumber}`
-
-    const client = Twilio(accountSid, authToken)
-
-    // Get the base URL for the server - prioritize ngrok URL for production/testing
-    const baseUrl =
-      process.env.BASE_URL ||
-      process.env.NGROK_URL ||
-      DEPLOYMENT_URL ||
-      `http://localhost:${process.env.PORT || 3000}`
-    const imageUrl = `${baseUrl}/tabela_de_servicos.jpeg`
-
-    await client.messages.create({
-      from: fromNumber,
-      to: normalizedPhoneNumber,
-      mediaUrl: [imageUrl],
-      body: '',
-    })
-
-    return {
-      success: true,
-      message: 'Service prices image sent successfully',
-      imageUrl,
-    }
-  } catch (error) {
-    console.error('Error sending service prices:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
-      message: 'Failed to send service prices image',
     }
   }
 }
@@ -1013,10 +957,6 @@ export type SuggestEventTimesProps = {
   daysToConsider?: number // defaults to 14 days if not provided
 }
 
-export type SendServicePricesProps = {
-  userPhoneNumber: string
-}
-
 export type TimeSuggestion = {
   startTime: string
   endTime: string
@@ -1062,11 +1002,6 @@ export type MCPFunctions = {
     description: string
     parameters: Record<string, unknown>
   }
-  sendServicePrices: {
-    function: (params: SendServicePricesProps) => Promise<any>
-    description: string
-    parameters: SendServicePricesProps
-  }
 }
 
 // MCP functions registry
@@ -1075,13 +1010,5 @@ export const mcpFunctions: MCPFunctions = {
     function: getSaoPauloDate,
     description: 'Get the current date and time in São Paulo, Brazil',
     parameters: {},
-  },
-  sendServicePrices: {
-    function: sendServicePrices,
-    description:
-      'Enviar imagem com os preços dos serviços para o cliente via WhatsApp',
-    parameters: {
-      userPhoneNumber: 'string',
-    },
   },
 }

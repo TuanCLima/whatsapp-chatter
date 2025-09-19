@@ -102,7 +102,12 @@ export const assistantTools = pgTable('assistant_tools', {
   name: text('name').notNull(),
   description: text('description').notNull(),
   parameters: text('parameters').notNull(), // JSON string
-  implementation: text('implementation').notNull(), // JavaScript code
+  implementation: text('implementation'), // JavaScript code (nullable for image tools)
+  toolType: text('tool_type', { enum: ['implementation', 'image'] })
+    .default('implementation')
+    .notNull(),
+  imageUrl: text('image_url'), // URL/path to uploaded image
+  imageName: text('image_name'), // Original filename
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

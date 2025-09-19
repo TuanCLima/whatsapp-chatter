@@ -5,7 +5,10 @@ export interface Tool {
   name: string
   description: string
   parameters: ToolParameter[]
-  implementation: string
+  toolType: 'implementation' | 'image'
+  implementation?: string // Optional for image tools
+  imageUrl?: string // URL/path to uploaded image
+  imageName?: string // Original filename
 }
 
 export interface ToolParameter {
@@ -96,12 +99,34 @@ class AssistantConfigService {
     return response.json()
   }
 
-  async createTool(tool: Omit<Tool, 'id'>): Promise<{ tool: Tool; message?: string }> {
+  async createTool(
+    tool: Omit<Tool, 'id'>,
+    imageFile?: File | null,
+  ): Promise<{ tool: Tool; message?: string }> {
+    const formData = new FormData()
+    formData.append('name', tool.name)
+    formData.append('description', tool.description)
+    formData.append('parameters', JSON.stringify(tool.parameters))
+    formData.append('toolType', tool.toolType)
+
+    if (tool.toolType === 'implementation' && tool.implementation) {
+      formData.append('implementation', tool.implementation)
+    }
+
+    if (tool.toolType === 'image' && imageFile) {
+      formData.append('image', imageFile)
+    }
+
+    const headers = await this.getAuthHeaders()
+    // Remove Content-Type header to let browser set it for FormData
+    const formHeaders = { ...headers }
+    delete (formHeaders as Record<string, unknown>)['Content-Type']
+
     const response = await fetch(`${API_BASE_URL}/api/assistant/tools`, {
       method: 'POST',
-      headers: await this.getAuthHeaders(),
+      headers: formHeaders,
       credentials: 'include',
-      body: JSON.stringify(tool),
+      body: formData,
     })
 
     if (!response.ok) {
@@ -111,12 +136,35 @@ class AssistantConfigService {
     return response.json()
   }
 
-  async updateTool(id: string, tool: Omit<Tool, 'id'>): Promise<{ tool: Tool; message?: string }> {
+  async updateTool(
+    id: string,
+    tool: Omit<Tool, 'id'>,
+    imageFile?: File | null,
+  ): Promise<{ tool: Tool; message?: string }> {
+    const formData = new FormData()
+    formData.append('name', tool.name)
+    formData.append('description', tool.description)
+    formData.append('parameters', JSON.stringify(tool.parameters))
+    formData.append('toolType', tool.toolType)
+
+    if (tool.toolType === 'implementation' && tool.implementation) {
+      formData.append('implementation', tool.implementation)
+    }
+
+    if (tool.toolType === 'image' && imageFile) {
+      formData.append('image', imageFile)
+    }
+
+    const headers = await this.getAuthHeaders()
+    // Remove Content-Type header to let browser set it for FormData
+    const formHeaders = { ...headers }
+    delete (formHeaders as Record<string, unknown>)['Content-Type']
+
     const response = await fetch(`${API_BASE_URL}/api/assistant/tools/${id}`, {
       method: 'PUT',
-      headers: await this.getAuthHeaders(),
+      headers: formHeaders,
       credentials: 'include',
-      body: JSON.stringify(tool),
+      body: formData,
     })
 
     if (!response.ok) {

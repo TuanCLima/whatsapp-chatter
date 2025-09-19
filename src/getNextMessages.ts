@@ -3,7 +3,7 @@ import { inspect } from 'util'
 import { db } from './db'
 import { userSaasUserMapping } from './db/schema-postgres'
 import { toolCall } from './mcp/toolCall'
-import { dateTool, sendServicePricesTool } from './mcp/toolConfig/toolConfig'
+import { dateTool } from './mcp/toolConfig/toolConfig'
 import {
   executeCustomTool,
   executePredefinedTool,
@@ -37,7 +37,7 @@ async function getSaasUserIdFromPhoneNumber(
 }
 
 // Get built-in tools
-const builtInTools = [dateTool, sendServicePricesTool]
+const builtInTools = [dateTool]
 
 export async function getNextMessages(
   messagesFeed: ChatMessage[],
@@ -106,13 +106,22 @@ export async function getNextMessages(
           )
         : null
 
+      const userId = phoneNumber
+        ? await getSaasUserIdFromPhoneNumber(phoneNumber)
+        : null
+
+      if (!userId) {
+        throw new Error('User not found or not linked to SaaS account')
+      }
+
       if (customImplementation) {
         // Execute custom tool
         try {
           toolResponse = await executeCustomTool(
             functionName,
             JSON.parse(_arguments),
-            customImplementation,
+            phoneNumber,
+            userId,
           )
         } catch (error) {
           console.error(`Error executing custom tool ${functionName}:`, error)

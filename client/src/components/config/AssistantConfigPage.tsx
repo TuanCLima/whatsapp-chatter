@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
+import { API_BASE_URL } from '@/config/api'
 import { useToast } from '@/hooks/use-toast'
 import {
   assistantConfigService,
@@ -55,8 +56,10 @@ export default function AssistantConfigPage() {
     name: '',
     description: '',
     parameters: [],
+    toolType: 'implementation',
     implementation: '',
   })
+  const [selectedImage, setSelectedImage] = useState<File | null>(null)
 
   // Load data on component mount
   useEffect(() => {
@@ -120,10 +123,33 @@ export default function AssistantConfigPage() {
   }
 
   const saveTool = async () => {
-    if (!newTool.name || !newTool.description || !newTool.implementation) {
+    if (!newTool.name || !newTool.description) {
       toast({
         title: 'Error',
         description: 'Please fill in all required fields',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    // Validate based on tool type
+    if (newTool.toolType === 'implementation' && !newTool.implementation) {
+      toast({
+        title: 'Error',
+        description: 'Implementation is required for implementation tools',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (
+      newTool.toolType === 'image' &&
+      !selectedImage &&
+      !selectedTool?.imageUrl
+    ) {
+      toast({
+        title: 'Error',
+        description: 'Image is required for image tools',
         variant: 'destructive',
       })
       return
@@ -136,7 +162,11 @@ export default function AssistantConfigPage() {
         name: newTool.name,
         description: newTool.description,
         parameters: newTool.parameters || [],
-        implementation: newTool.implementation,
+        toolType: newTool.toolType || 'implementation',
+        implementation:
+          newTool.toolType === 'implementation'
+            ? newTool.implementation
+            : undefined,
       }
 
       if (selectedTool) {
@@ -144,6 +174,7 @@ export default function AssistantConfigPage() {
         const response = await assistantConfigService.updateTool(
           selectedTool.id,
           toolData,
+          selectedImage,
         )
         const updatedTool = response.tool
         setTools((prev) =>
@@ -152,7 +183,10 @@ export default function AssistantConfigPage() {
         setSelectedTool(updatedTool)
       } else {
         // Add new tool
-        const response = await assistantConfigService.createTool(toolData)
+        const response = await assistantConfigService.createTool(
+          toolData,
+          selectedImage,
+        )
         const newToolFromApi = response.tool
         setTools((prev) => [...prev, newToolFromApi])
       }
@@ -161,8 +195,10 @@ export default function AssistantConfigPage() {
         name: '',
         description: '',
         parameters: [],
+        toolType: 'implementation',
         implementation: '',
       })
+      setSelectedImage(null)
       setIsCreatingTool(false)
 
       toast({
@@ -216,8 +252,10 @@ export default function AssistantConfigPage() {
       name: tool.name,
       description: tool.description,
       parameters: tool.parameters,
+      toolType: tool.toolType,
       implementation: tool.implementation,
     })
+    setSelectedImage(null) // Reset selected image when editing
     setIsCreatingTool(true)
     setActiveSection('tools')
   }
@@ -535,10 +573,12 @@ export default function AssistantConfigPage() {
                   setIsCreatingTool(true)
                   setSelectedTool(null)
                   setSelectedPredefinedTool(null)
+                  setSelectedImage(null)
                   setNewTool({
                     name: '',
                     description: '',
                     parameters: [],
+                    toolType: 'implementation',
                     implementation: '',
                   })
                 }}
@@ -589,13 +629,15 @@ export default function AssistantConfigPage() {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <Label>Parameters</Label>
-                <Button size="sm" variant="outline" onClick={addParameter}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Parameter
-                </Button>
-              </div>
+              {newTool.toolType === 'implementation' && (
+                <div className="flex items-center justify-between mb-3">
+                  <Label>Parameters</Label>
+                  <Button size="sm" variant="outline" onClick={addParameter}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Parameter
+                  </Button>
+                </div>
+              )}
 
               <div className="space-y-3">
                 {newTool.parameters?.map((param, index) => (
@@ -658,30 +700,131 @@ export default function AssistantConfigPage() {
                   </div>
                 ))}
 
-                {(!newTool.parameters || newTool.parameters.length === 0) && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    No parameters defined. Add parameters if your tool needs
-                    input.
-                  </p>
-                )}
+                {(!newTool.parameters || newTool.parameters.length === 0) &&
+                  newTool.toolType === 'implementation' && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No parameters defined. Add parameters if your tool needs
+                      input.
+                    </p>
+                  )}
               </div>
             </div>
 
             <div>
-              <Label htmlFor="tool-implementation">Implementation</Label>
-              <Textarea
-                id="tool-implementation"
-                value={newTool.implementation || ''}
-                onChange={(e) =>
-                  setNewTool((prev) => ({
-                    ...prev,
-                    implementation: e.target.value,
-                  }))
-                }
-                placeholder="Enter the JavaScript/TypeScript code for your tool implementation..."
-                className="min-h-[200px] mt-2 font-mono"
-              />
+              <Label className="text-base font-medium">Tool Type</Label>
+              <div className="flex gap-4 mt-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="implementation-type"
+                    name="toolType"
+                    value="implementation"
+                    checked={newTool.toolType === 'implementation'}
+                    onChange={(e) =>
+                      setNewTool((prev) => ({
+                        ...prev,
+                        toolType: e.target.value as 'implementation' | 'image',
+                      }))
+                    }
+                    className="h-4 w-4"
+                  />
+                  <Label
+                    htmlFor="implementation-type"
+                    className="text-sm font-normal"
+                  >
+                    Implementation (Code)
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="image-type"
+                    name="toolType"
+                    value="image"
+                    checked={newTool.toolType === 'image'}
+                    onChange={(e) =>
+                      setNewTool((prev) => ({
+                        ...prev,
+                        toolType: e.target.value as 'implementation' | 'image',
+                      }))
+                    }
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor="image-type" className="text-sm font-normal">
+                    Image
+                  </Label>
+                </div>
+              </div>
             </div>
+
+            {newTool.toolType === 'implementation' ? (
+              <div>
+                <Label htmlFor="tool-implementation">Implementation</Label>
+                <Textarea
+                  id="tool-implementation"
+                  value={newTool.implementation || ''}
+                  onChange={(e) =>
+                    setNewTool((prev) => ({
+                      ...prev,
+                      implementation: e.target.value,
+                    }))
+                  }
+                  placeholder="Enter the JavaScript/TypeScript code for your tool implementation..."
+                  className="min-h-[200px] mt-2 font-mono"
+                />
+              </div>
+            ) : (
+              <div>
+                <Label htmlFor="tool-image">Image Upload</Label>
+                <div className="mt-2 space-y-3">
+                  {selectedTool?.imageUrl && !selectedImage && (
+                    <div className="p-4 border border-border rounded-md">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Current image:
+                      </p>
+                      <img
+                        src={`${API_BASE_URL || 'http://localhost:3000'}/api/assistant${selectedTool.imageUrl}`}
+                        alt={selectedTool.imageName || 'Tool image'}
+                        className="max-w-xs max-h-48 object-contain rounded"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {selectedTool.imageName}
+                      </p>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    id="tool-image"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null
+                      setSelectedImage(file)
+                    }}
+                    className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+                  />
+                  {selectedImage && (
+                    <div className="p-4 border border-border rounded-md">
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Selected image:
+                      </p>
+                      <img
+                        src={URL.createObjectURL(selectedImage)}
+                        alt="Preview"
+                        className="max-w-xs max-h-48 object-contain rounded"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {selectedImage.name}
+                      </p>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Upload an image that will be sent to WhatsApp users when
+                    this tool is called. Supported formats: JPG, PNG, GIF (max
+                    5MB)
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-3">
               <Button onClick={saveTool} className="flex-1">
@@ -694,10 +837,12 @@ export default function AssistantConfigPage() {
                   setIsCreatingTool(false)
                   setSelectedTool(null)
                   setSelectedPredefinedTool(null)
+                  setSelectedImage(null)
                   setNewTool({
                     name: '',
                     description: '',
                     parameters: [],
+                    toolType: 'implementation',
                     implementation: '',
                   })
                 }}

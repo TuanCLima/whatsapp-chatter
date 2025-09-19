@@ -37,6 +37,7 @@
     "@cloudflare/workers-types": "^4.20250403.0",
     "@libsql/client": "^0.15.8",
     "@types/bcryptjs": "^3.0.0",
+    "@types/multer": "^2.0.0",
     "axios": "^1.8.4",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
@@ -50,6 +51,7 @@
     "http-proxy-middleware": "^3.0.5",
     "lru-cache": "^11.1.0",
     "moment-timezone": "^0.5.48",
+    "multer": "^2.0.2",
     "openai": "^4.90.0",
     "postgres": "^3.4.7",
     "twilio": "^5.5.1"

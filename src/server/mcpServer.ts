@@ -26,7 +26,7 @@ router.post(
     res: Response,
   ) => {
     const body = req.body
-    const { functionName, parameters } = body
+    const { functionName } = body
     if (!functionName) {
       res.status(400).json({ error: 'Function name is required' })
       return
@@ -43,8 +43,9 @@ router.post(
         case 'getSaoPauloDate':
           result = mcpFunctions[functionName].function()
           break
-        case 'sendServicePrices':
-          result = await mcpFunctions[functionName].function(parameters)
+        default:
+          res.status(404).json({ error: 'Function not found' })
+          return
       }
 
       res.json(result)

@@ -11,3 +11,5 @@ backup/**
 prompts_backup
 sqlite.db
 *.sh
+
+public

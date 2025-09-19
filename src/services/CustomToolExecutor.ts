@@ -2,8 +2,11 @@ import 'dotenv/config'
 import * as vm from 'node:vm'
 import type { ChatCompletionTool } from 'openai/resources/chat'
 import type { AssistantTool } from '../db/schema-postgres'
+import { DEPLOYMENT_URL } from '../utils/contants'
+import { noWhatsPhoneNumber } from '../utils/utils'
 import { assistantConfigService } from './AssistantConfigService'
 import { predefinedToolsService } from './PredefinedToolsService'
+import { twilioClientPool } from './TwilioClientPool'
 
 export interface CustomToolDefinition {
   id: string
@@ -65,10 +68,57 @@ export function convertToOpenAITool(
 }
 
 /**
- * Execute a custom tool's JavaScript code safely
- * Note: This is a simplified sandbox. For production, consider using isolated-vm or similar
+ * Execute an image-based tool by sending the image to WhatsApp
  */
-export async function executeCustomTool(
+export async function executeImageTool(
+  tool: AssistantTool,
+  phoneNumber: string,
+  userId: string,
+): Promise<{ success: boolean; message: string }> {
+  try {
+    if (!tool.imageUrl) {
+      throw new Error('Image tool has no image URL')
+    }
+
+    const cleanPhoneNumber = noWhatsPhoneNumber(phoneNumber)
+
+    const twilioClient = await twilioClientPool.getClient(userId)
+
+    // Convert relative URL to full URL
+    const baseUrl =
+      process.env.BASE_URL ||
+      process.env.NGROK_URL ||
+      DEPLOYMENT_URL ||
+      `http://localhost:${process.env.PORT || 3000}`
+    const fullImageUrl = tool.imageUrl.startsWith('http')
+      ? tool.imageUrl
+      : `${baseUrl}/api/assistant${tool.imageUrl}`
+
+    // Get the user's Twilio WhatsApp number
+    const whatsappNumber = noWhatsPhoneNumber(
+      await twilioClientPool.getPhoneNumberInfo(userId),
+    )
+
+    // Send the image using Twilio
+    const message = await twilioClient.messages.create({
+      from: `whatsapp:${whatsappNumber}`,
+      to: `whatsapp:${cleanPhoneNumber}`,
+      body: '',
+      mediaUrl: [fullImageUrl],
+    })
+
+    return {
+      success: true,
+      message: `Image sent successfully. Message SID: ${message.sid}`,
+    }
+  } catch (error) {
+    console.error(`Error executing image tool ${tool.name}:`, error)
+    throw new Error(
+      `Image tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    )
+  }
+}
+export async function executeCustomToolImplementation(
   toolName: string,
   parameters: unknown,
   implementation: string,
@@ -189,23 +239,87 @@ export async function getToolsForUserId(
 }
 
 /**
- * Check if a tool name is a custom tool and get its implementation
+ * Check if a tool name is a custom tool and get its details
+ */
+export async function getCustomToolDetails(
+  toolName: string,
+  userId?: string,
+  phoneNumber?: string,
+): Promise<AssistantTool | null> {
+  try {
+    if (userId) {
+      const toolsData = await assistantConfigService.getToolsForUserId(userId)
+      const tool = toolsData.customTools.find((t) => t.name === toolName)
+      return tool || null
+    } else if (phoneNumber) {
+      const toolsData =
+        await assistantConfigService.getToolsForPhoneNumber(phoneNumber)
+      const tool = toolsData.customTools.find((t) => t.name === toolName)
+      return tool || null
+    }
+
+    return null
+  } catch (error) {
+    console.error('Error getting custom tool details:', error)
+    return null
+  }
+}
+
+/**
+ * Execute a custom tool (either implementation-based or image-based)
+ */
+export async function executeCustomTool(
+  toolName: string,
+  parameters: Record<string, unknown>,
+  phoneNumber: string,
+  userId: string,
+): Promise<unknown> {
+  // Get the tool details
+  const tool = await getCustomToolDetails(toolName, userId, phoneNumber)
+
+  if (!tool) {
+    throw new Error(`Custom tool ${toolName} not found`)
+  }
+
+  if (tool.toolType === 'image') {
+    // Execute image tool
+    return executeImageTool(tool, phoneNumber, userId)
+  } else {
+    // Execute implementation tool
+    if (!tool.implementation) {
+      throw new Error(`Implementation tool ${toolName} has no implementation`)
+    }
+    return executeCustomToolImplementation(
+      toolName,
+      parameters,
+      tool.implementation,
+    )
+  }
+}
+
+/**
+ * Execute a custom tool's JavaScript code safely
+ * Note: This is a simplified sandbox. For production, consider using isolated-vm or similar
  */
 export async function getCustomToolImplementation(
   toolName: string,
   userId?: string,
   phoneNumber?: string,
-): Promise<string | null> {
+): Promise<{ isCustomTool: boolean; implementation?: string | null } | null> {
   try {
     if (userId) {
       const toolsData = await assistantConfigService.getToolsForUserId(userId)
       const tool = toolsData.customTools.find((t) => t.name === toolName)
-      return tool ? tool.implementation : null
+      return tool
+        ? { isCustomTool: true, implementation: tool.implementation }
+        : null
     } else if (phoneNumber) {
       const toolsData =
         await assistantConfigService.getToolsForPhoneNumber(phoneNumber)
       const tool = toolsData.customTools.find((t) => t.name === toolName)
-      return tool ? tool.implementation : null
+      return tool
+        ? { isCustomTool: true, implementation: tool.implementation }
+        : null
     }
 
     return null
