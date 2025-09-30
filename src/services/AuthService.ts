@@ -38,16 +38,13 @@ export class AuthService {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12)
 
-    // Generate unique webhook path
-    const webhookPath = `/webhook/${crypto.randomUUID()}`
-
     const newUser: InsertSaasUser = {
       id: crypto.randomUUID(),
       email,
       name,
       passwordHash,
       role,
-      webhookPath,
+      webhookPath: null, // No longer using dynamic webhook paths
       subscriptionStatus: 'trial',
     }
 

@@ -56,6 +56,7 @@ type TwilioFormData = {
   From: string
   Body: string
   ProfileName: string
+  MessageSid: string // The unique Twilio message SID
   NumMedia?: string // Twilio sends number of media items as a string
   // Dynamic media content type & url fields (MediaContentType0, MediaUrl0, ...)
   [key: string]: string | undefined
@@ -100,12 +101,22 @@ const indexSelected = -1
 
 // New SaaS webhook function that uses user-specific Twilio credentials
 export async function whatsappSaasWebhook(
-  req: Request<{ webhookPath: string }, unknown, TwilioFormData>,
+  req: Request<Record<string, never>, unknown, TwilioFormData>,
   res: Response,
 ) {
   const body = req.body
   const { From: _from, Body: message, ProfileName } = body
-  const webhookPath = `/webhook/${req.params.webhookPath}`
+
+  // Log the incoming webhook call
+  console.log('🔔 Webhook received:', {
+    timestamp: new Date().toISOString(),
+    from: _from,
+    profileName: ProfileName,
+    messageLength: message?.length || 0,
+    messageSid: body.MessageSid,
+    numMedia: body.NumMedia,
+    isDev: IS_DEV_OTHER,
+  })
 
   const from =
     IS_DEV_OTHER && fakes[indexSelected]?.from
@@ -118,53 +129,65 @@ export async function whatsappSaasWebhook(
       : ProfileName
 
   try {
-    // Get user-specific Twilio client and credentials
-    const { client: userClient, credentials } =
-      await twilioClientPool.getClientByWebhookPath(webhookPath)
+    // First, find the SaaS user ID for this phone number through the mapping
+    const userMapping = await db
+      .select()
+      .from(userSaasUserMapping)
+      .where(eq(userSaasUserMapping.phoneNumber, from))
+      .limit(1)
 
-    // Get the SaaS user ID for this webhook path
+    if (!userMapping.length) {
+      throw new Error('SaaS user mapping not found for phone number')
+    }
+
+    const saasUserId = userMapping[0].saasUserId
+
+    // Get the SaaS user data
     const saasUser = await db
       .select()
       .from(saasUsers)
-      .where(eq(saasUsers.webhookPath, webhookPath))
+      .where(eq(saasUsers.id, saasUserId))
       .limit(1)
 
     if (!saasUser.length) {
-      throw new Error('SaaS user not found for webhook path')
+      throw new Error('SaaS user not found')
     }
 
-    const saasUserId = saasUser[0].id
+    // Get user-specific Twilio client and credentials using the SaaS user ID
+    const { client: userClient, credentials } =
+      await twilioClientPool.getClientBySaasUserId(saasUserId)
 
-    // --- Early exit for audio messages ---
+    // --- Early exit for multimedia messages ---
     try {
       const numMediaRaw = body.NumMedia
       const numMedia = numMediaRaw ? parseInt(numMediaRaw, 10) : 0
       if (numMedia > 0) {
-        let hasAudio = false
+        // Check if there's any multimedia content
+        let hasMultimedia = false
         for (let i = 0; i < numMedia; i++) {
           const contentType: string | undefined = body[`MediaContentType${i}`]
-          if (contentType?.toLowerCase().startsWith('audio')) {
-            hasAudio = true
+          if (contentType) {
+            hasMultimedia = true
             break
           }
         }
-        if (hasAudio) {
-          // Inform user that audio messages are not allowed and exit early
+        if (hasMultimedia) {
+          // Inform user that multimedia messages are not supported and exit early
           await userClient.messages.create({
             from: credentials.whatsappNumber,
             to: _from,
-            body: 'Mensagens de áudio não são permitidas por enquanto. Favor tentar enviar uma mensagem de texto.',
+            body: 'Nosso sistema não é capaz de ler essa mensagem por enquanto, favor utilizar texto.',
           })
           res.json({
-            status: 'Rejected audio message',
+            status: 'Rejected multimedia message',
             from,
-            reason: 'audio_not_allowed',
+            reason: 'multimedia_not_supported',
           })
           return
         }
       }
     } catch (e) {
-      console.error('Error while checking media types', e)
+      console.error('❌ Error while checking media types:', e)
     }
 
     const messagesFeed: InsertMessage[] = await db
@@ -199,32 +222,11 @@ export async function whatsappSaasWebhook(
         profileName: name,
         conversationDisabled: false,
       })
-
-      // Create the mapping between this WhatsApp user and the SaaS user
-      await db.insert(userSaasUserMapping).values({
-        phoneNumber: from,
-        saasUserId: saasUserId,
-      })
     } else if (existingUser[0].profileName !== name) {
       await db
         .update(users)
         .set({ profileName: name })
         .where(eq(users.phoneNumber, from))
-
-      // Check if mapping already exists for this phone number
-      const existingMapping = await db
-        .select()
-        .from(userSaasUserMapping)
-        .where(eq(userSaasUserMapping.phoneNumber, from))
-        .limit(1)
-
-      // Create mapping if it doesn't exist
-      if (existingMapping.length === 0) {
-        await db.insert(userSaasUserMapping).values({
-          phoneNumber: from,
-          saasUserId: saasUserId,
-        })
-      }
     }
 
     // Check if conversation is disabled for this user
@@ -268,7 +270,7 @@ export async function whatsappSaasWebhook(
     } as InsertMessage)
 
     if (abortControllers[from]) {
-      console.log('Aborting previous request for', from)
+      console.log('🛑 Aborting previous request for:', from)
       abortControllers[from]?.abort()
       abortControllers[from] = undefined
     }
@@ -296,6 +298,7 @@ export async function whatsappSaasWebhook(
     )
 
     if (!newMessagesForFeed || newMessagesForFeed.length === 0) {
+      console.log('❌ No new messages generated for:', from)
       abortControllers[from] = undefined
       res.status(500).json({ error: 'No new messages' })
       return
@@ -342,44 +345,46 @@ export async function whatsappSaasWebhook(
       })
 
     // Send messages using user's Twilio credentials
-    newMessagesForFeed
-      .filter((m) => m.role === 'assistant')
-      .forEach(async (m) => {
-        if (!m.content) {
-          return
-        }
+    const assistantMessages = newMessagesForFeed.filter(
+      (m) => m.role === 'assistant',
+    )
 
-        const toSendMessages = parseLLMMessages(m.content)
-        try {
-          for (const toSendMessage of toSendMessages) {
-            if (toSendMessage.isContactLink) {
-              await userClient.messages.create({
-                from: credentials.whatsappNumber,
-                to: _from,
-                mediaUrl: [toSendMessage.text],
-                body: 'Contato compartilhado',
-              })
-              await new Promise((resolve) => setTimeout(resolve, 700))
-            } else {
-              const body = toSendMessage.text.replace(/\*\*/g, '*')
-              if (!body) {
-                console.log('Empty message detected')
-                continue
-              }
-              await userClient.messages.create({
-                from: credentials.whatsappNumber,
-                to: _from,
-                body,
-              })
+    assistantMessages.forEach(async (m) => {
+      if (!m.content) {
+        return
+      }
+
+      const toSendMessages = parseLLMMessages(m.content)
+      try {
+        for (const toSendMessage of toSendMessages) {
+          if (toSendMessage.isContactLink) {
+            await userClient.messages.create({
+              from: credentials.whatsappNumber,
+              to: _from,
+              mediaUrl: [toSendMessage.text],
+              body: 'Contato compartilhado',
+            })
+            await new Promise((resolve) => setTimeout(resolve, 700))
+          } else {
+            const body = toSendMessage.text.replace(/\*\*/g, '*')
+            if (!body) {
+              console.log('⚠️ Empty message detected, skipping')
+              continue
             }
+            await userClient.messages.create({
+              from: credentials.whatsappNumber,
+              to: _from,
+              body,
+            })
           }
-        } catch (error) {
-          console.error('Error sending message:', error)
-          abortControllers[from] = undefined
-          res.status(500).json({ error: 'Error sending message' })
-          return
         }
-      })
+      } catch (error) {
+        console.error('❌ Error sending message via Twilio:', error)
+        abortControllers[from] = undefined
+        res.status(500).json({ error: 'Error sending message' })
+        return
+      }
+    })
 
     abortControllers[from] = undefined
     res.json({ status: 'Received', from, message })
@@ -388,8 +393,18 @@ export async function whatsappSaasWebhook(
     console.error('SaaS webhook error:', error)
     abortControllers[from] = undefined
 
-    if (error instanceof Error && error.message.includes('not found')) {
-      res.status(404).json({ error: 'Webhook path not found' })
+    if (
+      error instanceof Error &&
+      error.message.includes('SaaS user mapping not found')
+    ) {
+      res
+        .status(404)
+        .json({ error: 'Phone number not assigned to any SaaS user' })
+    } else if (
+      error instanceof Error &&
+      error.message.includes('SaaS user not found')
+    ) {
+      res.status(404).json({ error: 'SaaS user configuration not found' })
     } else if (
       error instanceof Error &&
       error.message.includes('credentials')

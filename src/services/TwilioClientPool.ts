@@ -98,6 +98,19 @@ class TwilioClientPool {
     return { client, credentials }
   }
 
+  async getClientBySaasUserId(saasUserId: string): Promise<{
+    client: ReturnType<typeof Twilio>
+    credentials: UserTwilioCredentials
+  }> {
+    const credentials = await this.getUserCredentials(saasUserId)
+
+    console.log({ credentials })
+
+    const client = await this.getClient(saasUserId)
+
+    return { client, credentials }
+  }
+
   private async getUserCredentials(
     userId: string,
   ): Promise<UserTwilioCredentials> {

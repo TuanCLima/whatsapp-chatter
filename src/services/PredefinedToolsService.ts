@@ -291,7 +291,7 @@ export class PredefinedToolsService {
         function: {
           name: 'fetchCalendarEvents',
           description:
-            'Use esta ferramenta para consultar a disponibilidade da agenda da Gabe antes de agendar qualquer coisa. Outros nomes para esta funcionalidade são: consultar agenda, consultar disponibilidade, consultar horários disponíveis',
+            'Use esta ferramenta para consultar a disponibilidade da agenda antes de agendar qualquer coisa. Outros nomes para esta funcionalidade são: consultar agenda, consultar disponibilidade, consultar horários disponíveis',
           parameters: {
             type: 'object',
             properties: {
@@ -332,7 +332,7 @@ export class PredefinedToolsService {
         function: {
           name: 'createCalendarEvent',
           description:
-            'Criar um novo evento/agendamento/horário no calendário da Gabe. IMPORTANTE: SEMPRE use a ferramenta checkEventAvailability ANTES de criar qualquer evento para garantir disponibilidade. Não esqueça de adicionar o link do contato do whatsapp.',
+            'Criar um novo evento/agendamento/horário no calendário. IMPORTANTE: SEMPRE use a ferramenta checkEventAvailability ANTES de criar qualquer evento para garantir disponibilidade. Não esqueça de adicionar o link do contato do whatsapp.',
           parameters: {
             type: 'object',
             properties: {
@@ -399,7 +399,7 @@ export class PredefinedToolsService {
         function: {
           name: 'checkEventAvailability',
           description:
-            'OBRIGATÓRIO: SEMPRE use esta ferramenta ANTES de sugerir ou confirmar qualquer agendamento ao cliente. Verifica se o horário proposto está disponível, não tem conflitos com outros eventos e respeita as restrições de horário (como não agendar entre 12h-13h). Use esta ferramenta para validar QUALQUER horário antes de oferecer ao cliente ou criar o evento.',
+            'OBRIGATÓRIO: SEMPRE use esta ferramenta ANTES de sugerir ou confirmar qualquer agendamento ao cliente. Verifica se o horário proposto está disponível, não tem conflitos com outros eventos e respeita as restrições de horário. Use esta ferramenta para validar QUALQUER horário antes de oferecer ao cliente ou criar o evento.',
           parameters: {
             type: 'object',
             properties: {
@@ -481,7 +481,7 @@ export class PredefinedToolsService {
         function: {
           name: 'cancelCalendarEvent',
           description:
-            'Cancelar um evento/agendamento existente no calendário da Gabe. Chame a ferramenta fetchCalendarEvents para obter a id do evento a ser cancelado. Importante: Não é possível cancelar eventos com menos de 24 horas de antecedência',
+            'Cancelar um evento/agendamento existente no calendário. Chame a ferramenta fetchCalendarEvents para obter a id do evento a ser cancelado. Importante: Não é possível cancelar eventos com menos de 24 horas de antecedência',
           parameters: {
             type: 'object',
             properties: {
@@ -534,7 +534,7 @@ export class PredefinedToolsService {
         function: {
           name: 'checkAndCancelEventIfEligible',
           description:
-            'RECOMENDADO para cancelamentos: Verifica automaticamente se um evento é elegível para cancelamento e o cancela se todas as regras forem atendidas (evento existe, mais de 48h de antecedência, telefone corresponde). Se não for elegível, retorna instruções para enviar cartão de contato do Gabe. Não pergunte dados do evento ao usuário, use os dados do evento já fornecidos pela função fetchCalendarEvents',
+            'RECOMENDADO para cancelamentos: Verifica automaticamente se um evento é elegível para cancelamento e o cancela se todas as regras forem atendidas (evento existe, mais de 48h de antecedência, telefone corresponde). Se não for elegível, retorna instruções para enviar cartão de contato do profissional em questão. Não pergunte dados do evento ao usuário, use os dados do evento já fornecidos pela função fetchCalendarEvents',
           parameters: {
             type: 'object',
             properties: {

@@ -1,45 +1,9 @@
 import express from 'express'
+import { authenticateUser } from '../middleware/authenticateUser'
 import { predefinedToolsService } from '../services/PredefinedToolsService'
 import { getSaasGoogleCalendarService } from '../services/SaasGoogleCalendarService'
 
 const router = express.Router()
-
-// Middleware to authenticate user (this should be extracted to a shared file)
-const authenticateUser = async (
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction,
-): Promise<void> => {
-  try {
-    const authHeader = req.headers.authorization
-    const token = authHeader?.startsWith('Bearer ')
-      ? authHeader.substring(7)
-      : req.cookies?.auth_token
-
-    if (!token) {
-      res.status(401).json({ error: 'No token provided' })
-      return
-    }
-
-    // Simple token validation (in production, use proper JWT library)
-    const payload = JSON.parse(Buffer.from(token, 'base64').toString())
-
-    if (payload.exp < Date.now()) {
-      res.status(401).json({ error: 'Token expired' })
-      return
-    }
-
-    req.user = {
-      userId: payload.userId,
-      role: payload.role,
-      exp: payload.exp,
-    }
-    next()
-  } catch (error) {
-    console.error('Authentication error:', error)
-    res.status(401).json({ error: 'Authentication failed' })
-  }
-}
 
 /**
  * Get all predefined tools configuration for the authenticated user

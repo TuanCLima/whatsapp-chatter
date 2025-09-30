@@ -18,6 +18,7 @@ import {
   userSaasUserMapping,
   users,
 } from './db/schema-postgres'
+import { authenticateUser } from './middleware/authenticateUser'
 import { authService } from './services/AuthService'
 import { twilioClientPool } from './services/TwilioClientPool'
 import type { Contact, Conversation, Message } from './types/types'
@@ -121,48 +122,8 @@ const oauthCallback = (req: express.Request, res: express.Response) => {
 app.get('/oauth2callback', oauthCallback)
 
 // Authentication middleware for protected routes
-const _authenticateUser = (
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction,
-): void => {
-  // Accept token from Authorization header, HttpOnly cookie, or query param for flexibility
-  const authHeader = req.headers.authorization
-  const cookieToken = req.cookies?.auth_token as string | undefined
-  const queryToken = (req.query?.t || req.query?.token) as string | undefined
-  const presentedToken =
-    (authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : undefined) ||
-    cookieToken ||
-    queryToken
 
-  if (!presentedToken) {
-    res.status(401).json({ error: 'No token provided' })
-    return
-  }
-
-  const token = presentedToken
-
-  try {
-    // Decode the simple token (in production, use proper JWT verification)
-    const payload = JSON.parse(Buffer.from(token, 'base64').toString())
-
-    if (payload.exp < Date.now()) {
-      res.status(401).json({ error: 'Token expired' })
-      return
-    }
-
-    console.log('Authenticating user payload', payload)
-
-    // Add user info to request for use in next middleware
-    req.user = payload
-    next()
-  } catch {
-    res.status(401).json({ error: 'Invalid token' })
-    return
-  }
-}
-
-app.get('/api/db/users', _authenticateUser, async (_req, res) => {
+app.get('/api/db/users', authenticateUser, async (_req, res) => {
   try {
     const allUsers = await db
       .select()
@@ -175,7 +136,7 @@ app.get('/api/db/users', _authenticateUser, async (_req, res) => {
   }
 })
 
-app.get('/api/db/messages', _authenticateUser, async (req, res) => {
+app.get('/api/db/messages', authenticateUser, async (req, res) => {
   try {
     const { phoneNumber, limit = '500' } = req.query as {
       phoneNumber?: string
@@ -206,7 +167,7 @@ app.get('/api/db/messages', _authenticateUser, async (req, res) => {
 // Clear ALL messages (dangerous) - user only
 app.delete(
   '/api/db/clear-all-messages',
-  _authenticateUser,
+  authenticateUser,
   async (_req, res) => {
     try {
       // Delete all rows from messages table
@@ -221,7 +182,7 @@ app.delete(
 
 app.delete(
   '/api/db/clear-all-users-and-messages',
-  _authenticateUser,
+  authenticateUser,
   async (_req, res) => {
     try {
       // Delete all rows from users table
@@ -236,7 +197,7 @@ app.delete(
 )
 
 // Clear messages for a specific phone number (?phoneNumber=... required)
-app.delete('/api/db/messages-per-user', _authenticateUser, async (req, res) => {
+app.delete('/api/db/messages-per-user', authenticateUser, async (req, res) => {
   try {
     const { phoneNumber } = req.query as { phoneNumber?: string }
 
@@ -257,7 +218,7 @@ app.delete('/api/db/messages-per-user', _authenticateUser, async (req, res) => {
 // Check and create missing user-SaaS user mappings
 app.get(
   '/api/db/check-missing-mappings',
-  _authenticateUser,
+  authenticateUser,
   async (_req, res) => {
     try {
       // Get all WhatsApp users
@@ -288,7 +249,7 @@ app.get(
 // Create missing mappings for all unmapped users to the first SaaS user (for migration purposes)
 app.post(
   '/api/db/create-missing-mappings',
-  _authenticateUser,
+  authenticateUser,
   async (req, res) => {
     try {
       const { saasUserId } = req.body as { saasUserId?: string }
@@ -349,8 +310,8 @@ app.post(
   },
 )
 
-// SaaS webhook route with dynamic path
-app.post('/webhook/:webhookPath', whatsappSaasWebhook)
+// SaaS webhook route with static path
+app.post('/webhook', whatsappSaasWebhook)
 
 // User authentication routes
 app.post('/auth/register', async (req, res) => {
@@ -444,42 +405,6 @@ app.post('/auth/logout', (_req, res) => {
   res.json({ message: 'Logged out successfully' })
 })
 
-// Twilio credentials management
-const authenticateUser = async (
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction,
-): Promise<void> => {
-  try {
-    const authHeader = req.headers.authorization
-    const token = authHeader?.startsWith('Bearer ')
-      ? authHeader.substring(7)
-      : req.cookies?.auth_token
-
-    if (!token) {
-      res.status(401).json({ error: 'No token provided' })
-      return
-    }
-
-    const user = await authService.verifyToken(token)
-
-    if (!user) {
-      res.status(401).json({ error: 'Invalid or expired token' })
-      return
-    }
-
-    req.user = {
-      userId: user.id,
-      role: user.role,
-      exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
-    }
-    next()
-  } catch (error) {
-    console.error('Authentication error:', error)
-    res.status(401).json({ error: 'Authentication failed' })
-  }
-}
-
 app.get('/api/twilio/credentials', authenticateUser, async (req, res) => {
   try {
     const userId = req.user?.userId
@@ -502,7 +427,7 @@ app.get('/api/twilio/credentials', authenticateUser, async (req, res) => {
       ),
       accountSid: user.twilioAccountSid,
       whatsappNumber: user.twilioWhatsappNumber,
-      webhookPath: user.webhookPath,
+      webhookPath: '/webhook', // Static webhook path for all SaaS users
     })
   } catch (error) {
     console.error('Error fetching Twilio credentials:', error)

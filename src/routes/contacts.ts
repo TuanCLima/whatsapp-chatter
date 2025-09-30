@@ -1,8 +1,8 @@
 import { and, eq } from 'drizzle-orm'
-import express, { type Request, type Response } from 'express'
+import express from 'express'
 import { db } from '../db'
 import { contacts } from '../db/schema-postgres'
-import { authenticateUser } from './assistantConfig'
+import { authenticateUser } from '../middleware/authenticateUser'
 
 const router = express.Router()
 

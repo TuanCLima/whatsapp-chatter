@@ -12,6 +12,7 @@
     "build": "cd client && pnpm install && pnpm build",
     "serve": "tsx src/index.ts",
     "predeploy": "tsx src/scripts/generate-vcf.ts",
+    "deploy": "pnpm db:migrate && pnpm predeploy && pnpm build",
     "loadPrompt": "tsx src/scripts/loadPrompt.ts",
     "db:studio": "drizzle-kit studio --port 4983 --host 127.0.0.1",
     "db:push": "drizzle-kit push",

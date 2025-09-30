@@ -3,7 +3,7 @@ services:
     name: whatsapp-chatter-fullstack
     env: node
     plan: free
-    buildCommand: pnpm install && pnpm build && pnpm predeploy
+    buildCommand: pnpm install && pnpm db:migrate && pnpm predeploy && pnpm build
     startCommand: pnpm serve
     envVars:
       - key: DATABASE_URL
