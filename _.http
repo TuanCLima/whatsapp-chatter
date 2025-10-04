@@ -15,20 +15,14 @@ Content-Type: application/json
 ### get image
 GET http://localhost:3000/api/assistant/tool-images/1758305704899-183000614-tabela_de_servicos_2.jpeg
 
-###
-// url encoded webhook post
-POST http://localhost:3000/webhook
-Content-Type: application/x-www-form-urlencoded
-
-From=whatsapp%3A%2B14155238886&To=whatsapp%3A%2B5511999999999&Body=Hello%20from%20Twilio%20WhatsApp%20API%21
-
 
 ###
-// url encoded webhook post
-POST https://bc9b6ae1888a.ngrok-free.app/webhook/c1eb908b-9da2-4a9b-b6f7-5841043e2a8f
+### url encoded webhook post (Emulating Twilio)
+POST https://[url].ngrok-free.app/webhook/
 Content-Type: application/x-www-form-urlencoded
 
-From=whatsapp%3A%2B14155238886&To=whatsapp%3A%2B5511999999999&Body=Hello%20from%20Twilio%20WhatsApp%20API%21
+From=whatsapp:%2B5511999999999&To=whatsapp:%2B14199999999&Body=Bom dia&ProfileName=Tuan&MessageSid=SM1234567890abcdef1234567890abcdef&NumMedia=0
+
 
 
 

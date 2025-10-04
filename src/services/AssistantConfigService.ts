@@ -4,7 +4,7 @@ import { db } from '../db'
 import {
   assistantPrompts,
   assistantTools,
-  userSaasUserMapping,
+  saasUsers,
 } from '../db/schema-postgres'
 import { FALLBACK_PROMPT } from '../utils/contants'
 import { predefinedToolsService } from './PredefinedToolsService'
@@ -19,10 +19,10 @@ export class AssistantConfigService {
     try {
       const userMapping = await db
         .select({
-          saasUserId: userSaasUserMapping.saasUserId,
+          saasUserId: saasUsers.id,
         })
-        .from(userSaasUserMapping)
-        .where(eq(userSaasUserMapping.phoneNumber, phoneNumber))
+        .from(saasUsers)
+        .where(eq(saasUsers.twilioWhatsappNumber, phoneNumber))
         .limit(1)
 
       return userMapping.length > 0 ? userMapping[0].saasUserId : null

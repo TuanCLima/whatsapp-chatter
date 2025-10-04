@@ -7,7 +7,6 @@ import {
   type InsertMessage,
   messages,
   saasUsers,
-  userSaasUserMapping,
   users,
 } from './db/schema-postgres'
 import { getNextMessages } from './getNextMessages'
@@ -54,6 +53,7 @@ function createTimeAwareContextMessage(name: string, from: string) {
 
 type TwilioFormData = {
   From: string
+  To: string
   Body: string
   ProfileName: string
   MessageSid: string // The unique Twilio message SID
@@ -105,7 +105,7 @@ export async function whatsappSaasWebhook(
   res: Response,
 ) {
   const body = req.body
-  const { From: _from, Body: message, ProfileName } = body
+  const { From: _from, To, Body: message, ProfileName } = body
 
   // Log the incoming webhook call
   console.log('🔔 Webhook received:', {
@@ -129,24 +129,11 @@ export async function whatsappSaasWebhook(
       : ProfileName
 
   try {
-    // First, find the SaaS user ID for this phone number through the mapping
-    const userMapping = await db
-      .select()
-      .from(userSaasUserMapping)
-      .where(eq(userSaasUserMapping.phoneNumber, from))
-      .limit(1)
-
-    if (!userMapping.length) {
-      throw new Error('SaaS user mapping not found for phone number')
-    }
-
-    const saasUserId = userMapping[0].saasUserId
-
     // Get the SaaS user data
     const saasUser = await db
       .select()
       .from(saasUsers)
-      .where(eq(saasUsers.id, saasUserId))
+      .where(eq(saasUsers.twilioWhatsappNumber, To))
       .limit(1)
 
     if (!saasUser.length) {
@@ -155,7 +142,7 @@ export async function whatsappSaasWebhook(
 
     // Get user-specific Twilio client and credentials using the SaaS user ID
     const { client: userClient, credentials } =
-      await twilioClientPool.getClientBySaasUserId(saasUserId)
+      await twilioClientPool.getClientBySaasUserId(saasUser[0].id)
 
     // --- Early exit for multimedia messages ---
     try {
@@ -293,6 +280,7 @@ export async function whatsappSaasWebhook(
 
     const newMessagesForFeed = await getNextMessages(
       chatMessages,
+      To,
       from,
       abortController.signal,
     )
@@ -374,7 +362,7 @@ export async function whatsappSaasWebhook(
             await userClient.messages.create({
               from: credentials.whatsappNumber,
               to: _from,
-              body,
+              body: body,
             })
           }
         }
@@ -390,7 +378,6 @@ export async function whatsappSaasWebhook(
     res.json({ status: 'Received', from, message })
     return
   } catch (error) {
-    console.error('SaaS webhook error:', error)
     abortControllers[from] = undefined
 
     if (

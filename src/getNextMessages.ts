@@ -1,7 +1,7 @@
+import { inspect } from 'node:util'
 import { eq } from 'drizzle-orm'
-import { inspect } from 'util'
 import { db } from './db'
-import { userSaasUserMapping } from './db/schema-postgres'
+import { saasUsers } from './db/schema-postgres'
 import { toolCall } from './mcp/toolCall'
 import { dateTool } from './mcp/toolConfig/toolConfig'
 import {
@@ -23,10 +23,10 @@ async function getSaasUserIdFromPhoneNumber(
   try {
     const result = await db
       .select({
-        saasUserId: userSaasUserMapping.saasUserId,
+        saasUserId: saasUsers.id,
       })
-      .from(userSaasUserMapping)
-      .where(eq(userSaasUserMapping.phoneNumber, phoneNumber))
+      .from(saasUsers)
+      .where(eq(saasUsers.twilioWhatsappNumber, phoneNumber))
       .limit(1)
 
     return result.length > 0 ? result[0].saasUserId : null
@@ -42,6 +42,7 @@ const builtInTools = [dateTool]
 export async function getNextMessages(
   messagesFeed: ChatMessage[],
   phoneNumber: string,
+  callersPhoneNumber: string,
   signal?: AbortSignal,
 ) {
   const newMessagesForFeed: ChatMessage[] = []
@@ -50,8 +51,6 @@ export async function getNextMessages(
   const allTools = phoneNumber
     ? await getToolsForPhoneNumber(phoneNumber, builtInTools)
     : []
-
-  // console.log('### allTools', inspect(allTools, { depth: 4 }))
 
   const completion = await openai.chat.completions.create(
     {
@@ -111,6 +110,10 @@ export async function getNextMessages(
         : null
 
       if (!userId) {
+        console.error(
+          'User not found or not linked to SaaS account',
+          phoneNumber,
+        )
         throw new Error('User not found or not linked to SaaS account')
       }
 
@@ -121,6 +124,7 @@ export async function getNextMessages(
             functionName,
             JSON.parse(_arguments),
             phoneNumber,
+            callersPhoneNumber,
             userId,
           )
         } catch (error) {
@@ -183,6 +187,7 @@ export async function getNextMessages(
       const newMessages = await getNextMessages(
         [...messagesFeed, ...newMessagesForFeed],
         phoneNumber,
+        callersPhoneNumber,
         signal,
       )
       newMessagesForFeed.push(...newMessages)

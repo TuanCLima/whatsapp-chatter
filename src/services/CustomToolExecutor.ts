@@ -72,7 +72,7 @@ export function convertToOpenAITool(
  */
 export async function executeImageTool(
   tool: AssistantTool,
-  phoneNumber: string,
+  callersPhoneNumber: string,
   userId: string,
 ): Promise<{ success: boolean; message: string }> {
   try {
@@ -80,7 +80,7 @@ export async function executeImageTool(
       throw new Error('Image tool has no image URL')
     }
 
-    const cleanPhoneNumber = noWhatsPhoneNumber(phoneNumber)
+    const cleanCallersPhoneNumber = noWhatsPhoneNumber(callersPhoneNumber)
 
     const twilioClient = await twilioClientPool.getClient(userId)
 
@@ -102,7 +102,7 @@ export async function executeImageTool(
     // Send the image using Twilio
     const message = await twilioClient.messages.create({
       from: `whatsapp:${whatsappNumber}`,
-      to: `whatsapp:${cleanPhoneNumber}`,
+      to: `whatsapp:${cleanCallersPhoneNumber}`,
       body: '',
       mediaUrl: [fullImageUrl],
     })
@@ -272,6 +272,7 @@ export async function executeCustomTool(
   toolName: string,
   parameters: Record<string, unknown>,
   phoneNumber: string,
+  callersPhoneNumber: string,
   userId: string,
 ): Promise<unknown> {
   // Get the tool details
@@ -283,7 +284,7 @@ export async function executeCustomTool(
 
   if (tool.toolType === 'image') {
     // Execute image tool
-    return executeImageTool(tool, phoneNumber, userId)
+    return executeImageTool(tool, callersPhoneNumber, userId)
   } else {
     // Execute implementation tool
     if (!tool.implementation) {
