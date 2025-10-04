@@ -1,6 +1,6 @@
 -- Migration for SaaS multi-tenant features
 -- Add SaaS users table for application users who configure Twilio
-CREATE TABLE saas_users (
+CREATE TABLE IF NOT EXISTS saas_users (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE saas_users (
 );
 
 -- Link WhatsApp users to SaaS users
-CREATE TABLE user_saas_user_mapping (
+CREATE TABLE IF NOT EXISTS user_saas_user_mapping (
   id SERIAL PRIMARY KEY,
   phone_number TEXT NOT NULL,
   saas_user_id TEXT NOT NULL REFERENCES saas_users(id) ON DELETE CASCADE,
@@ -31,7 +31,7 @@ CREATE TABLE user_saas_user_mapping (
 );
 
 -- Create indexes for better performance
-CREATE INDEX idx_saas_users_email ON saas_users(email);
-CREATE INDEX idx_saas_users_webhook_path ON saas_users(webhook_path);
-CREATE INDEX idx_user_mapping_phone ON user_saas_user_mapping(phone_number);
-CREATE INDEX idx_user_mapping_saas_user ON user_saas_user_mapping(saas_user_id);
+CREATE INDEX IF NOT EXISTS idx_saas_users_email ON saas_users(email);
+CREATE INDEX IF NOT EXISTS idx_saas_users_webhook_path ON saas_users(webhook_path);
+CREATE INDEX IF NOT EXISTS idx_user_mapping_phone ON user_saas_user_mapping(phone_number);
+CREATE INDEX IF NOT EXISTS idx_user_mapping_saas_user ON user_saas_user_mapping(saas_user_id);

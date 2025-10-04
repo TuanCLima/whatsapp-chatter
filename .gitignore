@@ -11,5 +11,6 @@ backup/**
 prompts_backup
 sqlite.db
 *.sh
+.drizzle
 
 public
