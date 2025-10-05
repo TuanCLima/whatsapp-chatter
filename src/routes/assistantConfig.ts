@@ -7,31 +7,19 @@ import multer from 'multer'
 import { db } from '../db'
 import { assistantPrompts, assistantTools } from '../db/schema-postgres'
 import { authenticateUser } from '../middleware/authenticateUser'
+import { deleteFromS3, uploadToS3 } from '../utils/s3'
 
 const router = express.Router()
 
-// Serve uploaded tool images
+// Serve uploaded tool images (deprecated - now using S3)
+// Keeping for backward compatibility with old local images
 router.use(
   '/tool-images',
   express.static(path.join(process.cwd(), 'public', 'tool-images')),
 )
 
-// Configure multer for image uploads
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    const uploadDir = path.join(process.cwd(), 'public', 'tool-images')
-    // Create directory if it doesn't exist
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true })
-    }
-    cb(null, uploadDir)
-  },
-  filename: (_req, file, cb) => {
-    // Generate unique filename
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${file.originalname}`
-    cb(null, uniqueName)
-  },
-})
+// Configure multer for image uploads (using memory storage for S3)
+const storage = multer.memoryStorage()
 
 const upload = multer({
   storage,
@@ -274,13 +262,19 @@ router.post(
           implementation,
         }
       } else {
-        // Image tool
+        // Image tool - upload to S3
+        if (!uploadedFile) {
+          res.status(400).json({ error: 'Image file is required' })
+          return
+        }
+
+        // Upload to S3
+        const s3Url = await uploadToS3(uploadedFile, 'tool-images')
+
         finalToolData = {
           ...baseToolData,
-          imageUrl: uploadedFile
-            ? `/tool-images/${uploadedFile.filename}`
-            : null,
-          imageName: uploadedFile ? uploadedFile.originalname : null,
+          imageUrl: s3Url,
+          imageName: uploadedFile.originalname,
         }
       }
 
@@ -387,6 +381,15 @@ router.put(
           imageUrl: null,
           imageName: null,
         }
+
+        // Delete old S3 image if it exists
+        if (existingTool[0].imageUrl?.includes('amazonaws.com')) {
+          try {
+            await deleteFromS3(existingTool[0].imageUrl)
+          } catch (error) {
+            console.error('Error deleting old S3 image:', error)
+          }
+        }
       } else {
         // Image tool
         finalUpdateData = {
@@ -397,7 +400,18 @@ router.put(
 
         // Only update image fields if a new image was uploaded
         if (uploadedFile) {
-          finalUpdateData.imageUrl = `/tool-images/${uploadedFile.filename}`
+          // Delete old S3 image if it exists
+          if (existingTool[0].imageUrl?.includes('amazonaws.com')) {
+            try {
+              await deleteFromS3(existingTool[0].imageUrl)
+            } catch (error) {
+              console.error('Error deleting old S3 image:', error)
+            }
+          }
+
+          // Upload new image to S3
+          const s3Url = await uploadToS3(uploadedFile, 'tool-images')
+          finalUpdateData.imageUrl = s3Url
           finalUpdateData.imageName = uploadedFile.originalname
         }
       }
@@ -459,13 +473,17 @@ router.delete('/tools/:id', authenticateUser, async (req, res) => {
     // If it's an image tool, delete the associated image file
     if (tool.toolType === 'image' && tool.imageUrl) {
       try {
-        // Extract filename from the URL path
-        const imagePath = path.join(process.cwd(), 'public', tool.imageUrl)
-
-        // Check if file exists and delete it
-        if (fs.existsSync(imagePath)) {
-          fs.unlinkSync(imagePath)
-          console.log(`Deleted image file: ${imagePath}`)
+        // Check if it's an S3 URL
+        if (tool.imageUrl.includes('amazonaws.com')) {
+          // Delete from S3
+          await deleteFromS3(tool.imageUrl)
+        } else {
+          // Legacy: Delete local file
+          const imagePath = path.join(process.cwd(), 'public', tool.imageUrl)
+          if (fs.existsSync(imagePath)) {
+            fs.unlinkSync(imagePath)
+            console.log(`Deleted local image file: ${imagePath}`)
+          }
         }
       } catch (fileError) {
         console.error('Error deleting image file:', fileError)

@@ -783,7 +783,11 @@ export default function AssistantConfigPage() {
                         Current image:
                       </p>
                       <img
-                        src={`${API_BASE_URL || 'http://localhost:3000'}/api/assistant${selectedTool.imageUrl}`}
+                        src={
+                          selectedTool.imageUrl.startsWith('http')
+                            ? selectedTool.imageUrl
+                            : `${API_BASE_URL || 'http://localhost:3000'}/api/assistant${selectedTool.imageUrl}`
+                        }
                         alt={selectedTool.imageName || 'Tool image'}
                         className="max-w-xs max-h-48 object-contain rounded"
                       />
