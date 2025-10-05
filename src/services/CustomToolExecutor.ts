@@ -90,7 +90,7 @@ export async function executeImageTool(
       process.env.NGROK_URL ||
       DEPLOYMENT_URL ||
       `http://localhost:${process.env.PORT || 3000}`
-    const fullImageUrl = tool.imageUrl.startsWith('http')
+    const fullImageUrl = tool.imageUrl.startsWith('https')
       ? tool.imageUrl
       : `${baseUrl}/api/assistant${tool.imageUrl}`
 
