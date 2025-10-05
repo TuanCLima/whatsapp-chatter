@@ -606,7 +606,7 @@ export class PredefinedToolsService {
         function: {
           name: 'forwardContact',
           description:
-            'Encaminhar contato. Use esta ferramenta de forma síncrona. Isto é, exemplo: para mandar: 1. Mensagem, 2. Encaminhamento, 3. Mensagem. Chame esta ferramenta após enviar a mensagem 1 e antes de enviar a mensagem 3.',
+            'Encaminhar contato. Sempre que for enviar um número de telefone use esta ferramenta, antes de tentar outra coisa. Use esta ferramenta de forma síncrona. Isto é, exemplo: para mandar: 1. Mensagem, 2. Encaminhamento, 3. Mensagem. Chame esta ferramenta após enviar a mensagem 1 e antes de enviar a mensagem 3.',
           parameters: {
             type: 'object',
             properties: {
@@ -635,6 +635,8 @@ export class PredefinedToolsService {
     functionName: string,
     parameters: CalendarFunctionParameters,
     twilioSenderNumber: string,
+    callersPhoneNumber: string,
+    userId: string,
   ): Promise<unknown> {
     const status = await this.isCalendarToolReady(saasUserId)
 
@@ -738,6 +740,8 @@ export class PredefinedToolsService {
             contactName: parameters.contactName,
             phoneNumberOfContactToSend: parameters.phoneNumberOfContactToSend!,
             phoneNumberOfSender: twilioSenderNumber,
+            callersPhoneNumber,
+            userId,
           })
 
         default:

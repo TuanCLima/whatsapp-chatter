@@ -54,15 +54,23 @@ export type ForwardContactProps = {
   contactName?: string
   phoneNumberOfContactToSend: string
   phoneNumberOfSender: string
+  callersPhoneNumber: string
+  userId: string
 }
 
 export async function forwardContact(params: ForwardContactProps) {
-  const { contactName, phoneNumberOfContactToSend, phoneNumberOfSender } =
-    params
+  const {
+    contactName,
+    phoneNumberOfContactToSend,
+    phoneNumberOfSender,
+    callersPhoneNumber,
+    userId,
+  } = params
 
   // Remove "whatsapp:" prefix if it exists
   const contactPhoneNumber = noWhatsPhoneNumber(phoneNumberOfContactToSend)
   const senderPhoneNumber = noWhatsPhoneNumber(phoneNumberOfSender)
+  const callerPhoneNumber = noWhatsPhoneNumber(callersPhoneNumber)
 
   try {
     // Search for the contact by name
@@ -72,6 +80,7 @@ export async function forwardContact(params: ForwardContactProps) {
       .where(
         and(
           eq(contacts.isActive, true),
+          eq(contacts.saasUserId, userId),
           or(
             eq(contacts.phoneNumber, contactPhoneNumber),
             eq(contacts.name, contactName || ''),
@@ -100,10 +109,6 @@ export async function forwardContact(params: ForwardContactProps) {
     // Get the Twilio client for this SaaS user
     const client = await twilioClientPool.getClient(contactData.saasUserId)
 
-    const accountPhoneNumber = noWhatsPhoneNumber(
-      await twilioClientPool.getPhoneNumberInfo(contactData.saasUserId),
-    )
-
     if (!senderPhoneNumber) {
       return {
         success: false,
@@ -114,8 +119,8 @@ export async function forwardContact(params: ForwardContactProps) {
 
     // Send the contact via WhatsApp
     await client.messages.create({
-      from: `whatsapp:${accountPhoneNumber}`,
-      to: `whatsapp:${senderPhoneNumber}`,
+      from: `whatsapp:${senderPhoneNumber}`,
+      to: `whatsapp:${callerPhoneNumber}`,
       mediaUrl: [vcfUrl],
     })
 
