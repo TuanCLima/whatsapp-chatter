@@ -44,6 +44,7 @@ export async function getNextMessages(
   phoneNumber: string,
   callersPhoneNumber: string,
   signal?: AbortSignal,
+  depth = 0,
 ) {
   const newMessagesForFeed: ChatMessage[] = []
 
@@ -51,6 +52,11 @@ export async function getNextMessages(
   const allTools = phoneNumber
     ? await getToolsForPhoneNumber(phoneNumber, builtInTools)
     : []
+
+  if (depth > 5) {
+    console.warn('Max recursion depth reached in getNextMessages')
+    return newMessagesForFeed
+  }
 
   const completion = await openai.chat.completions.create(
     {
@@ -189,6 +195,7 @@ export async function getNextMessages(
         phoneNumber,
         callersPhoneNumber,
         signal,
+        depth + 1,
       )
       newMessagesForFeed.push(...newMessages)
 
