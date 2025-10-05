@@ -316,7 +316,8 @@ export type AvailableTimeSpan = {
 
 export type SuggestEventTimesProps = {
   serviceDurationMinutes: number
-  daysToConsider?: number // defaults to 14 days if not provided
+  startDate: string // optional start date, defaults to today
+  endDate?: string // optional end date, defaults to 7 days from start date
 }
 
 export type TimeSuggestion = {

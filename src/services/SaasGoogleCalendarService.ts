@@ -758,8 +758,9 @@ export class SaasGoogleCalendarService {
   async suggestEventTimes(
     saasUserId: string,
     serviceDurationMinutes: number, // in minutes
-    daysToConsider = 14,
-    _workingHours: { start: string; end: string } | undefined,
+    startDate?: string,
+    endDate?: string,
+    _workingHours?: { start: string; end: string } | undefined,
     calendarId?: string,
   ) {
     try {
@@ -767,8 +768,15 @@ export class SaasGoogleCalendarService {
 
       // Use provided parameters or fall back to user config
       const effectiveCalendarId = calendarId || userConfig.defaultCalendarId
-      const currentDateTZ = moment().tz(userConfig.timeZone)
-      const endDateTZ = currentDateTZ.clone().add(daysToConsider, 'days')
+
+      const currentDateTZ = startDate
+        ? moment.tz(startDate, userConfig.timeZone)
+        : moment.tz(new Date(), userConfig.timeZone)
+      const endDateTZ = endDate
+        ? moment.tz(endDate, userConfig.timeZone)
+        : currentDateTZ.clone().add(14, 'days')
+
+      const daysToConsider = endDateTZ.diff(currentDateTZ, 'days') + 1
 
       const timeMin = currentDateTZ.startOf('day').toISOString()
       const timeMax = endDateTZ.endOf('day').toISOString()

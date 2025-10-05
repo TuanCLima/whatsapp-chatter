@@ -38,7 +38,8 @@ export interface CalendarFunctionParameters {
     end: string
   }
   serviceDurationMinutes?: number
-  daysToConsider?: number
+  startDate?: string
+  endDate?: string
   event?: {
     summary?: string
     location?: string
@@ -445,11 +446,15 @@ export class PredefinedToolsService {
                 description:
                   'Duração do serviço em minutos para o qual se deseja sugerir horários.',
               },
-              daysToConsider: {
-                type: 'integer',
+              startDate: {
+                type: 'string',
                 description:
-                  'Número de dias a partir de hoje para considerar na busca por horários. Se não fornecido, considera 14 dias por padrão.',
-                default: 14,
+                  'Data de início para considerar na busca por horários (formato ISO 8601). Default is now/today.',
+              },
+              endDate: {
+                type: 'string',
+                description:
+                  'Data de fim para considerar na busca por horários (formato ISO 8601). Default is 14 days from start date.',
               },
               workingHours: {
                 type: 'object',
@@ -695,7 +700,8 @@ export class PredefinedToolsService {
           return await getSaasGoogleCalendarService().suggestEventTimes(
             saasUserId,
             parameters.serviceDurationMinutes!,
-            parameters.daysToConsider,
+            parameters.startDate,
+            parameters.endDate,
             parameters.workingHours,
             parameters.calendarId,
           )
