@@ -12,6 +12,7 @@ import {
 import { getNextMessages } from './getNextMessages'
 import { twilioClientPool } from './services/TwilioClientPool'
 import type { ChatMessage } from './types/types'
+import { logError, twilioLogger, webhookLogger } from './utils/logger'
 import { parseLLMMessages } from './utils/parseLLMMessages'
 
 const IS_DEV_OTHER = process.env.NODE_ENV === 'development'
@@ -108,15 +109,19 @@ export async function whatsappSaasWebhook(
   const { From: _from, To, Body: message, ProfileName } = body
 
   // Log the incoming webhook call
-  console.log('🔔 Webhook received:', {
-    timestamp: new Date().toISOString(),
-    from: _from,
-    profileName: ProfileName,
-    messageLength: message?.length || 0,
-    messageSid: body.MessageSid,
-    numMedia: body.NumMedia,
-    isDev: IS_DEV_OTHER,
-  })
+  webhookLogger.info(
+    {
+      timestamp: new Date().toISOString(),
+      from: _from,
+      to: To,
+      profileName: ProfileName,
+      messageLength: message?.length || 0,
+      messageSid: body.MessageSid,
+      numMedia: body.NumMedia,
+      isDev: IS_DEV_OTHER,
+    },
+    '🔔 Webhook received',
+  )
 
   const from =
     IS_DEV_OTHER && fakes[indexSelected]?.from
@@ -130,6 +135,11 @@ export async function whatsappSaasWebhook(
 
   try {
     // Get the SaaS user data
+    webhookLogger.debug(
+      { phoneNumber: To },
+      'Looking up SaaS user by Twilio number',
+    )
+
     const saasUser = await db
       .select()
       .from(saasUsers)
@@ -137,8 +147,20 @@ export async function whatsappSaasWebhook(
       .limit(1)
 
     if (!saasUser.length) {
+      webhookLogger.error(
+        { phoneNumber: To },
+        'SaaS user not found for Twilio number',
+      )
       throw new Error('SaaS user not found')
     }
+
+    webhookLogger.debug(
+      {
+        saasUserId: saasUser[0].id,
+        twilioNumber: To,
+      },
+      'SaaS user found',
+    )
 
     // Get user-specific Twilio client and credentials using the SaaS user ID
     const { client: userClient, credentials } =
@@ -149,16 +171,31 @@ export async function whatsappSaasWebhook(
       const numMediaRaw = body.NumMedia
       const numMedia = numMediaRaw ? parseInt(numMediaRaw, 10) : 0
       if (numMedia > 0) {
+        webhookLogger.debug({ numMedia, from }, 'Checking multimedia content')
+
         // Check if there's any multimedia content
         let hasMultimedia = false
         for (let i = 0; i < numMedia; i++) {
           const contentType: string | undefined = body[`MediaContentType${i}`]
           if (contentType) {
             hasMultimedia = true
+            webhookLogger.info(
+              {
+                from,
+                contentType,
+                mediaIndex: i,
+              },
+              'Multimedia message detected',
+            )
             break
           }
         }
         if (hasMultimedia) {
+          webhookLogger.info(
+            { from },
+            'Rejecting multimedia message - not supported',
+          )
+
           // Inform user that multimedia messages are not supported and exit early
           await userClient.messages.create({
             from: credentials.whatsappNumber,
@@ -174,7 +211,10 @@ export async function whatsappSaasWebhook(
         }
       }
     } catch (e) {
-      console.error('❌ Error while checking media types:', e)
+      logError(webhookLogger, e, {
+        context: 'multimedia_check',
+        from,
+      })
     }
 
     const messagesFeed: InsertMessage[] = await db
@@ -182,6 +222,14 @@ export async function whatsappSaasWebhook(
       .from(messages)
       .where(eq(messages.phoneNumber, from))
       .orderBy(messages.timestamp)
+
+    webhookLogger.debug(
+      {
+        from,
+        messageCount: messagesFeed.length,
+      },
+      'Loaded message history',
+    )
 
     const customPrompt = await getInitialPromptForPhoneNumber(from)
 
@@ -204,12 +252,29 @@ export async function whatsappSaasWebhook(
       .limit(1)
 
     if (existingUser.length === 0) {
+      webhookLogger.info(
+        {
+          from,
+          profileName: name,
+        },
+        'Creating new user',
+      )
+
       await db.insert(users).values({
         phoneNumber: from,
         profileName: name,
         conversationDisabled: false,
       })
     } else if (existingUser[0].profileName !== name) {
+      webhookLogger.debug(
+        {
+          from,
+          oldName: existingUser[0].profileName,
+          newName: name,
+        },
+        'Updating user profile name',
+      )
+
       await db
         .update(users)
         .set({ profileName: name })
@@ -229,6 +294,14 @@ export async function whatsappSaasWebhook(
       toolCalls: null,
     } as InsertMessage)
 
+    webhookLogger.debug(
+      {
+        from,
+        messageLength: message.length,
+      },
+      'User message saved to database',
+    )
+
     // Emit SSE notification for new user message
     sseService.notifyNewMessage(from, {
       id: `${Date.now()}`, // Simple ID for now
@@ -240,6 +313,10 @@ export async function whatsappSaasWebhook(
 
     // If conversation is disabled, just acknowledge receipt without processing
     if (isConversationDisabled) {
+      webhookLogger.info(
+        { from },
+        'Conversation disabled - skipping processing',
+      )
       res.json({ status: 'Received (conversation disabled)', from, message })
       return
     }
@@ -257,7 +334,7 @@ export async function whatsappSaasWebhook(
     } as InsertMessage)
 
     if (abortControllers[from]) {
-      console.log('🛑 Aborting previous request for:', from)
+      webhookLogger.info({ from }, '🛑 Aborting previous request')
       abortControllers[from]?.abort()
       abortControllers[from] = undefined
     }
@@ -278,6 +355,15 @@ export async function whatsappSaasWebhook(
       } as ChatMessage
     })
 
+    webhookLogger.debug(
+      {
+        from,
+        messageCount: chatMessages.length,
+        model: LLM_MODEL,
+      },
+      'Calling getNextMessages',
+    )
+
     const newMessagesForFeed = await getNextMessages(
       chatMessages,
       To,
@@ -286,11 +372,19 @@ export async function whatsappSaasWebhook(
     )
 
     if (!newMessagesForFeed || newMessagesForFeed.length === 0) {
-      console.log('❌ No new messages generated for:', from)
+      webhookLogger.error({ from }, '❌ No new messages generated')
       abortControllers[from] = undefined
       res.status(500).json({ error: 'No new messages' })
       return
     }
+
+    webhookLogger.info(
+      {
+        from,
+        newMessageCount: newMessagesForFeed.length,
+      },
+      'New messages generated successfully',
+    )
 
     const newMessagesForDB = newMessagesForFeed.map((m, index) => {
       let toolCallId: string | null = null
@@ -319,6 +413,14 @@ export async function whatsappSaasWebhook(
 
     await db.insert(messages).values(newMessagesForDB)
 
+    webhookLogger.debug(
+      {
+        from,
+        savedMessageCount: newMessagesForDB.length,
+      },
+      'Assistant messages saved to database',
+    )
+
     // Emit SSE notifications for new assistant messages
     newMessagesForDB
       .filter((m) => m.role === 'assistant' && m.content)
@@ -337,6 +439,14 @@ export async function whatsappSaasWebhook(
       (m) => m.role === 'assistant',
     )
 
+    webhookLogger.info(
+      {
+        from,
+        assistantMessageCount: assistantMessages.length,
+      },
+      'Sending messages via Twilio',
+    )
+
     assistantMessages.forEach(async (m) => {
       if (!m.content) {
         return
@@ -346,6 +456,14 @@ export async function whatsappSaasWebhook(
       try {
         for (const toSendMessage of toSendMessages) {
           if (toSendMessage.isContactLink) {
+            twilioLogger.debug(
+              {
+                from: _from,
+                messageType: 'contact',
+              },
+              'Sending contact card via Twilio',
+            )
+
             await userClient.messages.create({
               from: credentials.whatsappNumber,
               to: _from,
@@ -356,9 +474,21 @@ export async function whatsappSaasWebhook(
           } else {
             const body = toSendMessage.text.replace(/\*\*/g, '*')
             if (!body) {
-              console.log('⚠️ Empty message detected, skipping')
+              webhookLogger.warn(
+                { from: _from },
+                '⚠️ Empty message detected, skipping',
+              )
               continue
             }
+
+            twilioLogger.debug(
+              {
+                from: _from,
+                messageLength: body.length,
+              },
+              'Sending text message via Twilio',
+            )
+
             await userClient.messages.create({
               from: credentials.whatsappNumber,
               to: _from,
@@ -367,7 +497,10 @@ export async function whatsappSaasWebhook(
           }
         }
       } catch (error) {
-        console.error('❌ Error sending message via Twilio:', error)
+        logError(twilioLogger, error, {
+          context: 'twilio_send',
+          from: _from,
+        })
         abortControllers[from] = undefined
         res.status(500).json({ error: 'Error sending message' })
         return
@@ -375,6 +508,13 @@ export async function whatsappSaasWebhook(
     })
 
     abortControllers[from] = undefined
+    webhookLogger.info(
+      {
+        from,
+        status: 'success',
+      },
+      '✅ Webhook processing completed successfully',
+    )
     res.json({ status: 'Received', from, message })
     return
   } catch (error) {
@@ -384,6 +524,10 @@ export async function whatsappSaasWebhook(
       error instanceof Error &&
       error.message.includes('SaaS user mapping not found')
     ) {
+      logError(webhookLogger, error, {
+        context: 'saas_user_mapping',
+        phoneNumber: To,
+      })
       res
         .status(404)
         .json({ error: 'Phone number not assigned to any SaaS user' })
@@ -391,13 +535,26 @@ export async function whatsappSaasWebhook(
       error instanceof Error &&
       error.message.includes('SaaS user not found')
     ) {
+      logError(webhookLogger, error, {
+        context: 'saas_user_lookup',
+        phoneNumber: To,
+      })
       res.status(404).json({ error: 'SaaS user configuration not found' })
     } else if (
       error instanceof Error &&
       error.message.includes('credentials')
     ) {
+      logError(webhookLogger, error, {
+        context: 'twilio_credentials',
+        phoneNumber: To,
+      })
       res.status(400).json({ error: 'Twilio credentials not configured' })
     } else {
+      logError(webhookLogger, error, {
+        context: 'webhook_processing',
+        from,
+        to: To,
+      })
       res.status(500).json({ error: 'Internal server error' })
     }
   }

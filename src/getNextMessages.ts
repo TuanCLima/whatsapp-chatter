@@ -12,6 +12,7 @@ import {
   isPredefinedTool,
 } from './services/CustomToolExecutor'
 import type { ChatMessage } from './types/types'
+import { logError, messageLogger, toolLogger } from './utils/logger'
 import { LLM_MODEL, openai } from './webhook'
 
 /**
@@ -31,7 +32,10 @@ async function getSaasUserIdFromPhoneNumber(
 
     return result.length > 0 ? result[0].saasUserId : null
   } catch (error) {
-    console.error('Error getting SaaS user ID from phone number:', error)
+    logError(messageLogger, error, {
+      context: 'get_saas_user_id',
+      phoneNumber,
+    })
     return null
   }
 }
@@ -46,6 +50,16 @@ export async function getNextMessages(
   signal?: AbortSignal,
   depth = 0,
 ) {
+  messageLogger.debug(
+    {
+      phoneNumber,
+      callersPhoneNumber,
+      messageCount: messagesFeed.length,
+      depth,
+    },
+    'getNextMessages called',
+  )
+
   const newMessagesForFeed: ChatMessage[] = []
 
   // Get all tools including custom ones
@@ -54,9 +68,32 @@ export async function getNextMessages(
     : []
 
   if (depth > 5) {
-    console.warn('Max recursion depth reached in getNextMessages')
+    messageLogger.warn(
+      {
+        depth,
+        phoneNumber,
+        callersPhoneNumber,
+      },
+      'Max recursion depth reached in getNextMessages',
+    )
     return newMessagesForFeed
   }
+
+  messageLogger.debug(
+    {
+      toolCount: allTools.length,
+      tools: allTools.map((t) => t.function?.name).filter(Boolean),
+    },
+    'Tools loaded for phone number',
+  )
+
+  messageLogger.debug(
+    {
+      model: LLM_MODEL,
+      messageCount: messagesFeed.length,
+    },
+    'Calling OpenAI chat completions API',
+  )
 
   const completion = await openai.chat.completions.create(
     {
@@ -72,7 +109,23 @@ export async function getNextMessages(
 
   const { tool_calls, content } = completion.choices[0].message
 
+  messageLogger.debug(
+    {
+      hasContent: !!content,
+      toolCallCount: tool_calls?.length || 0,
+      finishReason: completion.choices[0].finish_reason,
+    },
+    'OpenAI response received',
+  )
+
   if (content) {
+    messageLogger.debug(
+      {
+        contentLength: content.length,
+      },
+      'Assistant generated text response',
+    )
+
     newMessagesForFeed.push({
       role: 'assistant',
       content,
@@ -80,10 +133,27 @@ export async function getNextMessages(
   }
 
   if (tool_calls && tool_calls.length > 0) {
+    toolLogger.info(
+      {
+        toolCallCount: tool_calls.length,
+        tools: tool_calls.map((tc) => tc.function.name),
+      },
+      'Processing tool calls',
+    )
+
     for (const tool_call of tool_calls) {
       const { function: functionCall } = tool_call
       const { arguments: _arguments } = functionCall
       const functionName = functionCall.name
+
+      toolLogger.debug(
+        {
+          toolName: functionName,
+          toolCallId: tool_call.id,
+          argumentsLength: _arguments.length,
+        },
+        'Executing tool call',
+      )
 
       newMessagesForFeed.push({
         role: 'assistant',
@@ -116,15 +186,34 @@ export async function getNextMessages(
         : null
 
       if (!userId) {
-        console.error(
+        toolLogger.error(
+          {
+            phoneNumber,
+            toolName: functionName,
+          },
           'User not found or not linked to SaaS account',
-          phoneNumber,
         )
         throw new Error('User not found or not linked to SaaS account')
       }
 
+      toolLogger.debug(
+        {
+          userId,
+          toolName: functionName,
+        },
+        'User ID resolved for tool execution',
+      )
+
       if (customImplementation) {
         // Execute custom tool
+        toolLogger.info(
+          {
+            toolName: functionName,
+            toolType: 'custom',
+          },
+          'Executing custom tool',
+        )
+
         try {
           toolResponse = await executeCustomTool(
             functionName,
@@ -133,14 +222,33 @@ export async function getNextMessages(
             callersPhoneNumber,
             userId,
           )
+
+          toolLogger.debug(
+            {
+              toolName: functionName,
+              hasResponse: !!toolResponse,
+            },
+            'Custom tool executed successfully',
+          )
         } catch (error) {
-          console.error(`Error executing custom tool ${functionName}:`, error)
+          logError(toolLogger, error, {
+            context: 'custom_tool_execution',
+            toolName: functionName,
+          })
           toolResponse = {
             error: `Tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
           }
         }
       } else if (isPredefinedTool(functionName)) {
         // Execute predefined tool (like calendar functions)
+        toolLogger.info(
+          {
+            toolName: functionName,
+            toolType: 'predefined',
+          },
+          'Executing predefined tool',
+        )
+
         try {
           // Get the SaaS user ID from phone number
           const userId = phoneNumber
@@ -158,21 +266,45 @@ export async function getNextMessages(
             callersPhoneNumber,
             userId,
           )
-        } catch (error) {
-          console.error(
-            `Error executing predefined tool ${functionName}:`,
-            error,
+
+          toolLogger.debug(
+            {
+              toolName: functionName,
+              hasResponse: !!toolResponse,
+            },
+            'Predefined tool executed successfully',
           )
+        } catch (error) {
+          logError(toolLogger, error, {
+            context: 'predefined_tool_execution',
+            toolName: functionName,
+          })
           toolResponse = {
             error: `Predefined tool execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
           }
         }
       } else {
         // Execute built-in tool via MCP server
+        toolLogger.info(
+          {
+            toolName: functionName,
+            toolType: 'builtin',
+          },
+          'Executing built-in tool via MCP',
+        )
+
         toolResponse = await toolCall({
           functionName,
           parameters: JSON.parse(_arguments),
         })
+
+        toolLogger.debug(
+          {
+            toolName: functionName,
+            hasResponse: !!toolResponse,
+          },
+          'Built-in tool executed successfully',
+        )
       }
 
       // console.log(
@@ -190,6 +322,14 @@ export async function getNextMessages(
   }
 
   if (tool_calls && tool_calls.length > 0) {
+    messageLogger.debug(
+      {
+        toolCallCount: tool_calls.length,
+        depth,
+      },
+      'Tool calls completed, recursing to get next messages',
+    )
+
     try {
       const newMessages = await getNextMessages(
         [...messagesFeed, ...newMessagesForFeed],
@@ -200,11 +340,31 @@ export async function getNextMessages(
       )
       newMessagesForFeed.push(...newMessages)
 
+      messageLogger.debug(
+        {
+          totalNewMessages: newMessagesForFeed.length,
+          depth,
+        },
+        'Recursion completed successfully',
+      )
+
       return newMessagesForFeed
     } catch (error) {
-      console.error('Error calling MCP server:', error)
+      logError(messageLogger, error, {
+        context: 'mcp_server_call',
+        depth,
+        phoneNumber,
+      })
     }
   }
+
+  messageLogger.debug(
+    {
+      newMessageCount: newMessagesForFeed.length,
+      depth,
+    },
+    'getNextMessages returning messages',
+  )
 
   return newMessagesForFeed
 }
