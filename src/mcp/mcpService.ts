@@ -3,7 +3,7 @@ import moment from 'moment-timezone'
 import { db } from '../db'
 import { contacts } from '../db/schema-postgres'
 import { twilioClientPool } from '../services/TwilioClientPool'
-import { PRODUCTION_DOMAIN } from '../utils/contants'
+import { DEPLOYMENT_URL } from '../utils/contants'
 import { noWhatsPhoneNumber } from '../utils/utils'
 
 // Helper function to format time in São Paulo timezone
@@ -102,8 +102,8 @@ export async function forwardContact(params: ForwardContactProps) {
     // Generate the VCF URL
     const baseUrl =
       process.env.NODE_ENV === 'production'
-        ? PRODUCTION_DOMAIN
-        : (process.env.NGROK_URL ?? 'http://localhost:3000')
+        ? DEPLOYMENT_URL
+        : (process.env.DEPLOYMENT_URL ?? 'http://localhost:3000')
     const vcfUrl = `${baseUrl}/api/contacts/${contactData.id}/vcf`
 
     // Get the Twilio client for this SaaS user

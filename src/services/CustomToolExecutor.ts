@@ -87,7 +87,7 @@ export async function executeImageTool(
     // Convert relative URL to full URL
     const baseUrl =
       process.env.BASE_URL ||
-      process.env.NGROK_URL ||
+      process.env.DEPLOYMENT_URL ||
       DEPLOYMENT_URL ||
       `http://localhost:${process.env.PORT || 3000}`
     const fullImageUrl = tool.imageUrl.startsWith('https')

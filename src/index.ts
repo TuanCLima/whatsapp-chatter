@@ -22,7 +22,7 @@ import { authenticateUser } from './middleware/authenticateUser'
 import { authService } from './services/AuthService'
 import { twilioClientPool } from './services/TwilioClientPool'
 import type { Contact, Conversation, Message } from './types/types'
-import { FRONTEND_LOCALHOST, PRODUCTION_DOMAIN } from './utils/contants'
+import { DEPLOYMENT_URL, FRONTEND_LOCALHOST } from './utils/contants'
 import {
   getUniqueWhatsAppContacts,
   getWhatsAppConversationByContactId,
@@ -75,9 +75,7 @@ const oauthCallback = (req: express.Request, res: express.Response) => {
 
   // Get the frontend origin based on environment
   const frontendOrigin =
-    process.env.NODE_ENV === 'production'
-      ? PRODUCTION_DOMAIN
-      : FRONTEND_LOCALHOST
+    process.env.NODE_ENV === 'production' ? DEPLOYMENT_URL : FRONTEND_LOCALHOST
 
   // Create an HTML page that sends the message to the parent window
   const html = `
