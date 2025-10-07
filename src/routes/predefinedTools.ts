@@ -170,4 +170,25 @@ router.delete('/calendar/access', authenticateUser, async (req, res) => {
   }
 })
 
+/**
+ * List available calendars for the authenticated user
+ */
+router.get('/calendar/list', authenticateUser, async (req, res) => {
+  try {
+    const saasUserId = req.user?.userId
+
+    if (!saasUserId) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
+    const calendars =
+      await getSaasGoogleCalendarService().listCalendars(saasUserId)
+    res.json({ calendars })
+  } catch (error) {
+    console.error('Error listing calendars:', error)
+    res.status(500).json({ error: 'Failed to fetch calendar list' })
+  }
+})
+
 export default router

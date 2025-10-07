@@ -1294,6 +1294,46 @@ export class SaasGoogleCalendarService {
       throw error
     }
   }
+
+  /**
+   * List all calendars available to the user
+   */
+  async listCalendars(saasUserId: string): Promise<
+    Array<{
+      id: string
+      summary: string
+      description?: string
+      primary?: boolean
+      accessRole?: string
+      backgroundColor?: string
+    }>
+  > {
+    try {
+      const tokens = await this.getUserTokens(saasUserId)
+      const oAuth2Client = this.createOAuth2Client(tokens)
+      const calendar = google.calendar({ version: 'v3', auth: oAuth2Client })
+
+      const response = await calendar.calendarList.list({
+        minAccessRole: 'writer', // Only show calendars the user can write to
+      })
+
+      if (!response.data.items) {
+        return []
+      }
+
+      return response.data.items.map((cal) => ({
+        id: cal.id || '',
+        summary: cal.summary || '',
+        description: cal.description || undefined,
+        primary: cal.primary || false,
+        accessRole: cal.accessRole || undefined,
+        backgroundColor: cal.backgroundColor || undefined,
+      }))
+    } catch (error) {
+      console.error('Error listing calendars:', error)
+      throw new Error('Failed to fetch calendar list')
+    }
+  }
 }
 
 export const getSaasGoogleCalendarService = () =>

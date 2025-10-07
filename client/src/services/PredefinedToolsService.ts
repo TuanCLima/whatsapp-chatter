@@ -215,6 +215,35 @@ export class PredefinedToolsService {
   }
 
   /**
+   * List available Google Calendars
+   */
+  async listCalendars(): Promise<{
+    calendars: Array<{
+      id: string
+      summary: string
+      description?: string
+      primary?: boolean
+      accessRole?: string
+      backgroundColor?: string
+    }>
+  }> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/predefined-tools/calendar/list`,
+      {
+        method: 'GET',
+        headers: await this.getAuthHeaders(),
+        credentials: 'include',
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch calendar list')
+    }
+
+    return response.json()
+  }
+
+  /**
    * Enable/disable calendar management tool
    */
   async toggleCalendarTool(

@@ -17,6 +17,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
@@ -53,6 +60,18 @@ export default function PredefinedToolsPage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
+  const [showCalendarSelector, setShowCalendarSelector] = useState(false)
+  const [availableCalendars, setAvailableCalendars] = useState<
+    Array<{
+      id: string
+      summary: string
+      description?: string
+      primary?: boolean
+      accessRole?: string
+      backgroundColor?: string
+    }>
+  >([])
+  const [loadingCalendars, setLoadingCalendars] = useState(false)
   const { toast } = useToast()
 
   // Load data on component mount
@@ -220,6 +239,38 @@ export default function PredefinedToolsPage() {
     }
   }
 
+  const handleOpenCalendarSelector = async () => {
+    setLoadingCalendars(true)
+    setShowCalendarSelector(true)
+    try {
+      const { calendars } = await predefinedToolsService.listCalendars()
+      setAvailableCalendars(calendars)
+    } catch (error) {
+      console.error('Error loading calendars:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load calendar list',
+        variant: 'destructive',
+      })
+      setShowCalendarSelector(false)
+    } finally {
+      setLoadingCalendars(false)
+    }
+  }
+
+  const handleSelectCalendar = (calendarId: string) => {
+    setCalendarConfig((prev) => ({
+      ...prev,
+      defaultCalendarId: calendarId,
+    }))
+    setShowCalendarSelector(false)
+    toast({
+      title: 'Calendar Selected',
+      description:
+        'Calendar has been updated. Remember to save your configuration.',
+    })
+  }
+
   const getStatusBadge = (status: CalendarToolStatus) => {
     if (status.ready) {
       return (
@@ -343,22 +394,25 @@ export default function PredefinedToolsPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="defaultCalendarId">
-                      Default Calendar ID
-                    </Label>
-                    <Input
-                      id="defaultCalendarId"
-                      value={calendarConfig.defaultCalendarId || ''}
-                      onChange={(e) =>
-                        setCalendarConfig((prev) => ({
-                          ...prev,
-                          defaultCalendarId: e.target.value,
-                        }))
-                      }
-                      placeholder="primary"
-                    />
+                    <Label htmlFor="defaultCalendarId">Selected Calendar</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="defaultCalendarId"
+                        value={calendarConfig.defaultCalendarId || ''}
+                        readOnly
+                        placeholder="No calendar selected"
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleOpenCalendarSelector}
+                      >
+                        Select
+                      </Button>
+                    </div>
                     <p className="text-xs text-muted-foreground">
-                      Use 'primary' for your main calendar
+                      Click "Select" to choose from your available calendars
                     </p>
                   </div>
 
@@ -590,6 +644,75 @@ export default function PredefinedToolsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Calendar Selection Dialog */}
+      <Dialog
+        open={showCalendarSelector}
+        onOpenChange={setShowCalendarSelector}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Select a Calendar</DialogTitle>
+            <DialogDescription>
+              Choose which calendar you want to use for managing events
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingCalendars ? (
+            <div className="flex items-center justify-center py-8">
+              <p className="text-muted-foreground">Loading calendars...</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {availableCalendars.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No calendars found</p>
+                </div>
+              ) : (
+                availableCalendars.map((calendar) => (
+                  <button
+                    key={calendar.id}
+                    type="button"
+                    className={`w-full p-4 border rounded-lg cursor-pointer hover:bg-accent transition-colors text-left ${
+                      calendarConfig.defaultCalendarId === calendar.id
+                        ? 'border-primary bg-accent'
+                        : ''
+                    }`}
+                    onClick={() => handleSelectCalendar(calendar.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold">{calendar.summary}</h4>
+                          {calendar.primary && (
+                            <Badge variant="default" className="text-xs">
+                              Primary
+                            </Badge>
+                          )}
+                        </div>
+                        {calendar.description && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {calendar.description}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Access: {calendar.accessRole || 'N/A'}
+                        </p>
+                      </div>
+                      {calendar.backgroundColor && (
+                        <div
+                          className="w-6 h-6 rounded-full border"
+                          style={{ backgroundColor: calendar.backgroundColor }}
+                        />
+                      )}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
