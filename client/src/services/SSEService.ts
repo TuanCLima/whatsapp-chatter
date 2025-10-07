@@ -1,4 +1,4 @@
-import { API_BASE_URL } from '@/config/api'
+import { API_BASE_URL_ABSOLUTE } from '@/config/api'
 
 interface MessageNotification {
   type: 'new_message'
@@ -47,12 +47,29 @@ class SSEService {
         this.disconnect()
       }
 
-      const url = new URL(`${API_BASE_URL}/api/sse/events`)
-      if (userId) {
-        url.searchParams.append('userId', userId)
+      // Validate API_BASE_URL
+      if (!API_BASE_URL_ABSOLUTE) {
+        const error = new Error('API_BASE_URL is not defined')
+        console.error('SSE connection error:', error)
+        reject(error)
+        return
       }
 
-      this.eventSource = new EventSource(url.toString())
+      try {
+        const url = new URL(`${API_BASE_URL_ABSOLUTE}/api/sse/events`)
+        if (userId) {
+          url.searchParams.append('userId', userId)
+        }
+
+        this.eventSource = new EventSource(url.toString())
+      } catch (error) {
+        const urlError = new Error(
+          `Failed to construct SSE URL. API_BASE_URL: "${API_BASE_URL_ABSOLUTE}". Error: ${error}`,
+        )
+        console.error('SSE connection error:', urlError)
+        reject(urlError)
+        return
+      }
 
       this.eventSource.onopen = () => {
         console.log('SSE connection opened')
@@ -116,16 +133,19 @@ class SSEService {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sse/subscribe`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${API_BASE_URL_ABSOLUTE}/api/sse/subscribe`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            clientId: this.clientId,
+            phoneNumber,
+          }),
         },
-        body: JSON.stringify({
-          clientId: this.clientId,
-          phoneNumber,
-        }),
-      })
+      )
 
       if (!response.ok) {
         throw new Error('Failed to subscribe to phone number')
@@ -145,16 +165,19 @@ class SSEService {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/sse/unsubscribe`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${API_BASE_URL_ABSOLUTE}/api/sse/unsubscribe`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            clientId: this.clientId,
+            phoneNumber: phoneNumber,
+          }),
         },
-        body: JSON.stringify({
-          clientId: this.clientId,
-          phoneNumber: phoneNumber,
-        }),
-      })
+      )
 
       if (!response.ok) {
         throw new Error('Failed to unsubscribe from phone number')
