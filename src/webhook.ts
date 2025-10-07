@@ -231,7 +231,7 @@ export async function whatsappSaasWebhook(
       'Loaded message history',
     )
 
-    const customPrompt = await getInitialPromptForPhoneNumber(from)
+    const customPrompt = await getInitialPromptForPhoneNumber(To)
 
     const initialMessageCommon: InsertMessage = {
       phoneNumber: from,
