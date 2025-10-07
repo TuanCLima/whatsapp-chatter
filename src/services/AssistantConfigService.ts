@@ -42,7 +42,7 @@ export class AssistantConfigService {
 
       if (!saasUserId) {
         // No SaaS user found for this phone number, fall back to default
-        return process.env.MYPROMPT ?? FALLBACK_PROMPT
+        return FALLBACK_PROMPT
       }
 
       // Get the active prompt for this SaaS user
@@ -64,11 +64,11 @@ export class AssistantConfigService {
       }
 
       // Fall back to environment variable or default
-      return process.env.MYPROMPT ?? FALLBACK_PROMPT
+      return FALLBACK_PROMPT
     } catch (error) {
       console.error('Error fetching custom prompt:', error)
       // Fall back to environment variable or default on error
-      return process.env.MYPROMPT ?? FALLBACK_PROMPT
+      return FALLBACK_PROMPT
     }
   }
 
@@ -95,11 +95,11 @@ export class AssistantConfigService {
       }
 
       // Fall back to environment variable or default
-      return process.env.MYPROMPT ?? FALLBACK_PROMPT
+      return FALLBACK_PROMPT
     } catch (error) {
       console.error('Error fetching custom prompt:', error)
       // Fall back to environment variable or default on error
-      return process.env.MYPROMPT ?? FALLBACK_PROMPT
+      return FALLBACK_PROMPT
     }
   }
 
