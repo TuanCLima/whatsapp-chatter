@@ -169,7 +169,8 @@ class SSEService {
 
   // Notify about contact updates
   notifyContactUpdate(phoneNumber: string, profileName?: string) {
-    this.broadcastToPhoneNumber(phoneNumber, {
+    // Broadcast to all clients so they can subscribe to the new contact
+    this.broadcastToAll({
       type: 'contact_update',
       phoneNumber,
       profileName,

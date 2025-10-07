@@ -265,6 +265,9 @@ export async function whatsappSaasWebhook(
         profileName: name,
         conversationDisabled: false,
       })
+
+      // Notify all clients about the new contact
+      sseService.notifyContactUpdate(from, name)
     } else if (existingUser[0].profileName !== name) {
       webhookLogger.debug(
         {
@@ -279,6 +282,9 @@ export async function whatsappSaasWebhook(
         .update(users)
         .set({ profileName: name })
         .where(eq(users.phoneNumber, from))
+
+      // Notify about profile name update
+      sseService.notifyContactUpdate(from, name)
     }
 
     // Check if conversation is disabled for this user

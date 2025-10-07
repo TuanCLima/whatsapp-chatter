@@ -61,9 +61,20 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
         })
 
         // Set up contact update handler
-        const unsubscribeContact = sseService.onContactUpdate(() => {
-          queryClient.invalidateQueries({ queryKey: ['contacts'] })
-        })
+        const unsubscribeContact = sseService.onContactUpdate(
+          (notification) => {
+            queryClient.invalidateQueries({ queryKey: ['contacts'] })
+
+            // Automatically subscribe to the new/updated contact's phone number
+            if (notification.phoneNumber && sseService.connected) {
+              sseService
+                .subscribeToPhoneNumber(notification.phoneNumber)
+                .catch((error) => {
+                  console.error('Failed to subscribe to new contact:', error)
+                })
+            }
+          },
+        )
 
         // Cleanup function
         return () => {
