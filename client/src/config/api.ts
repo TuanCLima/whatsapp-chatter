@@ -6,7 +6,7 @@ const API_BASE_URL = import.meta.env.PROD
   : LOCALHOST_URL // In development, point to backend server
 
 const API_BASE_URL_ABSOLUTE = import.meta.env.PROD
-  ? process.env.DEPLOYMENT_URL // In production, use relative URLs (same domain)
+  ? import.meta.env.VITE_API_URL || window.location.origin // Use env var or fallback to current origin
   : LOCALHOST_URL // In development, point to backend server
 
 export { API_BASE_URL, API_BASE_URL_ABSOLUTE }

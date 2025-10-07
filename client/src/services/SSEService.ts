@@ -50,7 +50,7 @@ class SSEService {
       // Validate API_BASE_URL
       if (!API_BASE_URL_ABSOLUTE) {
         const error = new Error('API_BASE_URL is not defined')
-        console.error('SSE connection error:', { API_BASE_URL_ABSOLUTE }, error)
+        console.error('SSE connection error:', error)
         reject(error)
         return
       }
