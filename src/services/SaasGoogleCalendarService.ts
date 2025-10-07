@@ -558,6 +558,26 @@ export class SaasGoogleCalendarService {
         }
       }
 
+      // Check if event starts at least 1 hour from now
+      const now = new Date()
+      const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000)
+
+      if (startDate < oneHourFromNow) {
+        const minutesFromNow = Math.round(
+          (startDate.getTime() - now.getTime()) / (60 * 1000),
+        )
+
+        return {
+          available: false,
+          message:
+            minutesFromNow < 0
+              ? `Este horário já passou. Por favor, escolha um horário futuro (pelo menos 1 hora a partir de agora).`
+              : `O agendamento deve ser feito com pelo menos 1 hora de antecedência`,
+          conflicts: ['minimum_advance_time'],
+          availableTimeSpans: [],
+        }
+      }
+
       // Check if day is allowed based on configuration
       // Use timezone for day of week check
       const dayOfWeek = moment.tz(startDate, userConfig.timeZone).day() // 0 = Sunday, 1 = Monday
