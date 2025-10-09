@@ -28,6 +28,36 @@ export interface CalendarToolConfig {
   }
   bufferTimeBetweenEvents?: number // in minutes
   timeZone?: string
+  weeklySchedule?: {
+    monday: {
+      enabled: boolean
+      blocks: Array<{ id: string; start: number; end: number }>
+    }
+    tuesday: {
+      enabled: boolean
+      blocks: Array<{ id: string; start: number; end: number }>
+    }
+    wednesday: {
+      enabled: boolean
+      blocks: Array<{ id: string; start: number; end: number }>
+    }
+    thursday: {
+      enabled: boolean
+      blocks: Array<{ id: string; start: number; end: number }>
+    }
+    friday: {
+      enabled: boolean
+      blocks: Array<{ id: string; start: number; end: number }>
+    }
+    saturday: {
+      enabled: boolean
+      blocks: Array<{ id: string; start: number; end: number }>
+    }
+    sunday: {
+      enabled: boolean
+      blocks: Array<{ id: string; start: number; end: number }>
+    }
+  }
 }
 
 export interface CalendarToolStatus {

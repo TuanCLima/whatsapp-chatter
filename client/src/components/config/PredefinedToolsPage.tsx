@@ -35,6 +35,7 @@ import {
   predefinedToolsService,
 } from '@/services/PredefinedToolsService'
 import ContactsManagementPage from './ContactsManagementPage'
+import WeeklyScheduler, { type WeekSchedule } from './WeeklyScheduler'
 
 export default function PredefinedToolsPage() {
   const [calendarStatus, setCalendarStatus] = useState<CalendarToolStatus>({
@@ -57,6 +58,18 @@ export default function PredefinedToolsPage() {
     },
     bufferTimeBetweenEvents: 0,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    weeklySchedule: {
+      monday: { enabled: true, blocks: [{ id: '1', start: 540, end: 1020 }] },
+      tuesday: { enabled: true, blocks: [{ id: '2', start: 540, end: 1020 }] },
+      wednesday: {
+        enabled: true,
+        blocks: [{ id: '3', start: 540, end: 1020 }],
+      },
+      thursday: { enabled: true, blocks: [{ id: '4', start: 540, end: 1020 }] },
+      friday: { enabled: true, blocks: [{ id: '5', start: 540, end: 1020 }] },
+      saturday: { enabled: false, blocks: [] },
+      sunday: { enabled: false, blocks: [] },
+    },
   })
   const [isLoading, setIsLoading] = useState(false)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
@@ -90,7 +103,79 @@ export default function PredefinedToolsPage() {
         (tool) => tool.toolType === 'calendar_management',
       )
       if (calendarTool?.configData) {
-        setCalendarConfig((prev) => ({ ...prev, ...calendarTool.configData }))
+        const configData = calendarTool.configData as CalendarToolConfig
+
+        // Migrate old format to new if needed
+        if (!configData.weeklySchedule && configData.allowedWeekDays) {
+          // Create default weekly schedule from old format
+          const defaultSchedule: WeekSchedule = {
+            monday: {
+              enabled: configData.allowedWeekDays.monday,
+              blocks: configData.allowedWeekDays.monday
+                ? [
+                    { id: 'mon-morning', start: 540, end: 720 },
+                    { id: 'mon-afternoon', start: 780, end: 1020 },
+                  ]
+                : [],
+            },
+            tuesday: {
+              enabled: configData.allowedWeekDays.tuesday,
+              blocks: configData.allowedWeekDays.tuesday
+                ? [
+                    { id: 'tue-morning', start: 540, end: 720 },
+                    { id: 'tue-afternoon', start: 780, end: 1020 },
+                  ]
+                : [],
+            },
+            wednesday: {
+              enabled: configData.allowedWeekDays.wednesday,
+              blocks: configData.allowedWeekDays.wednesday
+                ? [
+                    { id: 'wed-morning', start: 540, end: 720 },
+                    { id: 'wed-afternoon', start: 780, end: 1020 },
+                  ]
+                : [],
+            },
+            thursday: {
+              enabled: configData.allowedWeekDays.thursday,
+              blocks: configData.allowedWeekDays.thursday
+                ? [
+                    { id: 'thu-morning', start: 540, end: 720 },
+                    { id: 'thu-afternoon', start: 780, end: 1020 },
+                  ]
+                : [],
+            },
+            friday: {
+              enabled: configData.allowedWeekDays.friday,
+              blocks: configData.allowedWeekDays.friday
+                ? [
+                    { id: 'fri-morning', start: 540, end: 720 },
+                    { id: 'fri-afternoon', start: 780, end: 1020 },
+                  ]
+                : [],
+            },
+            saturday: {
+              enabled: configData.allowedWeekDays.saturday,
+              blocks: configData.allowedWeekDays.saturday
+                ? [
+                    { id: 'sat-morning', start: 540, end: 720 },
+                    { id: 'sat-afternoon', start: 780, end: 1020 },
+                  ]
+                : [],
+            },
+            sunday: {
+              enabled: configData.allowedWeekDays.sunday,
+              blocks: configData.allowedWeekDays.sunday
+                ? [
+                    { id: 'sun-morning', start: 540, end: 720 },
+                    { id: 'sun-afternoon', start: 780, end: 1020 },
+                  ]
+                : [],
+            },
+          }
+          configData.weeklySchedule = defaultSchedule
+        }
+        setCalendarConfig((prev) => ({ ...prev, ...configData }))
       }
     } catch (error) {
       console.error('Error loading data:', error)
@@ -432,80 +517,6 @@ export default function PredefinedToolsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="workingHoursStart">
-                      Working Hours Start
-                    </Label>
-                    <Input
-                      id="workingHoursStart"
-                      type="time"
-                      value={calendarConfig.workingHours?.start || '09:00'}
-                      onChange={(e) =>
-                        setCalendarConfig((prev) => ({
-                          ...prev,
-                          workingHours: {
-                            ...prev.workingHours!,
-                            start: e.target.value,
-                          },
-                        }))
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="workingHoursEnd">Working Hours End</Label>
-                    <Input
-                      id="workingHoursEnd"
-                      type="time"
-                      value={calendarConfig.workingHours?.end || '17:00'}
-                      onChange={(e) =>
-                        setCalendarConfig((prev) => ({
-                          ...prev,
-                          workingHours: {
-                            ...prev.workingHours!,
-                            end: e.target.value,
-                          },
-                        }))
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="lunchTimeStart">Lunch Time Start</Label>
-                    <Input
-                      id="lunchTimeStart"
-                      type="time"
-                      value={calendarConfig.lunchTime?.start || '12:00'}
-                      onChange={(e) =>
-                        setCalendarConfig((prev) => ({
-                          ...prev,
-                          lunchTime: {
-                            ...prev.lunchTime!,
-                            start: e.target.value,
-                          },
-                        }))
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="lunchTimeEnd">Lunch Time End</Label>
-                    <Input
-                      id="lunchTimeEnd"
-                      type="time"
-                      value={calendarConfig.lunchTime?.end || '13:00'}
-                      onChange={(e) =>
-                        setCalendarConfig((prev) => ({
-                          ...prev,
-                          lunchTime: {
-                            ...prev.lunchTime!,
-                            end: e.target.value,
-                          },
-                        }))
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
                     <Label htmlFor="bufferTime">
                       Buffer Time Between Events (minutes)
                     </Label>
@@ -529,50 +540,17 @@ export default function PredefinedToolsPage() {
                   </div>
                 </div>
 
-                {/* Allowed Week Days */}
-                <div className="space-y-3">
-                  <Label>Allowed Days for Scheduling</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {[
-                      { key: 'monday', label: 'Monday' },
-                      { key: 'tuesday', label: 'Tuesday' },
-                      { key: 'wednesday', label: 'Wednesday' },
-                      { key: 'thursday', label: 'Thursday' },
-                      { key: 'friday', label: 'Friday' },
-                      { key: 'saturday', label: 'Saturday' },
-                      { key: 'sunday', label: 'Sunday' },
-                    ].map((day) => (
-                      <div
-                        key={day.key}
-                        className="flex items-center space-x-2"
-                      >
-                        <Switch
-                          id={day.key}
-                          checked={
-                            calendarConfig.allowedWeekDays?.[
-                              day.key as keyof typeof calendarConfig.allowedWeekDays
-                            ] || false
-                          }
-                          onCheckedChange={(checked) =>
-                            setCalendarConfig((prev) => ({
-                              ...prev,
-                              allowedWeekDays: {
-                                ...prev.allowedWeekDays!,
-                                [day.key]: checked,
-                              },
-                            }))
-                          }
-                        />
-                        <Label htmlFor={day.key} className="text-sm">
-                          {day.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Select which days of the week are available for scheduling
-                    events
-                  </p>
+                {/* Weekly Scheduler */}
+                <div className="space-y-3 pt-4">
+                  <WeeklyScheduler
+                    schedule={calendarConfig.weeklySchedule!}
+                    onChange={(weeklySchedule) =>
+                      setCalendarConfig((prev) => ({
+                        ...prev,
+                        weeklySchedule,
+                      }))
+                    }
+                  />
                 </div>
 
                 <Button
