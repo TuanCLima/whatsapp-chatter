@@ -30,13 +30,13 @@ interface WeeklySchedulerProps {
 }
 
 const DAYS = [
+  { key: 'sunday', label: 'Sun' },
   { key: 'monday', label: 'Mon' },
   { key: 'tuesday', label: 'Tue' },
   { key: 'wednesday', label: 'Wed' },
   { key: 'thursday', label: 'Thu' },
   { key: 'friday', label: 'Fri' },
   { key: 'saturday', label: 'Sat' },
-  { key: 'sunday', label: 'Sun' },
 ] as const
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
