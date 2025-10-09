@@ -174,6 +174,29 @@ Content-Type: application/json
     "timeZone": "America/Sao_Paulo"
   }
 }
+
+### Test suggest event times (Development only)
+POST http://localhost:3000/api/test/suggest-event-times
+Content-Type: application/json
+Authorization: Bearer [token]
+
+{
+  "serviceDurationMinutes": 90,
+  "startDate": "2025-10-09",
+  "endDate": "2025-10-13"
+}
+
+### Test check event availability (Development only)
+POST http://localhost:3000/api/test/check-event-availability
+Content-Type: application/json
+Authorization: Bearer [token]
+
+{
+  "proposedStartTime": "2025-10-09T09:00:00-03:00",
+  "proposedEndTime": "2025-10-09T11:01:00-03:00",
+  "serviceDurationMinutes": 90
+}
+
 ### fetch contacts
 GET http://localhost:3000/contacts
 Content-Type: application/json

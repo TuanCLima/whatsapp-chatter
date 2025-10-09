@@ -11,22 +11,42 @@ import {
   formatTimeInSaoPaulo,
   type TimeSuggestion,
 } from '../mcp/mcpService'
+import { minutesToTime } from '../utils/utils'
 
 interface CalendarConfig {
   defaultCalendarId: string
-  workingHours: { start: string; end: string }
-  lunchTime: { start: string; end: string }
-  allowedWeekDays: {
-    monday: boolean
-    tuesday: boolean
-    wednesday: boolean
-    thursday: boolean
-    friday: boolean
-    saturday: boolean
-    sunday: boolean
-  }
   bufferTimeBetweenEvents: number // in minutes
   timeZone: string
+  weeklySchedule?: {
+    monday: {
+      enabled: boolean
+      blocks: Array<{ id: string; start: number; end: number }>
+    }
+    tuesday: {
+      enabled: boolean
+      blocks: Array<{ id: string; start: number; end: number }>
+    }
+    wednesday: {
+      enabled: boolean
+      blocks: Array<{ id: string; start: number; end: number }>
+    }
+    thursday: {
+      enabled: boolean
+      blocks: Array<{ id: string; start: number; end: number }>
+    }
+    friday: {
+      enabled: boolean
+      blocks: Array<{ id: string; start: number; end: number }>
+    }
+    saturday: {
+      enabled: boolean
+      blocks: Array<{ id: string; start: number; end: number }>
+    }
+    sunday: {
+      enabled: boolean
+      blocks: Array<{ id: string; start: number; end: number }>
+    }
+  }
 }
 
 /**
@@ -47,91 +67,6 @@ export class SaasGoogleCalendarService {
       SaasGoogleCalendarService.instance = new SaasGoogleCalendarService()
     }
     return SaasGoogleCalendarService.instance
-  }
-
-  /**
-   * Helper method to check if a day is allowed based on configuration
-   */
-  private isDayAllowed(
-    dayOfWeek: number,
-    allowedWeekDays: CalendarConfig['allowedWeekDays'],
-  ): boolean {
-    const dayMap = {
-      0: 'sunday',
-      1: 'monday',
-      2: 'tuesday',
-      3: 'wednesday',
-      4: 'thursday',
-      5: 'friday',
-      6: 'saturday',
-    } as const
-
-    return allowedWeekDays[dayMap[dayOfWeek as keyof typeof dayMap]]
-  }
-
-  /**
-   * Helper method to parse time string (HH:mm) and return hour and minute
-   */
-  private parseTime(timeString: string): { hour: number; minute: number } {
-    const [hour, minute] = timeString.split(':').map(Number)
-    return { hour, minute }
-  }
-
-  /**
-   * Helper method to check if a time overlaps with lunch time
-   */
-  private isInLunchTime(
-    startTime: moment.Moment,
-    endTime: moment.Moment,
-    lunchConfig: CalendarConfig['lunchTime'],
-  ): boolean {
-    const lunchStart = this.parseTime(lunchConfig.start)
-    const lunchEnd = this.parseTime(lunchConfig.end)
-
-    // Use format('H') and format('m') to get 24-hour format values
-    const eventStartMinutes =
-      parseInt(startTime.format('H')) * 60 + parseInt(startTime.format('m'))
-    const eventEndMinutes =
-      parseInt(endTime.format('H')) * 60 + parseInt(endTime.format('m'))
-    const lunchStartMinutes = lunchStart.hour * 60 + lunchStart.minute
-    const lunchEndMinutes = lunchEnd.hour * 60 + lunchEnd.minute
-
-    // Check if event overlaps with lunch time
-    // Two time intervals overlap if: max(start1, start2) < min(end1, end2)
-    return (
-      Math.max(eventStartMinutes, lunchStartMinutes) <
-      Math.min(eventEndMinutes, lunchEndMinutes)
-    )
-  }
-
-  /**
-   * Helper method to check if a time is outside business hours
-   */
-  private isOutsideBusinessHours(
-    startTime: moment.Moment,
-    endTime: moment.Moment,
-    workingHours: CalendarConfig['workingHours'],
-  ): boolean {
-    const workStart = this.parseTime(workingHours.start)
-    const workEnd = this.parseTime(workingHours.end)
-
-    // Use format('H') and format('m') to get 24-hour format values
-    const startHour = parseInt(startTime.format('H'))
-    const startMinutes = parseInt(startTime.format('m'))
-    const endHour = parseInt(endTime.format('H'))
-    const endMinutes = parseInt(endTime.format('m'))
-
-    // Check if start is before business hours
-    const isStartTooEarly =
-      startHour < workStart.hour ||
-      (startHour === workStart.hour && startMinutes < workStart.minute)
-
-    // Check if end is after business hours
-    const isEndTooLate =
-      endHour > workEnd.hour ||
-      (endHour === workEnd.hour && endMinutes > workEnd.minute)
-
-    return isStartTooEarly || isEndTooLate
   }
 
   private async initializeCredentials() {
@@ -271,6 +206,7 @@ export class SaasGoogleCalendarService {
   private async getUserCalendarConfig(
     saasUserId: string,
   ): Promise<CalendarConfig> {
+    console.log('Fetching calendar config for user:', saasUserId)
     try {
       const config = await db
         .select({
@@ -285,29 +221,15 @@ export class SaasGoogleCalendarService {
         )
         .limit(1)
 
+      console.log('Calendar config found:', config[0].configData)
+
       if (config.length > 0 && config[0].configData) {
         const parsedConfig = JSON.parse(config[0].configData)
         const configuredCalendarId =
           decodeURIComponent(parsedConfig.defaultCalendarId) || 'primary'
         const result = {
+          weeklySchedule: parsedConfig.weeklySchedule || [],
           defaultCalendarId: configuredCalendarId,
-          workingHours: parsedConfig.workingHours || {
-            start: '09:00',
-            end: '17:00',
-          },
-          lunchTime: parsedConfig.lunchTime || {
-            start: '12:00',
-            end: '13:00',
-          },
-          allowedWeekDays: parsedConfig.allowedWeekDays || {
-            monday: true,
-            tuesday: true,
-            wednesday: true,
-            thursday: true,
-            friday: true,
-            saturday: true,
-            sunday: false,
-          },
           bufferTimeBetweenEvents: parsedConfig.bufferTimeBetweenEvents || 0,
           timeZone:
             parsedConfig.timeZone ||
@@ -323,17 +245,6 @@ export class SaasGoogleCalendarService {
     // Return default config if none found or error occurred
     const defaultConfig = {
       defaultCalendarId: 'primary',
-      workingHours: { start: '09:00', end: '17:00' },
-      lunchTime: { start: '12:00', end: '13:00' },
-      allowedWeekDays: {
-        monday: true,
-        tuesday: true,
-        wednesday: true,
-        thursday: true,
-        friday: true,
-        saturday: true,
-        sunday: false,
-      },
       bufferTimeBetweenEvents: 0,
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     }
@@ -578,10 +489,37 @@ export class SaasGoogleCalendarService {
         }
       }
 
-      // Check if day is allowed based on configuration
-      // Use timezone for day of week check
-      const dayOfWeek = moment.tz(startDate, userConfig.timeZone).day() // 0 = Sunday, 1 = Monday
-      if (!this.isDayAllowed(dayOfWeek, userConfig.allowedWeekDays)) {
+      // Convert to user's configured timezone for checking against weekly schedule
+      const startDateTZ = moment.tz(startDate, userConfig.timeZone)
+      const endDateTZ = moment.tz(endDate, userConfig.timeZone)
+
+      // Get day of week and check weekly schedule
+      const dayOfWeek = startDateTZ.day() // 0 = Sunday, 1 = Monday, etc.
+      const dayMap = [
+        'sunday',
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+      ] as const
+      const dayKey = dayMap[dayOfWeek]
+
+      // Check if weeklySchedule exists and is configured
+      if (!userConfig.weeklySchedule) {
+        return {
+          available: false,
+          message: 'Configuração de horário semanal não encontrada.',
+          conflicts: ['no_schedule_config'],
+          availableTimeSpans: [],
+        }
+      }
+
+      const daySchedule = userConfig.weeklySchedule[dayKey]
+
+      // Check if day is enabled
+      if (!daySchedule.enabled) {
         const dayNames = [
           'domingo',
           'segunda',
@@ -591,18 +529,10 @@ export class SaasGoogleCalendarService {
           'sexta',
           'sábado',
         ]
-        const allowedDays = Object.entries(userConfig.allowedWeekDays)
-          .filter(([_, allowed]) => allowed)
+        const allowedDays = Object.entries(userConfig.weeklySchedule)
+          .filter(([_, schedule]) => schedule.enabled)
           .map(([day, _]) => {
-            const dayIndex = [
-              'sunday',
-              'monday',
-              'tuesday',
-              'wednesday',
-              'thursday',
-              'friday',
-              'saturday',
-            ].indexOf(day)
+            const dayIndex = dayMap.indexOf(day as (typeof dayMap)[number])
             return dayNames[dayIndex]
           })
           .join(', ')
@@ -615,26 +545,53 @@ export class SaasGoogleCalendarService {
         }
       }
 
-      // Convert to user's configured timezone for hour/minute checks
-      const startDateTZ = moment.tz(startDate, userConfig.timeZone)
-      const endDateTZ = moment.tz(endDate, userConfig.timeZone)
+      // Convert proposed times to minutes from midnight
+      const proposedStartMinutes =
+        startDateTZ.hours() * 60 + startDateTZ.minutes()
+      const proposedEndMinutes = endDateTZ.hours() * 60 + endDateTZ.minutes()
 
-      // Check if event overlaps with lunch time
-      const isLunchConflict = this.isInLunchTime(
-        startDateTZ,
-        endDateTZ,
-        userConfig.lunchTime,
-      )
+      // Check if the proposed time fits within any of the configured blocks
+      let fitsInBlock = false
+      let conflictingBlock: string | null = null
 
-      // Check if it's outside business hours
-      const isOutsideHours = this.isOutsideBusinessHours(
-        startDateTZ,
-        endDateTZ,
-        userConfig.workingHours,
-      )
+      for (const block of daySchedule.blocks) {
+        // Check if the entire proposed span fits within this block
+        if (
+          proposedStartMinutes >= block.start &&
+          proposedEndMinutes <= block.end
+        ) {
+          fitsInBlock = true
+          break
+        }
+
+        // Check for partial overlap (conflict)
+        const hasOverlap =
+          proposedStartMinutes < block.end && proposedEndMinutes > block.start
+
+        if (hasOverlap && !fitsInBlock) {
+          conflictingBlock = `${minutesToTime(block.start)}-${minutesToTime(block.end)}`
+        }
+      }
+
+      if (!fitsInBlock) {
+        const availableBlocksMessage =
+          daySchedule.blocks.length > 0
+            ? `Horários disponíveis: ${daySchedule.blocks.map((b) => `${minutesToTime(b.start)}-${minutesToTime(b.end)}`).join(', ')}`
+            : 'Não há horários disponíveis neste dia.'
+
+        const conflictMessage = conflictingBlock
+          ? `O horário proposto (${minutesToTime(proposedStartMinutes)}-${minutesToTime(proposedEndMinutes)}) não se encaixa completamente em nenhum bloco disponível. ${availableBlocksMessage}`
+          : `O horário proposto (${minutesToTime(proposedStartMinutes)}-${minutesToTime(proposedEndMinutes)}) está fora dos horários configurados. ${availableBlocksMessage}`
+
+        return {
+          available: false,
+          message: conflictMessage,
+          conflicts: ['outside_configured_blocks'],
+          availableTimeSpans: [],
+        }
+      }
 
       // Fetch existing events to check for conflicts and find available time spans
-      // Use user's configured timezone for day boundaries
       const dayStartTZ = moment
         .tz(startDate, userConfig.timeZone)
         .startOf('day')
@@ -651,11 +608,14 @@ export class SaasGoogleCalendarService {
           effectiveCalendarId,
         )
 
-        // Find available time spans for the requested day
+        // Find available time spans for the requested day using configured blocks
         const availableTimeSpans = findAvailableTimeSpans(
           startDate,
           serviceDurationMinutes,
           events,
+          daySchedule.blocks,
+          userConfig.bufferTimeBetweenEvents,
+          userConfig.timeZone,
         )
 
         const conflicts: string[] = []
@@ -699,36 +659,18 @@ export class SaasGoogleCalendarService {
           }
         }
 
-        // Check for lunch time conflict
-        if (isLunchConflict) {
-          conflicts.push('lunch_time')
-        }
-
-        // Check for business hours conflict
-        if (isOutsideHours) {
-          conflicts.push('outside_business_hours')
-        }
-
         if (conflicts.length > 0) {
-          let conflictMessage = ''
-
-          if (conflicts.includes('lunch_time')) {
-            conflictMessage = `Este horário não está disponível pois conflita com o horário de almoço (${userConfig.lunchTime.start}-${userConfig.lunchTime.end}).`
-          } else if (conflicts.includes('outside_business_hours')) {
-            conflictMessage = `Este horário está fora do horário de funcionamento (${userConfig.workingHours.start}-${userConfig.workingHours.end}).`
-          } else {
-            const conflictDetails = conflictingEvents
-              .map(
-                (e) =>
-                  `${e.summary || 'Evento'} (${formatTimeInSaoPaulo(e.start)}-${formatTimeInSaoPaulo(e.end)})`,
-              )
-              .join(', ')
-            const bufferMessage =
-              userConfig.bufferTimeBetweenEvents > 0
-                ? ` (incluindo ${userConfig.bufferTimeBetweenEvents} minutos de intervalo entre eventos)`
-                : ''
-            conflictMessage = `Este horário não está disponível pois conflita com: ${conflictDetails}${bufferMessage}.`
-          }
+          const conflictDetails = conflictingEvents
+            .map(
+              (e) =>
+                `${e.summary || 'Evento'} (${formatTimeInSaoPaulo(e.start)}-${formatTimeInSaoPaulo(e.end)})`,
+            )
+            .join(', ')
+          const bufferMessage =
+            userConfig.bufferTimeBetweenEvents > 0
+              ? ` (incluindo ${userConfig.bufferTimeBetweenEvents} minutos de intervalo entre eventos)`
+              : ''
+          const conflictMessage = `Este horário não está disponível pois conflita com: ${conflictDetails}${bufferMessage}.`
 
           // Format available time spans for the message
           const availableSpansMessage =
@@ -801,6 +743,16 @@ export class SaasGoogleCalendarService {
       const timeMin = currentDateTZ.startOf('day').toISOString()
       const timeMax = endDateTZ.endOf('day').toISOString()
 
+      // Check if weeklySchedule exists
+      if (!userConfig.weeklySchedule) {
+        return {
+          success: false,
+          error: 'Configuração de horário semanal não encontrada.',
+          availableChunks: [],
+          suggestions: [],
+        }
+      }
+
       const events = await this.fetchCalendarEvents(
         saasUserId,
         timeMin,
@@ -809,10 +761,17 @@ export class SaasGoogleCalendarService {
         effectiveCalendarId,
       )
 
+      console.log(
+        `Fetched ${events.length} events for user ${saasUserId} between ${timeMin} and ${timeMax}`,
+      )
+
       try {
         // Fetch all events in the time range
         const availableChunks: AvailableTimeSpan[] = []
         const suggestions: TimeSuggestion[] = []
+
+        // Get current time in user's timezone
+        const nowInUserTZ = moment.tz(userConfig.timeZone)
 
         // Group events by date for processing
         const eventsByDate: Record<string, unknown[]> = {}
@@ -827,18 +786,30 @@ export class SaasGoogleCalendarService {
           eventsByDate[eventDate].push(event)
         }
 
+        const dayMap = [
+          'sunday',
+          'monday',
+          'tuesday',
+          'wednesday',
+          'thursday',
+          'friday',
+          'saturday',
+        ] as const
+
         // Process each day in the range
         for (let i = 0; i < daysToConsider; i++) {
           const currentDay = currentDateTZ.clone().add(i, 'days')
           const dayOfWeek = currentDay.day() // 0 = Sunday, 6 = Saturday
           const dateString = currentDay.format('YYYY-MM-DD')
+          const dayKey = dayMap[dayOfWeek]
+          const daySchedule = userConfig.weeklySchedule[dayKey]
 
-          // Skip days not allowed based on configuration
-          if (!this.isDayAllowed(dayOfWeek, userConfig.allowedWeekDays)) {
+          // Skip days not enabled in weekly schedule
+          if (!daySchedule.enabled || daySchedule.blocks.length === 0) {
             continue
           }
 
-          // Skip dates in the past (if current time is past business hours)
+          // Skip dates in the past
           if (currentDay.isBefore(moment().tz(userConfig.timeZone), 'day')) {
             continue
           }
@@ -846,11 +817,18 @@ export class SaasGoogleCalendarService {
           const dayEvents = eventsByDate[dateString] || []
           const targetDate = currentDay.toDate()
 
-          // Find available time spans for this day
+          console.log(
+            `Processing date ${dateString} (${dayKey}) with ${dayEvents.length} events`,
+          )
+
+          // Find available time spans for this day using configured blocks
           const dayAvailableSpans = findAvailableTimeSpans(
             targetDate,
             serviceDurationMinutes,
             dayEvents as unknown[],
+            daySchedule.blocks,
+            userConfig.bufferTimeBetweenEvents,
+            userConfig.timeZone,
           )
 
           // Add to overall available chunks
@@ -862,7 +840,6 @@ export class SaasGoogleCalendarService {
             const spanEnd = moment.tz(span.endTime, userConfig.timeZone)
 
             // Generate suggestions within this span
-            // Try to suggest times that group events together (prefer times that are close to existing events)
             const existingEventsInDay = dayEvents.filter((e: unknown) => {
               const event = e as {
                 start?: { dateTime?: string }
@@ -897,7 +874,8 @@ export class SaasGoogleCalendarService {
 
                 if (
                   afterEvent.isSameOrAfter(spanStart) &&
-                  afterEventEnd.isSameOrBefore(spanEnd)
+                  afterEventEnd.isSameOrBefore(spanEnd) &&
+                  afterEvent.isAfter(nowInUserTZ)
                 ) {
                   suggestions.push({
                     startTime: afterEvent.toISOString(),
@@ -916,7 +894,8 @@ export class SaasGoogleCalendarService {
 
                 if (
                   beforeEvent.isSameOrAfter(spanStart) &&
-                  beforeEventEnd.isSameOrBefore(spanEnd)
+                  beforeEventEnd.isSameOrBefore(spanEnd) &&
+                  beforeEvent.isAfter(nowInUserTZ)
                 ) {
                   suggestions.push({
                     startTime: beforeEvent.toISOString(),
@@ -929,11 +908,14 @@ export class SaasGoogleCalendarService {
               }
             }
 
-            // Always suggest the earliest available time in the span
+            // Always suggest the earliest available time in the span (if it's in the future)
             const earliestEnd = spanStart
               .clone()
               .add(serviceDurationMinutes, 'minutes')
-            if (earliestEnd.isSameOrBefore(spanEnd)) {
+            if (
+              earliestEnd.isSameOrBefore(spanEnd) &&
+              spanStart.isAfter(nowInUserTZ)
+            ) {
               suggestions.push({
                 startTime: spanStart.toISOString(),
                 endTime: earliestEnd.toISOString(),
@@ -942,29 +924,6 @@ export class SaasGoogleCalendarService {
                 isWeekend: dayOfWeek === 6,
               })
             }
-
-            // Suggest times at regular intervals (every 30 minutes)
-            // const suggestionTime = spanStart.clone()
-            // while (
-            //   suggestionTime
-            //     .clone()
-            //     .add(serviceDurationMinutes, 'minutes')
-            //     .isSameOrBefore(spanEnd)
-            // ) {
-            //   const suggestionEnd = suggestionTime
-            //     .clone()
-            //     .add(serviceDurationMinutes, 'minutes')
-
-            //   suggestions.push({
-            //     startTime: suggestionTime.toISOString(),
-            //     endTime: suggestionEnd.toISOString(),
-            //     date: dateString,
-            //     dayOfWeek: currentDay.format('dddd'),
-            //     isWeekend: dayOfWeek === 6,
-            //   })
-
-            //   suggestionTime.add(30, 'minutes')
-            // }
           }
         }
 
@@ -1014,13 +973,12 @@ export class SaasGoogleCalendarService {
               .tz(chunk.endTime, userConfig.timeZone)
               .format('YYYY-MM-DD HH:mm:ss'),
           }))
-        // Limit to a reasonable number of suggestions (e.g., 20)
 
         return {
           success: true,
           serviceDurationMinutes,
           daysConsidered: daysToConsider,
-          availableChunks: formattedAvailableChunks, // Limit available chunks to prevent overwhelming response
+          availableChunks: formattedAvailableChunks,
           suggestions: formattedSuggestions,
           summary: {
             totalAvailableChunks: availableChunks.length,

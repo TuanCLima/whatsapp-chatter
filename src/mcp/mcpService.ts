@@ -145,131 +145,141 @@ export async function forwardContact(params: ForwardContactProps) {
   }
 }
 
-// Helper function to find available time spans in a day
+export type AvailableTimeSpan = {
+  startTime: string
+  endTime: string
+  duration: number // in minutes
+}
+
+export type TimeBlock = {
+  id: string
+  start: number // minutes from midnight (0-1440)
+  end: number // minutes from midnight (0-1440)
+}
+
+// Helper function to find available time spans in a day based on configured blocks
 export function findAvailableTimeSpans(
   targetDate: Date,
   serviceDurationMinutes: number,
   existingEvents: any[],
+  configuredBlocks: TimeBlock[],
+  bufferMinutes: number = 0,
+  timeZone: string = 'America/Sao_Paulo',
 ): AvailableTimeSpan[] {
   const availableSpans: AvailableTimeSpan[] = []
 
-  // Business hours: 9:00 - 18:00 in São Paulo timezone
-  const businessStartSP = moment
-    .tz(targetDate, 'America/Sao_Paulo')
-    .hour(9)
-    .minute(0)
-    .second(0)
-    .millisecond(0)
-  const businessStart = businessStartSP.toDate()
+  // Get current time in the configured timezone
+  const currentTime = moment.tz(timeZone).toDate()
 
-  const businessEndSP = moment
-    .tz(targetDate, 'America/Sao_Paulo')
-    .hour(18)
-    .minute(0)
-    .second(0)
-    .millisecond(0)
-  const businessEnd = businessEndSP.toDate()
-
-  // Lunch break: 12:00 - 13:00 in São Paulo timezone
-  const lunchStartSP = moment
-    .tz(targetDate, 'America/Sao_Paulo')
-    .hour(12)
-    .minute(0)
-    .second(0)
-    .millisecond(0)
-  const lunchStart = lunchStartSP.toDate()
-
-  const lunchEndSP = moment
-    .tz(targetDate, 'America/Sao_Paulo')
-    .hour(13)
-    .minute(0)
-    .second(0)
-    .millisecond(0)
-  const lunchEnd = lunchEndSP.toDate()
-
-  // Collect all blocked time periods (events + lunch + outside business hours)
-  const blockedPeriods = []
-
-  // Add lunch break as blocked period
-  blockedPeriods.push({
-    start: lunchStart,
-    end: lunchEnd,
-    type: 'lunch',
-  })
-
-  // Add existing events as blocked periods (with 0-minute buffer)
-  const bufferMinutes = 0
-  for (const event of existingEvents) {
-    if (!event.start?.dateTime || !event.end?.dateTime) continue
-
-    const eventStart = new Date(event.start.dateTime)
-    const eventEnd = new Date(event.end.dateTime)
-
-    // Add buffer to existing events
-    const bufferedStart = new Date(eventStart.getTime() - bufferMinutes * 60000)
-    const bufferedEnd = new Date(eventEnd.getTime() + bufferMinutes * 60000)
-
-    blockedPeriods.push({
-      start: bufferedStart,
-      end: bufferedEnd,
-      type: 'event',
-    })
+  // If no configured blocks, return empty array
+  if (!configuredBlocks || configuredBlocks.length === 0) {
+    return availableSpans
   }
 
-  // Sort blocked periods by start time
-  blockedPeriods.sort((a, b) => a.start.getTime() - b.start.getTime())
+  // Process each configured block
+  for (const block of configuredBlocks) {
+    // Convert block start/end (minutes from midnight) to actual Date objects in the target timezone
+    const blockStartMoment = moment
+      .tz(targetDate, timeZone)
+      .startOf('day')
+      .add(block.start, 'minutes')
+    const blockStart = blockStartMoment.toDate()
 
-  // Find available gaps between blocked periods
-  let currentTime = businessStart
+    const blockEndMoment = moment
+      .tz(targetDate, timeZone)
+      .startOf('day')
+      .add(block.end, 'minutes')
+    const blockEnd = blockEndMoment.toDate()
 
-  for (const blockedPeriod of blockedPeriods) {
-    // Skip blocked periods that are outside business hours or before current time
-    if (
-      blockedPeriod.end <= businessStart ||
-      blockedPeriod.start >= businessEnd
-    ) {
-      continue
-    }
+    // Collect all blocked time periods within this block (existing events)
+    const blockedPeriods = []
 
-    // Adjust blocked period to business hours
-    const adjustedStart = new Date(
-      Math.max(blockedPeriod.start.getTime(), businessStart.getTime()),
-    )
-    const adjustedEnd = new Date(
-      Math.min(blockedPeriod.end.getTime(), businessEnd.getTime()),
-    )
+    // Add existing events as blocked periods (with buffer)
+    for (const event of existingEvents) {
+      if (!event.start?.dateTime || !event.end?.dateTime) continue
 
-    // Check if there's a gap before this blocked period
-    if (currentTime < adjustedStart) {
-      const gapDuration =
-        (adjustedStart.getTime() - currentTime.getTime()) / (1000 * 60)
+      const eventStart = new Date(event.start.dateTime)
+      const eventEnd = new Date(event.end.dateTime)
 
-      if (gapDuration >= serviceDurationMinutes) {
-        availableSpans.push({
-          startTime: currentTime.toISOString(),
-          endTime: adjustedStart.toISOString(),
-          duration: Math.floor(gapDuration),
+      // Add buffer to existing events
+      const bufferedStart = new Date(
+        eventStart.getTime() - bufferMinutes * 60000,
+      )
+      const bufferedEnd = new Date(eventEnd.getTime() + bufferMinutes * 60000)
+
+      // Only include events that overlap with this block
+      if (bufferedEnd > blockStart && bufferedStart < blockEnd) {
+        blockedPeriods.push({
+          start: new Date(
+            Math.max(bufferedStart.getTime(), blockStart.getTime()),
+          ),
+          end: new Date(Math.min(bufferedEnd.getTime(), blockEnd.getTime())),
         })
       }
     }
 
-    // Move current time to after this blocked period
-    currentTime = new Date(
-      Math.max(currentTime.getTime(), adjustedEnd.getTime()),
-    )
-  }
+    // Sort blocked periods by start time
+    blockedPeriods.sort((a, b) => a.start.getTime() - b.start.getTime())
 
-  // Check if there's available time after the last blocked period
-  if (currentTime < businessEnd) {
-    const gapDuration =
-      (businessEnd.getTime() - currentTime.getTime()) / (1000 * 60)
+    // Find available gaps between blocked periods within this block
+    let currentTimeInBlock = blockStart
 
-    if (gapDuration >= serviceDurationMinutes) {
-      availableSpans.push({
-        startTime: currentTime.toISOString(),
-        endTime: businessEnd.toISOString(),
-        duration: Math.floor(gapDuration),
-      })
+    for (const blockedPeriod of blockedPeriods) {
+      // Check if there's a gap before this blocked period
+      if (currentTimeInBlock < blockedPeriod.start) {
+        const gapDuration =
+          (blockedPeriod.start.getTime() - currentTimeInBlock.getTime()) /
+          (1000 * 60)
+
+        // Only add the span if it's long enough AND starts after current time
+        if (
+          gapDuration >= serviceDurationMinutes &&
+          blockedPeriod.start > currentTime
+        ) {
+          // If the gap starts before current time, adjust it to start from current time
+          const adjustedStartTime =
+            currentTimeInBlock > currentTime ? currentTimeInBlock : currentTime
+          const adjustedGapDuration =
+            (blockedPeriod.start.getTime() - adjustedStartTime.getTime()) /
+            (1000 * 60)
+
+          if (adjustedGapDuration >= serviceDurationMinutes) {
+            availableSpans.push({
+              startTime: adjustedStartTime.toISOString(),
+              endTime: blockedPeriod.start.toISOString(),
+              duration: Math.floor(adjustedGapDuration),
+            })
+          }
+        }
+      }
+
+      // Move current time to after this blocked period
+      currentTimeInBlock = new Date(
+        Math.max(currentTimeInBlock.getTime(), blockedPeriod.end.getTime()),
+      )
+    }
+
+    // Check if there's available time after the last blocked period in this block
+    if (currentTimeInBlock < blockEnd) {
+      const gapDuration =
+        (blockEnd.getTime() - currentTimeInBlock.getTime()) / (1000 * 60)
+
+      // Only add the span if it's long enough AND starts after current time
+      if (gapDuration >= serviceDurationMinutes && blockEnd > currentTime) {
+        // If the gap starts before current time, adjust it to start from current time
+        const adjustedStartTime =
+          currentTimeInBlock > currentTime ? currentTimeInBlock : currentTime
+        const adjustedGapDuration =
+          (blockEnd.getTime() - adjustedStartTime.getTime()) / (1000 * 60)
+
+        if (adjustedGapDuration >= serviceDurationMinutes) {
+          availableSpans.push({
+            startTime: adjustedStartTime.toISOString(),
+            endTime: blockEnd.toISOString(),
+            duration: Math.floor(adjustedGapDuration),
+          })
+        }
+      }
     }
   }
 
@@ -311,12 +321,6 @@ export type CheckEventAvailabilityProps = {
   proposedStartTime: string
   proposedEndTime: string
   serviceDurationMinutes: number
-}
-
-export type AvailableTimeSpan = {
-  startTime: string
-  endTime: string
-  duration: number // in minutes
 }
 
 export type SuggestEventTimesProps = {
