@@ -2,7 +2,9 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '../db'
 import { predefinedToolsConfig, saasUsers } from '../db/schema-postgres'
 import { forwardContact } from '../mcp/mcpService'
+import { noWhatsPhoneNumber } from '../utils/utils'
 import { getSaasGoogleCalendarService } from './SaasGoogleCalendarService'
+import { twilioClientPool } from './TwilioClientPool'
 
 export interface PredefinedToolConfig {
   id?: number
@@ -18,6 +20,10 @@ export interface CalendarToolConfig {
     end: string
   }
   timeZone?: string
+}
+
+export interface RefereeContactToolConfig {
+  refereePhoneNumber: string
 }
 
 export interface CalendarFunctionParameters {
@@ -59,6 +65,7 @@ export interface CalendarFunctionParameters {
   proposedEndTime?: string
   contactName?: string
   phoneNumberOfContactToSend?: string
+  question?: string
 }
 
 export interface CalendarTool {
@@ -591,6 +598,32 @@ export class PredefinedToolsService {
   }
 
   /**
+   * Check if user has referee contact tool enabled
+   */
+  async isRefereeContactToolReady(
+    saasUserId: string,
+  ): Promise<{ ready: boolean; enabled: boolean; configured: boolean }> {
+    try {
+      // Check if tool is enabled
+      const toolConfig = await this.getToolConfig(saasUserId, 'referee_contact')
+      const enabled = toolConfig?.enabled || false
+      const config = toolConfig?.configData as
+        | RefereeContactToolConfig
+        | undefined
+      const configured = !!config?.refereePhoneNumber
+
+      return {
+        ready: enabled && configured,
+        enabled,
+        configured,
+      }
+    } catch (error) {
+      console.error('Error checking referee contact tool readiness:', error)
+      return { ready: false, enabled: false, configured: false }
+    }
+  }
+
+  /**
    * Get contact management tools for LLM context
    */
   async getContactToolsForLLM(saasUserId: string): Promise<CalendarTool[]> {
@@ -625,6 +658,106 @@ export class PredefinedToolsService {
         },
       },
     ]
+  }
+
+  /**
+   * Get referee contact tools for LLM context
+   */
+  async getRefereeContactToolsForLLM(
+    saasUserId: string,
+  ): Promise<CalendarTool[]> {
+    const status = await this.isRefereeContactToolReady(saasUserId)
+
+    if (!status.ready) {
+      return []
+    }
+
+    return [
+      {
+        type: 'function',
+        function: {
+          name: 'contactReferee',
+          description:
+            'Enviar uma mensagem/pergunta para o número de referência/supervisor configurado. Use esta ferramenta quando o cliente fizer uma pergunta que você não consegue responder ou quando precisar de aprovação/orientação de um supervisor.',
+          parameters: {
+            type: 'object',
+            properties: {
+              question: {
+                type: 'string',
+                description:
+                  'A pergunta ou mensagem a ser enviada para o número de referência',
+              },
+            },
+            required: ['question'],
+          },
+        },
+      },
+    ]
+  }
+
+  /**
+   * Execute referee contact function
+   */
+  async executeRefereeContact(
+    saasUserId: string,
+    question: string,
+    twilioSenderNumber: string,
+    callersPhoneNumber: string,
+    userId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      // Get the referee contact configuration
+      const toolConfig = await this.getToolConfig(saasUserId, 'referee_contact')
+
+      if (!toolConfig?.configData) {
+        throw new Error('Referee contact tool is not configured')
+      }
+
+      const config =
+        toolConfig.configData as unknown as RefereeContactToolConfig
+
+      if (!config.refereePhoneNumber) {
+        throw new Error('Referee phone number is not configured')
+      }
+
+      // Get Twilio client for this user
+      const twilioClient = await twilioClientPool.getClient(userId)
+
+      // Format the message with context
+      // const messageBody = `🔔 Nova pergunta do assistente ${callersPhoneNumber}:\n\n${question}\n\n---\nEnviado via WhatsApp Assistant`
+
+      console.log('Sending referee contact message to', {
+        from: `whatsapp:${noWhatsPhoneNumber(twilioSenderNumber)}`,
+        to: `whatsapp:${noWhatsPhoneNumber(config.refereePhoneNumber)}`,
+        body: callersPhoneNumber,
+      })
+
+      await twilioClient.messages.create({
+        from: `whatsapp:${noWhatsPhoneNumber(twilioSenderNumber)}`,
+        to: `whatsapp:${noWhatsPhoneNumber(config.refereePhoneNumber)}`,
+        body: callersPhoneNumber,
+      })
+
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      // Send message to referee
+      await twilioClient.messages.create({
+        from: `whatsapp:${noWhatsPhoneNumber(twilioSenderNumber)}`,
+        to: `whatsapp:${noWhatsPhoneNumber(config.refereePhoneNumber)}`,
+        body: question,
+      })
+
+      return {
+        success: true,
+        message: `Sua pergunta foi enviada para o supervisor. Você receberá uma resposta em breve.`,
+      }
+    } catch (error) {
+      console.error('Error executing referee contact:', error)
+      return {
+        success: false,
+        message: `Não foi possível enviar a mensagem para o supervisor: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      }
+    }
   }
 
   /**
@@ -743,6 +876,15 @@ export class PredefinedToolsService {
             callersPhoneNumber,
             userId,
           })
+
+        case 'contactReferee':
+          return await this.executeRefereeContact(
+            saasUserId,
+            parameters.question!,
+            twilioSenderNumber,
+            callersPhoneNumber,
+            userId,
+          )
 
         default:
           throw new Error(`Unknown calendar function: ${functionName}`)

@@ -3,6 +3,7 @@ import {
   Calendar,
   CheckCircle,
   ExternalLink,
+  MessageSquare,
   Settings,
   XCircle,
 } from 'lucide-react'
@@ -33,6 +34,7 @@ import {
   type CalendarToolConfig,
   type CalendarToolStatus,
   predefinedToolsService,
+  type RefereeContactToolStatus,
 } from '@/services/PredefinedToolsService'
 import ContactsManagementPage from './ContactsManagementPage'
 import WeeklyScheduler, { type WeekSchedule } from './WeeklyScheduler'
@@ -85,18 +87,27 @@ export default function PredefinedToolsPage() {
     }>
   >([])
   const [loadingCalendars, setLoadingCalendars] = useState(false)
+  const [refereeContactStatus, setRefereeContactStatus] =
+    useState<RefereeContactToolStatus>({
+      ready: false,
+      enabled: false,
+      configured: false,
+    })
+  const [refereePhoneNumber, setRefereePhoneNumber] = useState('')
   const { toast } = useToast()
 
   // Load data on component mount
   const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
-      const [toolsResponse, statusResponse] = await Promise.all([
+      const [toolsResponse, statusResponse, refereeStatus] = await Promise.all([
         predefinedToolsService.getPredefinedTools(),
         predefinedToolsService.getCalendarStatus(),
+        predefinedToolsService.getRefereeContactStatus(),
       ])
 
       setCalendarStatus(statusResponse)
+      setRefereeContactStatus(refereeStatus)
 
       // Load calendar config if it exists
       const calendarTool = toolsResponse.tools.find(
@@ -176,6 +187,19 @@ export default function PredefinedToolsPage() {
           configData.weeklySchedule = defaultSchedule
         }
         setCalendarConfig((prev) => ({ ...prev, ...configData }))
+      }
+
+      // Load referee contact config if it exists
+      const refereeTool = toolsResponse.tools.find(
+        (tool) => tool.toolType === 'referee_contact',
+      )
+      if (refereeTool?.configData) {
+        const configData = refereeTool.configData as {
+          refereePhoneNumber?: string
+        }
+        if (configData.refereePhoneNumber) {
+          setRefereePhoneNumber(configData.refereePhoneNumber)
+        }
       }
     } catch (error) {
       console.error('Error loading data:', error)
@@ -380,6 +404,91 @@ export default function PredefinedToolsPage() {
       )
     }
     return <Badge variant="outline">Unknown</Badge>
+  }
+
+  const getRefereeStatusBadge = (status: RefereeContactToolStatus) => {
+    if (status.ready) {
+      return (
+        <Badge variant="default" className="bg-green-100 text-green-800">
+          <CheckCircle className="w-3 h-3 mr-1" />
+          Ready
+        </Badge>
+      )
+    } else if (status.enabled && !status.configured) {
+      return (
+        <Badge variant="secondary">
+          <AlertCircle className="w-3 h-3 mr-1" />
+          Not Configured
+        </Badge>
+      )
+    } else {
+      return (
+        <Badge variant="destructive">
+          <XCircle className="w-3 h-3 mr-1" />
+          Disabled
+        </Badge>
+      )
+    }
+  }
+
+  const handleToggleRefereeContact = async (enabled: boolean) => {
+    if (enabled && !refereePhoneNumber) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a referee phone number first',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      await predefinedToolsService.toggleRefereeContactTool(
+        enabled,
+        refereePhoneNumber,
+      )
+      toast({
+        title: 'Success',
+        description: `Referee contact tool ${enabled ? 'enabled' : 'disabled'} successfully`,
+      })
+      loadData() // Refresh status
+    } catch (error) {
+      console.error('Error toggling referee contact tool:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to update referee contact tool',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleSaveRefereeConfig = async () => {
+    if (!refereePhoneNumber) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a referee phone number',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    try {
+      await predefinedToolsService.toggleRefereeContactTool(
+        refereeContactStatus.enabled,
+        refereePhoneNumber,
+      )
+      toast({
+        title: 'Success',
+        description: 'Referee contact configuration saved successfully',
+      })
+      loadData() // Refresh status
+    } catch (error) {
+      console.error('Error saving referee config:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to save referee contact configuration',
+        variant: 'destructive',
+      })
+    }
   }
 
   if (isLoading) {
@@ -597,6 +706,76 @@ export default function PredefinedToolsPage() {
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-3 h-3 text-green-600" />
                     <span>checkEventCancellationEligibility</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Referee Contact Tool */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <MessageSquare className="w-5 h-5" />
+              <CardTitle>Referee Contact</CardTitle>
+              {getRefereeStatusBadge(refereeContactStatus)}
+            </div>
+            <Switch
+              checked={refereeContactStatus.enabled}
+              onCheckedChange={handleToggleRefereeContact}
+            />
+          </div>
+          <CardDescription>
+            Allow your assistant to send messages to a designated
+            referee/supervisor number when it needs help answering questions.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Configuration Section */}
+          <div className="space-y-4">
+            <h4 className="font-semibold flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              Configuration
+            </h4>
+
+            <div className="space-y-2">
+              <Label htmlFor="refereePhoneNumber">
+                Referee WhatsApp Number
+              </Label>
+              <Input
+                id="refereePhoneNumber"
+                type="tel"
+                placeholder="+5511999999999"
+                value={refereePhoneNumber}
+                onChange={(e) => setRefereePhoneNumber(e.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Enter the WhatsApp number (with country code) that should
+                receive questions from the assistant. Format: +5511999999999
+              </p>
+            </div>
+
+            <Button
+              onClick={handleSaveRefereeConfig}
+              className="w-full md:w-auto"
+            >
+              Save Configuration
+            </Button>
+          </div>
+
+          {/* Available Functions */}
+          {refereeContactStatus.ready && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <h4 className="font-semibold">Available Functions</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-3 h-3 text-green-600" />
+                    <span>contactReferee</span>
                   </div>
                 </div>
               </div>

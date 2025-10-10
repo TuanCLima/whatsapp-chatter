@@ -318,6 +318,10 @@ export async function getNextMessages(
         name: functionName,
         content: JSON.stringify(toolResponse),
       })
+
+      if (functionName === 'contactReferee') {
+        return newMessagesForFeed
+      }
     }
   }
 

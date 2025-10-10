@@ -87,6 +87,16 @@ export interface ContactsToolStatus {
   contactCount: number
 }
 
+export interface RefereeContactToolConfig {
+  refereePhoneNumber: string
+}
+
+export interface RefereeContactToolStatus {
+  ready: boolean
+  enabled: boolean
+  configured: boolean
+}
+
 export class PredefinedToolsService {
   private async getAuthHeaders(): Promise<HeadersInit> {
     return {
@@ -404,6 +414,55 @@ export class PredefinedToolsService {
       enabled,
       config as Record<string, unknown>,
     )
+  }
+
+  // ===== REFEREE CONTACT =====
+
+  /**
+   * Get referee contact tool status
+   */
+  async getRefereeContactStatus(): Promise<RefereeContactToolStatus> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/predefined-tools/referee/status`,
+      {
+        method: 'GET',
+        headers: await this.getAuthHeaders(),
+        credentials: 'include',
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error('Failed to get referee contact status')
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Enable/disable referee contact tool
+   */
+  async toggleRefereeContactTool(
+    enabled: boolean,
+    refereePhoneNumber: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/predefined-tools/referee/toggle`,
+      {
+        method: 'POST',
+        headers: await this.getAuthHeaders(),
+        credentials: 'include',
+        body: JSON.stringify({
+          enabled,
+          refereePhoneNumber,
+        }),
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error('Failed to toggle referee contact tool')
+    }
+
+    return response.json()
   }
 }
 

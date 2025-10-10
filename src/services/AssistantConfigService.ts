@@ -132,7 +132,14 @@ export class AssistantConfigService {
       const contactTools =
         await predefinedToolsService.getContactToolsForLLM(userId)
 
-      const predefinedTools = [...calendarTools, ...contactTools]
+      const refereeContactTools =
+        await predefinedToolsService.getRefereeContactToolsForLLM(userId)
+
+      const predefinedTools = [
+        ...calendarTools,
+        ...contactTools,
+        ...refereeContactTools,
+      ]
 
       return {
         customTools: formattedCustomTools,
@@ -188,7 +195,14 @@ export class AssistantConfigService {
       const contactTools =
         await predefinedToolsService.getContactToolsForLLM(saasUserId)
 
-      const predefinedTools = [...calendarTools, ...contactTools]
+      const refereeContactTools =
+        await predefinedToolsService.getRefereeContactToolsForLLM(saasUserId)
+
+      const predefinedTools = [
+        ...calendarTools,
+        ...contactTools,
+        ...refereeContactTools,
+      ]
 
       return {
         customTools: formattedCustomTools,

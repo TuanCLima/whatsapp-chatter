@@ -339,6 +339,7 @@ const predefinedToolNames = [
   'checkAndCancelEventIfEligible',
   'checkEventCancellationEligibility',
   'forwardContact',
+  'contactReferee',
 ]
 
 /**

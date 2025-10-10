@@ -191,4 +191,64 @@ router.get('/calendar/list', authenticateUser, async (req, res) => {
   }
 })
 
+/**
+ * Check referee contact tool status
+ */
+router.get('/referee/status', authenticateUser, async (req, res) => {
+  try {
+    const saasUserId = req.user?.userId
+
+    if (!saasUserId) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
+    const status =
+      await predefinedToolsService.isRefereeContactToolReady(saasUserId)
+    res.json(status)
+  } catch (error) {
+    console.error('Error checking referee contact status:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+/**
+ * Toggle referee contact tool and update configuration
+ */
+router.post('/referee/toggle', authenticateUser, async (req, res) => {
+  try {
+    const saasUserId = req.user?.userId
+    const { enabled, refereePhoneNumber } = req.body
+
+    if (!saasUserId) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
+    if (enabled && !refereePhoneNumber) {
+      res
+        .status(400)
+        .json({
+          error: 'Referee phone number is required when enabling the tool',
+        })
+      return
+    }
+
+    await predefinedToolsService.updateToolConfig(
+      saasUserId,
+      'referee_contact',
+      enabled,
+      { refereePhoneNumber },
+    )
+
+    res.json({
+      success: true,
+      message: `Referee contact tool ${enabled ? 'enabled' : 'disabled'} successfully`,
+    })
+  } catch (error) {
+    console.error('Error toggling referee contact tool:', error)
+    res.status(500).json({ error: 'Failed to update referee contact tool' })
+  }
+})
+
 export default router
