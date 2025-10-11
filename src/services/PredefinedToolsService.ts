@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm'
 import { db } from '../db'
 import { predefinedToolsConfig, saasUsers } from '../db/schema-postgres'
 import { forwardContact } from '../mcp/mcpService'
+import { QUESTION_SENT_TO_REFEREE } from '../utils/contants'
 import { noWhatsPhoneNumber } from '../utils/utils'
 import { getSaasGoogleCalendarService } from './SaasGoogleCalendarService'
 import { twilioClientPool } from './TwilioClientPool'
@@ -702,9 +703,8 @@ export class PredefinedToolsService {
     saasUserId: string,
     question: string,
     twilioSenderNumber: string,
-    callersPhoneNumber: string,
     userId: string,
-  ): Promise<{ success: boolean; message: string }> {
+  ): Promise<{ success: boolean; message: string; data?: string }> {
     try {
       // Get the referee contact configuration
       const toolConfig = await this.getToolConfig(saasUserId, 'referee_contact')
@@ -723,25 +723,8 @@ export class PredefinedToolsService {
       // Get Twilio client for this user
       const twilioClient = await twilioClientPool.getClient(userId)
 
-      // Format the message with context
-      // const messageBody = `🔔 Nova pergunta do assistente ${callersPhoneNumber}:\n\n${question}\n\n---\nEnviado via WhatsApp Assistant`
-
-      console.log('Sending referee contact message to', {
-        from: `whatsapp:${noWhatsPhoneNumber(twilioSenderNumber)}`,
-        to: `whatsapp:${noWhatsPhoneNumber(config.refereePhoneNumber)}`,
-        body: callersPhoneNumber,
-      })
-
-      await twilioClient.messages.create({
-        from: `whatsapp:${noWhatsPhoneNumber(twilioSenderNumber)}`,
-        to: `whatsapp:${noWhatsPhoneNumber(config.refereePhoneNumber)}`,
-        body: callersPhoneNumber,
-      })
-
-      await new Promise((resolve) => setTimeout(resolve, 100))
-
       // Send message to referee
-      await twilioClient.messages.create({
+      const message = await twilioClient.messages.create({
         from: `whatsapp:${noWhatsPhoneNumber(twilioSenderNumber)}`,
         to: `whatsapp:${noWhatsPhoneNumber(config.refereePhoneNumber)}`,
         body: question,
@@ -749,7 +732,8 @@ export class PredefinedToolsService {
 
       return {
         success: true,
-        message: `Sua pergunta foi enviada para o supervisor. Você receberá uma resposta em breve.`,
+        message: QUESTION_SENT_TO_REFEREE,
+        data: message.sid, // Optionally return the MessageSid if needed
       }
     } catch (error) {
       console.error('Error executing referee contact:', error)
@@ -882,7 +866,6 @@ export class PredefinedToolsService {
             saasUserId,
             parameters.question!,
             twilioSenderNumber,
-            callersPhoneNumber,
             userId,
           )
 

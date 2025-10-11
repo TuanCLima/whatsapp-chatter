@@ -1,10 +1,11 @@
 import OpenAI from 'openai'
 import 'dotenv/config'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import type { Request, Response } from 'express'
 import { db } from './db'
 import {
   type InsertMessage,
+  type Message,
   messages,
   saasUsers,
   users,
@@ -21,6 +22,7 @@ const API_KEY = process.env.LLM_API_KEY
 
 import { getSaoPauloDate } from './mcp/mcpService'
 import { sseService } from './services/SSEService'
+import { QUESTION_SENT_TO_REFEREE } from './utils/contants'
 import { getInitialPromptForPhoneNumber } from './utils/utils'
 
 const LLM_BASE_URL = 'https://api.openai.com/v1'
@@ -58,6 +60,8 @@ type TwilioFormData = {
   Body: string
   ProfileName: string
   MessageSid: string // The unique Twilio message SID
+  OriginalRepliedMessageSid?: string // The MessageSid of the quoted/replied message
+  OriginalRepliedMessageSender?: string // The sender of the original replied message
   NumMedia?: string // Twilio sends number of media items as a string
   // Dynamic media content type & url fields (MediaContentType0, MediaUrl0, ...)
   [key: string]: string | undefined
@@ -100,13 +104,131 @@ const fakes = [
 
 const indexSelected = -1
 
+async function getQuotedDbMessage({
+  quotedMessageSid,
+}: {
+  quotedMessageSid: string | undefined
+}): Promise<Message | null> {
+  if (!quotedMessageSid) {
+    return null
+  }
+
+  webhookLogger.debug(
+    {
+      quotedMessageSid,
+    },
+    'Quoted message detected, checking for contactReferee',
+  )
+
+  try {
+    const quotedDbMessage = await db
+      .select()
+      .from(messages)
+      .where(
+        and(
+          eq(
+            messages.content,
+            JSON.stringify({
+              success: true,
+              message: QUESTION_SENT_TO_REFEREE,
+              data: quotedMessageSid,
+            }),
+          ),
+        ),
+      )
+      .limit(1)
+
+    if (quotedDbMessage.length === 0) {
+      return null
+    }
+
+    webhookLogger.debug(
+      {
+        quotedMessageId: quotedDbMessage[0].id,
+        role: quotedDbMessage[0].role,
+        phoneNumber: quotedDbMessage[0].phoneNumber,
+        toolCallId: quotedDbMessage[0].toolCallId,
+      },
+      'Found quoted message in database',
+    )
+
+    return quotedDbMessage[0]
+  } catch (error) {
+    logError(webhookLogger, error, {
+      context: 'quoted_message_check',
+      quotedMessageSid,
+    })
+    return null
+  }
+}
+
+/**
+ * Check if a message is a reply to a contactReferee tool message
+ * and extract the tool call information for creating a response
+ */
+async function checkForRefereeToolResponse(
+  answerMessage: string,
+  quotedDbMessage?: Message | null,
+): Promise<Message | null> {
+  if (!quotedDbMessage) {
+    return null
+  }
+
+  try {
+    return (
+      await db
+        .update(messages)
+        .set({
+          content: JSON.stringify({
+            success: true,
+            refereeAnswer: answerMessage,
+          }),
+        })
+        .where(eq(messages.id, quotedDbMessage.id))
+        .returning()
+    )[0]
+  } catch (error) {
+    logError(webhookLogger, error, {
+      context: 'referee_tool_response',
+    })
+    return null
+  }
+}
+
 // New SaaS webhook function that uses user-specific Twilio credentials
 export async function whatsappSaasWebhook(
   req: Request<Record<string, never>, unknown, TwilioFormData>,
   res: Response,
 ) {
   const body = req.body
-  const { From: _from, To, Body: message, ProfileName } = body
+  const { To, Body: message, OriginalRepliedMessageSid } = body
+  let { From: _from, ProfileName } = body
+
+  const quotedMessage = await getQuotedDbMessage({
+    quotedMessageSid: OriginalRepliedMessageSid,
+  })
+
+  if (quotedMessage) {
+    _from = quotedMessage.phoneNumber
+
+    const quotedUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.phoneNumber, quotedMessage.phoneNumber))
+      .limit(1)
+    if (quotedUser.length > 0) {
+      ProfileName = quotedUser[0].profileName
+    }
+
+    webhookLogger.info(
+      {
+        quotedMessageId: quotedMessage.id,
+        quotedMessagePhoneNumber: quotedMessage.phoneNumber,
+        quotedMessageProfileName: ProfileName,
+      },
+      '🔔 QuotedUser Data',
+    )
+  }
 
   // Log the incoming webhook call
   webhookLogger.info(
@@ -117,6 +239,7 @@ export async function whatsappSaasWebhook(
       profileName: ProfileName,
       messageLength: message?.length || 0,
       messageSid: body.MessageSid,
+      originalRepliedMessageSid: OriginalRepliedMessageSid,
       numMedia: body.NumMedia,
       isDev: IS_DEV_OTHER,
     },
@@ -291,14 +414,34 @@ export async function whatsappSaasWebhook(
     const isConversationDisabled =
       existingUser.length > 0 && existingUser[0].conversationDisabled
 
-    await db.insert(messages).values({
-      phoneNumber: from,
-      role: 'user',
-      content: message,
-      profileName: name,
-      toolCallId: null,
-      toolCalls: null,
-    } as InsertMessage)
+    // Check if this message is a reply to a contactReferee message
+    const refereeToolAnswerMessage = OriginalRepliedMessageSid
+      ? await checkForRefereeToolResponse(message, quotedMessage)
+      : null
+
+    // At messageFeed, replace the array's item with refereeToolAnswerMessage where id = refereeToolAnswerMessage.id
+    if (refereeToolAnswerMessage) {
+      const index = messagesFeed.findIndex(
+        (m) => m.id === refereeToolAnswerMessage.id,
+      )
+
+      if (index !== -1) {
+        messagesFeed.splice(index, 1)
+      }
+      messagesFeed.push(refereeToolAnswerMessage)
+    }
+
+    if (!quotedMessage) {
+      await db.insert(messages).values({
+        phoneNumber: from,
+        role: 'user',
+        content: message,
+        profileName: name,
+        toolCallId: null,
+        toolCalls: null,
+        messageSid: body.MessageSid, // Store Twilio MessageSid
+      } as InsertMessage)
+    }
 
     webhookLogger.debug(
       {
@@ -392,30 +535,32 @@ export async function whatsappSaasWebhook(
       'New messages generated successfully',
     )
 
-    const newMessagesForDB = newMessagesForFeed.map((m, index) => {
-      let toolCallId: string | null = null
-      let toolCalls: string | null = null
+    const newMessagesForDB = newMessagesForFeed
+      .filter((m) => !m.doNotAddToHistory)
+      .map((m, index) => {
+        let toolCallId: string | null = null
+        let toolCalls: string | null = null
 
-      if (m.role === 'tool') {
-        toolCallId = m.tool_call_id
-      }
+        if (m.role === 'tool') {
+          toolCallId = m.tool_call_id
+        }
 
-      if (m.role === 'assistant') {
-        toolCalls = JSON.stringify(m.tool_calls)
-      }
+        if (m.role === 'assistant') {
+          toolCalls = JSON.stringify(m.tool_calls)
+        }
 
-      const timestamp = new Date(Date.now() + index)
+        const timestamp = new Date(Date.now() + index)
 
-      return {
-        phoneNumber: from,
-        role: m.role,
-        content: m.content,
-        profileName: name,
-        toolCallId,
-        toolCalls,
-        timestamp,
-      }
-    })
+        return {
+          phoneNumber: from,
+          role: m.role,
+          content: m.content,
+          profileName: name,
+          toolCallId,
+          toolCalls,
+          timestamp,
+        }
+      })
 
     await db.insert(messages).values(newMessagesForDB)
 

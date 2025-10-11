@@ -10,6 +10,7 @@ export const messages = pgTable('messages', {
   timestamp: timestamp('timestamp').defaultNow().notNull(),
   toolCallId: text('tool_call_id'),
   toolCalls: text('string'),
+  messageSid: text('message_sid'), // Twilio MessageSid (optional for backwards compatibility)
 })
 
 export type InsertMessage = typeof messages.$inferInsert

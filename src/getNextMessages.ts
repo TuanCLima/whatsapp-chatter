@@ -43,8 +43,10 @@ async function getSaasUserIdFromPhoneNumber(
 // Get built-in tools
 const builtInTools = [dateTool]
 
+type GetNextMessage = ChatMessage & { doNotAddToHistory?: boolean }
+
 export async function getNextMessages(
-  messagesFeed: ChatMessage[],
+  messagesFeed: GetNextMessage[],
   phoneNumber: string,
   callersPhoneNumber: string,
   signal?: AbortSignal,
@@ -60,7 +62,7 @@ export async function getNextMessages(
     'getNextMessages called',
   )
 
-  const newMessagesForFeed: ChatMessage[] = []
+  const newMessagesForFeed: GetNextMessage[] = []
 
   // Get all tools including custom ones
   const allTools = phoneNumber
@@ -320,6 +322,12 @@ export async function getNextMessages(
       })
 
       if (functionName === 'contactReferee') {
+        newMessagesForFeed.push({
+          role: 'assistant',
+          content: 'Estou consultando meu gerente. Retorno em breve.',
+          doNotAddToHistory: true,
+        })
+
         return newMessagesForFeed
       }
     }
