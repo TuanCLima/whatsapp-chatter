@@ -37,7 +37,7 @@ import {
   type RefereeContactToolStatus,
 } from '@/services/PredefinedToolsService'
 import ContactsManagementPage from './ContactsManagementPage'
-import WeeklyScheduler, { type WeekSchedule } from './WeeklyScheduler'
+import WeeklyScheduler from './WeeklyScheduler'
 
 export default function PredefinedToolsPage() {
   const [calendarStatus, setCalendarStatus] = useState<CalendarToolStatus>({
@@ -47,28 +47,29 @@ export default function PredefinedToolsPage() {
   })
   const [calendarConfig, setCalendarConfig] = useState<CalendarToolConfig>({
     defaultCalendarId: 'primary',
-    workingHours: { start: '09:00', end: '17:00' },
-    lunchTime: { start: '12:00', end: '13:00' },
-    allowedWeekDays: {
-      monday: true,
-      tuesday: true,
-      wednesday: true,
-      thursday: true,
-      friday: true,
-      saturday: true,
-      sunday: false,
-    },
     bufferTimeBetweenEvents: 0,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     weeklySchedule: {
-      monday: { enabled: true, blocks: [{ id: '1', start: 540, end: 1020 }] },
-      tuesday: { enabled: true, blocks: [{ id: '2', start: 540, end: 1020 }] },
+      monday: {
+        enabled: true,
+        blocks: [{ id: '1', start: 540, end: 1020, type: 'regular' }],
+      },
+      tuesday: {
+        enabled: true,
+        blocks: [{ id: '2', start: 540, end: 1020, type: 'regular' }],
+      },
       wednesday: {
         enabled: true,
-        blocks: [{ id: '3', start: 540, end: 1020 }],
+        blocks: [{ id: '3', start: 540, end: 1020, type: 'regular' }],
       },
-      thursday: { enabled: true, blocks: [{ id: '4', start: 540, end: 1020 }] },
-      friday: { enabled: true, blocks: [{ id: '5', start: 540, end: 1020 }] },
+      thursday: {
+        enabled: true,
+        blocks: [{ id: '4', start: 540, end: 1020, type: 'regular' }],
+      },
+      friday: {
+        enabled: true,
+        blocks: [{ id: '5', start: 540, end: 1020, type: 'regular' }],
+      },
       saturday: { enabled: false, blocks: [] },
       sunday: { enabled: false, blocks: [] },
     },
@@ -115,77 +116,6 @@ export default function PredefinedToolsPage() {
       )
       if (calendarTool?.configData) {
         const configData = calendarTool.configData as CalendarToolConfig
-
-        // Migrate old format to new if needed
-        if (!configData.weeklySchedule && configData.allowedWeekDays) {
-          // Create default weekly schedule from old format
-          const defaultSchedule: WeekSchedule = {
-            monday: {
-              enabled: configData.allowedWeekDays.monday,
-              blocks: configData.allowedWeekDays.monday
-                ? [
-                    { id: 'mon-morning', start: 540, end: 720 },
-                    { id: 'mon-afternoon', start: 780, end: 1020 },
-                  ]
-                : [],
-            },
-            tuesday: {
-              enabled: configData.allowedWeekDays.tuesday,
-              blocks: configData.allowedWeekDays.tuesday
-                ? [
-                    { id: 'tue-morning', start: 540, end: 720 },
-                    { id: 'tue-afternoon', start: 780, end: 1020 },
-                  ]
-                : [],
-            },
-            wednesday: {
-              enabled: configData.allowedWeekDays.wednesday,
-              blocks: configData.allowedWeekDays.wednesday
-                ? [
-                    { id: 'wed-morning', start: 540, end: 720 },
-                    { id: 'wed-afternoon', start: 780, end: 1020 },
-                  ]
-                : [],
-            },
-            thursday: {
-              enabled: configData.allowedWeekDays.thursday,
-              blocks: configData.allowedWeekDays.thursday
-                ? [
-                    { id: 'thu-morning', start: 540, end: 720 },
-                    { id: 'thu-afternoon', start: 780, end: 1020 },
-                  ]
-                : [],
-            },
-            friday: {
-              enabled: configData.allowedWeekDays.friday,
-              blocks: configData.allowedWeekDays.friday
-                ? [
-                    { id: 'fri-morning', start: 540, end: 720 },
-                    { id: 'fri-afternoon', start: 780, end: 1020 },
-                  ]
-                : [],
-            },
-            saturday: {
-              enabled: configData.allowedWeekDays.saturday,
-              blocks: configData.allowedWeekDays.saturday
-                ? [
-                    { id: 'sat-morning', start: 540, end: 720 },
-                    { id: 'sat-afternoon', start: 780, end: 1020 },
-                  ]
-                : [],
-            },
-            sunday: {
-              enabled: configData.allowedWeekDays.sunday,
-              blocks: configData.allowedWeekDays.sunday
-                ? [
-                    { id: 'sun-morning', start: 540, end: 720 },
-                    { id: 'sun-afternoon', start: 780, end: 1020 },
-                  ]
-                : [],
-            },
-          }
-          configData.weeklySchedule = defaultSchedule
-        }
         setCalendarConfig((prev) => ({ ...prev, ...configData }))
       }
 

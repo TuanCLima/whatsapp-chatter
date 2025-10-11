@@ -155,6 +155,7 @@ export type TimeBlock = {
   id: string
   start: number // minutes from midnight (0-1440)
   end: number // minutes from midnight (0-1440)
+  type?: 'regular' | 'tentative' // regular = guaranteed availability, tentative = potential availability
 }
 
 // Helper function to find available time spans in a day based on configured blocks

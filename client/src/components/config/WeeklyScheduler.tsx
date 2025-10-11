@@ -7,6 +7,7 @@ interface TimeBlock {
   id: string
   start: number // minutes from midnight (0-1440)
   end: number // minutes from midnight (0-1440)
+  type?: 'regular' | 'tentative' // regular = guaranteed availability, tentative = potential availability
 }
 
 interface DaySchedule {
@@ -14,7 +15,7 @@ interface DaySchedule {
   blocks: TimeBlock[]
 }
 
-export interface WeekSchedule {
+interface WeekSchedule {
   monday: DaySchedule
   tuesday: DaySchedule
   wednesday: DaySchedule
@@ -76,11 +77,15 @@ export default function WeeklyScheduler({
     [schedule, onChange],
   )
 
-  const addBlock = (day: keyof WeekSchedule) => {
+  const addBlock = (
+    day: keyof WeekSchedule,
+    type: 'regular' | 'tentative' = 'regular',
+  ) => {
     const newBlock: TimeBlock = {
       id: `${Date.now()}-${Math.random()}`,
       start: 540, // 9:00 AM
       end: 1020, // 5:00 PM
+      type,
     }
 
     updateSchedule(day, (prev) => ({
@@ -235,11 +240,12 @@ export default function WeeklyScheduler({
                   <button
                     type="button"
                     onClick={() => toggleDay(key)}
-                    className={`px-2 rounded-t-lg text-sm font-semibold transition-colors h-[${WEEK_TABLE_HEADER_HEIGHT}px] ${
+                    className={`px-2 rounded-t-lg text-sm font-semibold transition-colors ${
                       isEnabled
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted text-muted-foreground hover:bg-muted/80'
                     }`}
+                    style={{ height: WEEK_TABLE_HEADER_HEIGHT }}
                   >
                     {label}
                   </button>
@@ -267,10 +273,24 @@ export default function WeeklyScheduler({
                         const height =
                           ((block.end - block.start) / 1440) * TOTAL_HEIGHT
 
+                        // Style based on block type
+                        const isTentative = block.type === 'tentative'
+                        const blockClasses = isTentative
+                          ? 'absolute flex flex-col justify-between inset-x-0 mx-1 bg-blue-400/20 border-2 border-blue-400 border-dashed rounded-lg group hover:bg-blue-400/30 transition-colors'
+                          : 'absolute flex flex-col justify-between inset-x-0 mx-1 bg-primary/20 border-2 border-primary rounded-lg group hover:bg-primary/30 transition-colors'
+
+                        const handleClasses = isTentative
+                          ? 'h-2 cursor-ns-resize hover:bg-blue-400/40 flex items-center justify-center border-0 bg-transparent p-0'
+                          : 'h-2 cursor-ns-resize hover:bg-primary/40 flex items-center justify-center border-0 bg-transparent p-0'
+
+                        const handleBarClasses = isTentative
+                          ? 'w-8 h-0.5 bg-blue-600 rounded opacity-0 group-hover:opacity-100'
+                          : 'w-8 h-0.5 bg-primary rounded opacity-0 group-hover:opacity-100'
+
                         return (
                           <div
                             key={block.id}
-                            className="absolute flex flex-col justify-between inset-x-0 mx-1 bg-primary/20 border-2 border-primary rounded-lg group hover:bg-primary/30 transition-colors"
+                            className={blockClasses}
                             style={{
                               top: `${top}px`,
                               height: `${height}px`,
@@ -279,12 +299,12 @@ export default function WeeklyScheduler({
                             {/* Top resize handle */}
                             <button
                               type="button"
-                              className="h-2 cursor-ns-resize hover:bg-primary/40 flex items-center justify-center border-0 bg-transparent p-0"
+                              className={handleClasses}
                               onMouseDown={(e) =>
                                 handleMouseDown(e, key, block.id, 'top')
                               }
                             >
-                              <div className="w-8 h-0.5 bg-primary rounded opacity-0 group-hover:opacity-100" />
+                              <div className={handleBarClasses} />
                             </button>
 
                             {/* Content */}
@@ -307,30 +327,42 @@ export default function WeeklyScheduler({
                             {/* Bottom resize handle */}
                             <button
                               type="button"
-                              className="h-2 cursor-ns-resize hover:bg-primary/40 flex items-center justify-center bg-transparent border-0 p-0"
+                              className={handleClasses}
                               onMouseDown={(e) =>
                                 handleMouseDown(e, key, block.id, 'bottom')
                               }
                             >
-                              <div className="w-8 h-0.5 bg-primary rounded opacity-0 group-hover:opacity-100" />
+                              <div className={handleBarClasses} />
                             </button>
                           </div>
                         )
                       })}
                   </div>
 
-                  {/* Add block button */}
+                  {/* Add block buttons */}
                   {isEnabled && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => addBlock(key)}
-                      className="mt-2 w-full"
-                    >
-                      <Plus className="w-3 h-3 mr-1" />
-                      Add Time
-                    </Button>
+                    <div className="mt-2 space-y-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => addBlock(key, 'regular')}
+                        className="w-full"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add Regular
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => addBlock(key, 'tentative')}
+                        className="w-full text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Add Tentative
+                      </Button>
+                    </div>
                   )}
                 </div>
               )
@@ -339,10 +371,22 @@ export default function WeeklyScheduler({
         </div>
       </Card>
 
-      <p className="text-xs text-muted-foreground">
-        Time blocks snap to 15-minute intervals. Multiple blocks per day are
-        supported.
-      </p>
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">
+          Time blocks snap to 15-minute intervals. Multiple blocks per day are
+          supported.
+        </p>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-primary/20 border-2 border-primary rounded" />
+            <span>Regular availability (guaranteed)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-400/20 border-2 border-blue-400 border-dashed rounded" />
+            <span>Tentative availability (potential, not guaranteed)</span>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

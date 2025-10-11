@@ -20,31 +20,66 @@ interface CalendarConfig {
   weeklySchedule?: {
     monday: {
       enabled: boolean
-      blocks: Array<{ id: string; start: number; end: number }>
+      blocks: Array<{
+        id: string
+        start: number
+        end: number
+        type?: 'regular' | 'tentative'
+      }>
     }
     tuesday: {
       enabled: boolean
-      blocks: Array<{ id: string; start: number; end: number }>
+      blocks: Array<{
+        id: string
+        start: number
+        end: number
+        type?: 'regular' | 'tentative'
+      }>
     }
     wednesday: {
       enabled: boolean
-      blocks: Array<{ id: string; start: number; end: number }>
+      blocks: Array<{
+        id: string
+        start: number
+        end: number
+        type?: 'regular' | 'tentative'
+      }>
     }
     thursday: {
       enabled: boolean
-      blocks: Array<{ id: string; start: number; end: number }>
+      blocks: Array<{
+        id: string
+        start: number
+        end: number
+        type?: 'regular' | 'tentative'
+      }>
     }
     friday: {
       enabled: boolean
-      blocks: Array<{ id: string; start: number; end: number }>
+      blocks: Array<{
+        id: string
+        start: number
+        end: number
+        type?: 'regular' | 'tentative'
+      }>
     }
     saturday: {
       enabled: boolean
-      blocks: Array<{ id: string; start: number; end: number }>
+      blocks: Array<{
+        id: string
+        start: number
+        end: number
+        type?: 'regular' | 'tentative'
+      }>
     }
     sunday: {
       enabled: boolean
-      blocks: Array<{ id: string; start: number; end: number }>
+      blocks: Array<{
+        id: string
+        start: number
+        end: number
+        type?: 'regular' | 'tentative'
+      }>
     }
   }
 }
