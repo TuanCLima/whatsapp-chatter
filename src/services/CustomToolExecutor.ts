@@ -338,6 +338,7 @@ const predefinedToolNames = [
   'cancelCalendarEvent',
   'checkAndCancelEventIfEligible',
   'checkEventCancellationEligibility',
+  'getCurrentWorkingHours',
   'forwardContact',
   'contactReferee',
 ]

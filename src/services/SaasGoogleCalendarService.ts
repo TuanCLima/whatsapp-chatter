@@ -585,11 +585,16 @@ export class SaasGoogleCalendarService {
         startDateTZ.hours() * 60 + startDateTZ.minutes()
       const proposedEndMinutes = endDateTZ.hours() * 60 + endDateTZ.minutes()
 
+      // Filter out tentative blocks - only check against regular blocks
+      const regularBlocks = daySchedule.blocks.filter(
+        (block) => block.type !== 'tentative',
+      )
+
       // Check if the proposed time fits within any of the configured blocks
       let fitsInBlock = false
       let conflictingBlock: string | null = null
 
-      for (const block of daySchedule.blocks) {
+      for (const block of regularBlocks) {
         // Check if the entire proposed span fits within this block
         if (
           proposedStartMinutes >= block.start &&
@@ -610,8 +615,8 @@ export class SaasGoogleCalendarService {
 
       if (!fitsInBlock) {
         const availableBlocksMessage =
-          daySchedule.blocks.length > 0
-            ? `Horários disponíveis: ${daySchedule.blocks.map((b) => `${minutesToTime(b.start)}-${minutesToTime(b.end)}`).join(', ')}`
+          regularBlocks.length > 0
+            ? `Horários disponíveis: ${regularBlocks.map((b) => `${minutesToTime(b.start)}-${minutesToTime(b.end)}`).join(', ')}`
             : 'Não há horários disponíveis neste dia.'
 
         const conflictMessage = conflictingBlock
@@ -839,8 +844,13 @@ export class SaasGoogleCalendarService {
           const dayKey = dayMap[dayOfWeek]
           const daySchedule = userConfig.weeklySchedule[dayKey]
 
-          // Skip days not enabled in weekly schedule
-          if (!daySchedule.enabled || daySchedule.blocks.length === 0) {
+          // Filter out tentative blocks - only process regular blocks
+          const regularBlocks = daySchedule.blocks.filter(
+            (block) => block.type !== 'tentative',
+          )
+
+          // Skip days not enabled in weekly schedule or with no regular blocks
+          if (!daySchedule.enabled || regularBlocks.length === 0) {
             continue
           }
 

@@ -177,8 +177,13 @@ export function findAvailableTimeSpans(
     return availableSpans
   }
 
+  // Filter out tentative blocks - only process regular blocks
+  const regularBlocks = configuredBlocks.filter(
+    (block) => block.type !== 'tentative',
+  )
+
   // Process each configured block
-  for (const block of configuredBlocks) {
+  for (const block of regularBlocks) {
     // Convert block start/end (minutes from midnight) to actual Date objects in the target timezone
     const blockStartMoment = moment
       .tz(targetDate, timeZone)

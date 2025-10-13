@@ -279,6 +279,50 @@ export class PredefinedToolsService {
   }
 
   /**
+   * Get current working hours configuration (weeklySchedule) from predefined_tools_config
+   */
+  async getCurrentWorkingHours(saasUserId: string): Promise<unknown> {
+    try {
+      const toolConfig = await this.getToolConfig(
+        saasUserId,
+        'calendar_management',
+      )
+
+      if (!toolConfig?.configData) {
+        return {
+          success: false,
+          message:
+            'Configuração de horário de funcionamento não encontrada. Por favor, configure o calendário primeiro.',
+        }
+      }
+
+      const config = toolConfig.configData as CalendarToolConfig & {
+        weeklySchedule?: Record<string, unknown>
+      }
+
+      if (!config.weeklySchedule) {
+        return {
+          success: false,
+          message:
+            'Horário de funcionamento (weeklySchedule) não configurado. Por favor, configure os horários de funcionamento no painel de administração.',
+        }
+      }
+
+      return {
+        success: true,
+        weeklySchedule: config.weeklySchedule,
+        timeZone: config.timeZone || 'America/Sao_Paulo',
+      }
+    } catch (error) {
+      console.error('Error getting current working hours:', error)
+      return {
+        success: false,
+        message: `Erro ao buscar horário de funcionamento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+      }
+    }
+  }
+
+  /**
    * Get calendar tools for LLM context
    */
   async getCalendarToolsForLLM(saasUserId: string): Promise<CalendarTool[]> {
@@ -571,6 +615,19 @@ export class PredefinedToolsService {
           },
         },
       },
+      {
+        type: 'function',
+        function: {
+          name: 'getCurrentWorkingHours',
+          description:
+            'Obter a configuração de horário de funcionamento semanal (weeklySchedule). Esta ferramenta retorna os dias e horários em que a agenda está aberta para agendamentos, incluindo blocos de horário disponíveis para cada dia da semana. Use esta ferramenta quando precisar informar ao cliente sobre os horários de funcionamento ou para entender quando eventos podem ser agendados. Se desejar agendar um evento em horário definido como "tentative", perguntar ao referee se é possível. Envie junto a pergunta todo o contexto para que ele possa tomar a melhor decisão.',
+          parameters: {
+            type: 'object',
+            properties: {},
+            required: [],
+          },
+        },
+      },
     ]
   }
 
@@ -851,6 +908,9 @@ export class PredefinedToolsService {
             parameters.eventId!,
             parameters.calendarId,
           )
+
+        case 'getCurrentWorkingHours':
+          return await this.getCurrentWorkingHours(saasUserId)
 
         case 'forwardContact':
           return await forwardContact({
