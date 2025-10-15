@@ -13,6 +13,45 @@ import {
 } from '../mcp/mcpService'
 import { minutesToTime } from '../utils/utils'
 
+/**
+ * Coalesce contiguous blocks (both regular and tentative) into merged time ranges
+ * This allows us to properly handle cases where a proposed time spans multiple contiguous blocks
+ */
+function coalesceBlocks(
+  blocks: Array<{
+    id: string
+    start: number
+    end: number
+    type?: 'regular' | 'tentative'
+  }>,
+): Array<{ start: number; end: number }> {
+  if (blocks.length === 0) return []
+
+  // Sort blocks by start time
+  const sortedBlocks = [...blocks].sort((a, b) => a.start - b.start)
+
+  const coalesced: Array<{ start: number; end: number }> = []
+  let currentBlock = { start: sortedBlocks[0].start, end: sortedBlocks[0].end }
+
+  for (let i = 1; i < sortedBlocks.length; i++) {
+    const block = sortedBlocks[i]
+
+    // If blocks are contiguous or overlapping, merge them
+    if (block.start <= currentBlock.end) {
+      currentBlock.end = Math.max(currentBlock.end, block.end)
+    } else {
+      // Blocks are not contiguous, save current and start new
+      coalesced.push(currentBlock)
+      currentBlock = { start: block.start, end: block.end }
+    }
+  }
+
+  // Don't forget to add the last block
+  coalesced.push(currentBlock)
+
+  return coalesced
+}
+
 interface CalendarConfig {
   defaultCalendarId: string
   bufferTimeBetweenEvents: number // in minutes
@@ -478,7 +517,6 @@ export class SaasGoogleCalendarService {
     saasUserId: string,
     proposedStartTime: string,
     proposedEndTime: string,
-    serviceDurationMinutes: number,
     calendarId?: string,
   ) {
     try {
@@ -500,7 +538,6 @@ export class SaasGoogleCalendarService {
           message:
             'Horário inválido fornecido. Por favor, forneça um horário válido.',
           conflicts: [],
-          availableTimeSpans: [],
         }
       }
 
@@ -520,7 +557,6 @@ export class SaasGoogleCalendarService {
               ? `Este horário já passou. Por favor, escolha um horário futuro (pelo menos 1 hora a partir de agora).`
               : `O agendamento deve ser feito com pelo menos 1 hora de antecedência`,
           conflicts: ['minimum_advance_time'],
-          availableTimeSpans: [],
         }
       }
 
@@ -547,7 +583,6 @@ export class SaasGoogleCalendarService {
           available: false,
           message: 'Configuração de horário semanal não encontrada.',
           conflicts: ['no_schedule_config'],
-          availableTimeSpans: [],
         }
       }
 
@@ -576,7 +611,6 @@ export class SaasGoogleCalendarService {
           available: false,
           message: `Este dia não está disponível para agendamentos. Dias permitidos: ${allowedDays}.`,
           conflicts: ['day_not_allowed'],
-          availableTimeSpans: [],
         }
       }
 
@@ -585,53 +619,96 @@ export class SaasGoogleCalendarService {
         startDateTZ.hours() * 60 + startDateTZ.minutes()
       const proposedEndMinutes = endDateTZ.hours() * 60 + endDateTZ.minutes()
 
-      // Filter out tentative blocks - only check against regular blocks
-      const regularBlocks = daySchedule.blocks.filter(
-        (block) => block.type !== 'tentative',
-      )
+      // First, coalesce all blocks (regular and tentative) to handle contiguous cases
+      const coalescedBlocks = coalesceBlocks(daySchedule.blocks)
 
-      // Check if the proposed time fits within any of the configured blocks
-      let fitsInBlock = false
-      let conflictingBlock: string | null = null
+      // Check if the proposed time fits within any of the coalesced blocks
+      let fitsInCoalescedBlock = false
 
-      for (const block of regularBlocks) {
-        // Check if the entire proposed span fits within this block
+      for (const block of coalescedBlocks) {
+        // Check if the entire proposed span fits within this coalesced block
         if (
           proposedStartMinutes >= block.start &&
           proposedEndMinutes <= block.end
         ) {
-          fitsInBlock = true
+          fitsInCoalescedBlock = true
           break
-        }
-
-        // Check for partial overlap (conflict)
-        const hasOverlap =
-          proposedStartMinutes < block.end && proposedEndMinutes > block.start
-
-        if (hasOverlap && !fitsInBlock) {
-          conflictingBlock = `${minutesToTime(block.start)}-${minutesToTime(block.end)}`
         }
       }
 
-      if (!fitsInBlock) {
+      // If it doesn't fit in any coalesced block, it's completely outside configured hours
+      if (!fitsInCoalescedBlock) {
+        const regularBlocks = daySchedule.blocks.filter(
+          (block) => block.type !== 'tentative',
+        )
+
         const availableBlocksMessage =
           regularBlocks.length > 0
             ? `Horários disponíveis: ${regularBlocks.map((b) => `${minutesToTime(b.start)}-${minutesToTime(b.end)}`).join(', ')}`
             : 'Não há horários disponíveis neste dia.'
 
-        const conflictMessage = conflictingBlock
-          ? `O horário proposto (${minutesToTime(proposedStartMinutes)}-${minutesToTime(proposedEndMinutes)}) não se encaixa completamente em nenhum bloco disponível. ${availableBlocksMessage}`
-          : `O horário proposto (${minutesToTime(proposedStartMinutes)}-${minutesToTime(proposedEndMinutes)}) está fora dos horários configurados. ${availableBlocksMessage}`
-
         return {
           available: false,
-          message: conflictMessage,
+          message: `O horário proposto (${minutesToTime(proposedStartMinutes)}-${minutesToTime(proposedEndMinutes)}) está fora dos horários configurados. ${availableBlocksMessage}`,
           conflicts: ['outside_configured_blocks'],
-          availableTimeSpans: [],
         }
       }
 
-      // Fetch existing events to check for conflicts and find available time spans
+      // Now check if it fits entirely within regular blocks
+      const regularBlocks = daySchedule.blocks.filter(
+        (block) => block.type !== 'tentative',
+      )
+
+      let fitsInRegularBlock = false
+
+      for (const block of regularBlocks) {
+        // Check if the entire proposed span fits within this regular block
+        if (
+          proposedStartMinutes >= block.start &&
+          proposedEndMinutes <= block.end
+        ) {
+          fitsInRegularBlock = true
+          break
+        }
+      }
+
+      // Check if it overlaps with tentative blocks (but don't return yet - need to check events too)
+      let overlapsWithTentative = false
+      const overlappingTentativeBlocks: string[] = []
+
+      if (!fitsInRegularBlock) {
+        const tentativeBlocks = daySchedule.blocks.filter(
+          (block) => block.type === 'tentative',
+        )
+
+        for (const block of tentativeBlocks) {
+          const hasOverlap =
+            proposedStartMinutes < block.end && proposedEndMinutes > block.start
+
+          if (hasOverlap) {
+            overlapsWithTentative = true
+            overlappingTentativeBlocks.push(
+              `${minutesToTime(block.start)}-${minutesToTime(block.end)}`,
+            )
+          }
+        }
+
+        // If it doesn't overlap with tentative blocks either, it's in a gap
+        if (!overlapsWithTentative) {
+          const availableBlocksMessage =
+            regularBlocks.length > 0
+              ? `Horários disponíveis: ${regularBlocks.map((b) => `${minutesToTime(b.start)}-${minutesToTime(b.end)}`).join(', ')}`
+              : 'Não há horários disponíveis neste dia.'
+
+          return {
+            available: false,
+            message: `O horário proposto (${minutesToTime(proposedStartMinutes)}-${minutesToTime(proposedEndMinutes)}) não se encaixa completamente em nenhum bloco disponível. ${availableBlocksMessage}`,
+            conflicts: ['outside_configured_blocks'],
+          }
+        }
+      }
+
+      // Now check for conflicts with existing calendar events
       const dayStartTZ = moment
         .tz(startDate, userConfig.timeZone)
         .startOf('day')
@@ -646,16 +723,6 @@ export class SaasGoogleCalendarService {
           dayEnd.toISOString(),
           100,
           effectiveCalendarId,
-        )
-
-        // Find available time spans for the requested day using configured blocks
-        const availableTimeSpans = findAvailableTimeSpans(
-          startDate,
-          serviceDurationMinutes,
-          events,
-          daySchedule.blocks,
-          userConfig.bufferTimeBetweenEvents,
-          userConfig.timeZone,
         )
 
         const conflicts: string[] = []
@@ -699,6 +766,7 @@ export class SaasGoogleCalendarService {
           }
         }
 
+        // Check if there are conflicts with existing events
         if (conflicts.length > 0) {
           const conflictDetails = conflictingEvents
             .map(
@@ -712,38 +780,36 @@ export class SaasGoogleCalendarService {
               : ''
           const conflictMessage = `Este horário não está disponível pois conflita com: ${conflictDetails}${bufferMessage}.`
 
-          // Format available time spans for the message
-          const availableSpansMessage =
-            availableTimeSpans.length > 0
-              ? ` Horários disponíveis no dia ${formatDateInSaoPaulo(startDate.toISOString())}: ${availableTimeSpans
-                  .map(
-                    (span) =>
-                      `${formatTimeInSaoPaulo(span.startTime)}-${formatTimeInSaoPaulo(span.endTime)} (${span.duration} minutos disponíveis)`,
-                  )
-                  .join(', ')}.`
-              : ' Não há horários disponíveis neste dia.'
-
           return {
             available: false,
-            message: conflictMessage + availableSpansMessage,
+            message: conflictMessage,
             conflicts,
             conflictingEvents,
-            availableTimeSpans,
           }
-        } else {
+        }
+
+        // No event conflicts - now determine if it's regular availability or tentative
+        if (overlapsWithTentative) {
+          const tentativeBlockDetails = overlappingTentativeBlocks.join(', ')
           return {
-            available: true,
-            message: `Horário disponível! O agendamento pode ser feito das ${formatTimeInSaoPaulo(startDate.toISOString())} às ${formatTimeInSaoPaulo(endDate.toISOString())} no dia ${formatDateInSaoPaulo(startDate.toISOString())}.`,
-            conflicts: [],
-            availableTimeSpans,
+            available: false,
+            message: `O horário proposto (${minutesToTime(proposedStartMinutes)}-${minutesToTime(proposedEndMinutes)}) está parcialmente em bloco(s) tentativo(s): ${tentativeBlockDetails}. Não há conflitos com eventos existentes, mas a disponibilidade deste horário precisa ser verificada com o responsável. Por favor, utilize a ferramenta 'contactReferee' com todos os detalhes do agendamento (data, horário e serviço desejado) para confirmar a disponibilidade.`,
+            conflicts: ['tentative_block_overlap'],
+            requiresRefereeContact: true,
           }
+        }
+
+        // Fully available in regular blocks with no event conflicts
+        return {
+          available: true,
+          message: `Horário disponível! O agendamento pode ser feito das ${formatTimeInSaoPaulo(startDate.toISOString())} às ${formatTimeInSaoPaulo(endDate.toISOString())} no dia ${formatDateInSaoPaulo(startDate.toISOString())}.`,
+          conflicts: [],
         }
       } catch (error) {
         return {
           available: false,
           message: `Erro ao verificar disponibilidade. Por favor, tente novamente. error.message: ${(error as Error).message}`,
           conflicts: [],
-          availableTimeSpans: [],
         }
       }
     } catch {
@@ -752,7 +818,6 @@ export class SaasGoogleCalendarService {
         message:
           'Erro ao verificar disponibilidade. Por favor, tente novamente.',
         conflicts: [],
-        availableTimeSpans: [],
       }
     }
   }

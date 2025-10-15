@@ -508,21 +508,6 @@ export class PredefinedToolsService {
                 description:
                   'Data de fim para considerar na busca por horários (formato ISO 8601). Default is 14 days from start date.',
               },
-              workingHours: {
-                type: 'object',
-                properties: {
-                  start: {
-                    type: 'string',
-                    description: 'Working hours start (HH:MM format)',
-                    default: config.workingHours?.start || '09:00',
-                  },
-                  end: {
-                    type: 'string',
-                    description: 'Working hours end (HH:MM format)',
-                    default: config.workingHours?.end || '17:00',
-                  },
-                },
-              },
               calendarId: {
                 type: 'string',
                 description: 'Calendar ID to check (default: primary)',
@@ -868,7 +853,6 @@ export class PredefinedToolsService {
             saasUserId,
             parameters.proposedStartTime!,
             parameters.proposedEndTime!,
-            parameters.serviceDurationMinutes!,
             parameters.calendarId,
           )
 

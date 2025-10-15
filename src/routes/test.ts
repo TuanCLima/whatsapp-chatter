@@ -52,17 +52,11 @@ if (process.env.NODE_ENV !== 'production') {
           return
         }
 
-        const {
-          proposedStartTime,
-          proposedEndTime,
-          serviceDurationMinutes,
-          calendarId,
-        } = req.body
+        const { proposedStartTime, proposedEndTime, calendarId } = req.body
 
-        if (!proposedStartTime || !proposedEndTime || !serviceDurationMinutes) {
+        if (!proposedStartTime || !proposedEndTime) {
           res.status(400).json({
-            error:
-              'proposedStartTime, proposedEndTime, and serviceDurationMinutes are required',
+            error: 'proposedStartTime and proposedEndTime are required',
           })
           return
         }
@@ -73,7 +67,6 @@ if (process.env.NODE_ENV !== 'production') {
           userId,
           proposedStartTime,
           proposedEndTime,
-          serviceDurationMinutes,
           calendarId,
         )
 
