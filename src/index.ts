@@ -323,12 +323,17 @@ app.post('/auth/register', async (req, res) => {
       return
     }
 
-    const user = await authService.createUser({ email, name, password })
+    const result = await authService.createUser({ email, name, password })
 
     // Remove sensitive fields
-    const { passwordHash: _, twilioAuthToken: __, ...safeUser } = user
+    const { passwordHash: _, twilioAuthToken: __, ...safeUser } = result.user
 
-    res.status(201).json({ user: safeUser })
+    res.status(201).json({
+      user: safeUser,
+      verificationEmailSent: result.verificationEmailSent,
+      message:
+        'Account created successfully. Please check your email to verify your account.',
+    })
   } catch (error) {
     console.error('Registration error:', error)
 
@@ -337,6 +342,63 @@ app.post('/auth/register', async (req, res) => {
     } else {
       res.status(500).json({ error: 'Failed to create user' })
     }
+  }
+})
+
+app.post('/auth/verify-email', async (req, res) => {
+  try {
+    const { token } = req.body
+
+    if (!token) {
+      res.status(400).json({ error: 'Verification token is required' })
+      return
+    }
+
+    const result = await authService.verifyEmail(token)
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: result.message,
+        user: result.user,
+      })
+    } else {
+      res.status(400).json({
+        success: false,
+        error: result.message,
+      })
+    }
+  } catch (error) {
+    console.error('Email verification error:', error)
+    res.status(500).json({ error: 'Email verification failed' })
+  }
+})
+
+app.post('/auth/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body
+
+    if (!email) {
+      res.status(400).json({ error: 'Email is required' })
+      return
+    }
+
+    const result = await authService.resendVerificationEmail(email)
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: result.message,
+      })
+    } else {
+      res.status(400).json({
+        success: false,
+        error: result.message,
+      })
+    }
+  } catch (error) {
+    console.error('Resend verification error:', error)
+    res.status(500).json({ error: 'Failed to resend verification email' })
   }
 })
 
@@ -363,7 +425,11 @@ app.post('/auth/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error)
 
-    if (error instanceof Error && error.message === 'Invalid credentials') {
+    if (
+      error instanceof Error &&
+      (error.message === 'Invalid credentials' ||
+        error.message === 'Please verify your email before logging in')
+    ) {
       res.status(401).json({ error: error.message })
     } else {
       res.status(500).json({ error: 'Login failed' })

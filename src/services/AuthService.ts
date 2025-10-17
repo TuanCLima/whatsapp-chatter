@@ -7,6 +7,7 @@ import {
   type SaasUser,
   saasUsers,
 } from '../db/schema-postgres'
+import { EmailService } from './EmailService'
 
 interface CreateUserData {
   email: string
@@ -21,7 +22,16 @@ interface LoginResult {
 }
 
 export class AuthService {
-  async createUser(userData: CreateUserData): Promise<SaasUser> {
+  private emailService: EmailService
+
+  constructor() {
+    this.emailService = new EmailService()
+  }
+
+  async createUser(userData: CreateUserData): Promise<{
+    user: SaasUser
+    verificationEmailSent: boolean
+  }> {
     const { email, name, password, role = 'user' } = userData
 
     // Check if user already exists
@@ -38,18 +48,182 @@ export class AuthService {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12)
 
+    // Generate verification token
+    const verificationToken = this.emailService.generateVerificationToken()
+    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+
     const newUser: InsertSaasUser = {
       id: crypto.randomUUID(),
       email,
       name,
       passwordHash,
       role,
-      webhookPath: null, // No longer using dynamic webhook paths
+      emailVerified: false,
+      verificationToken,
+      verificationTokenExpiry,
+      lastVerificationEmailSent: new Date(),
+      webhookPath: null,
       subscriptionStatus: 'trial',
     }
 
     const insertedUsers = await db.insert(saasUsers).values(newUser).returning()
-    return insertedUsers[0]
+    const user = insertedUsers[0]
+
+    // Send verification email
+    const emailResult = await this.emailService.sendVerificationEmail({
+      email,
+      name,
+      verificationToken,
+    })
+
+    return {
+      user,
+      verificationEmailSent: emailResult.success,
+    }
+  }
+
+  async verifyEmail(token: string): Promise<{
+    success: boolean
+    message: string
+    user?: Omit<SaasUser, 'passwordHash' | 'twilioAuthToken'>
+  }> {
+    const user = await db
+      .select()
+      .from(saasUsers)
+      .where(eq(saasUsers.verificationToken, token))
+      .limit(1)
+
+    if (!user.length) {
+      return {
+        success: false,
+        message: 'Invalid verification token',
+      }
+    }
+
+    const userData = user[0]
+
+    if (userData.emailVerified) {
+      return {
+        success: false,
+        message: 'Email already verified',
+      }
+    }
+
+    if (
+      !userData.verificationTokenExpiry ||
+      userData.verificationTokenExpiry < new Date()
+    ) {
+      return {
+        success: false,
+        message: 'Verification token expired. Please request a new one.',
+      }
+    }
+
+    // Update user as verified
+    const updatedUsers = await db
+      .update(saasUsers)
+      .set({
+        emailVerified: true,
+        verificationToken: null,
+        verificationTokenExpiry: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(saasUsers.id, userData.id))
+      .returning()
+
+    const updatedUser = updatedUsers[0]
+
+    // Send welcome email
+    await this.emailService.sendWelcomeEmail(
+      updatedUser.email,
+      updatedUser.name,
+    )
+
+    // Return user data without sensitive fields
+    const {
+      passwordHash: _,
+      twilioAuthToken: __,
+      ...safeUserData
+    } = updatedUser
+
+    return {
+      success: true,
+      message: 'Email verified successfully',
+      user: safeUserData,
+    }
+  }
+
+  async resendVerificationEmail(email: string): Promise<{
+    success: boolean
+    message: string
+  }> {
+    const user = await db
+      .select()
+      .from(saasUsers)
+      .where(eq(saasUsers.email, email))
+      .limit(1)
+
+    if (!user.length) {
+      return {
+        success: false,
+        message: 'User not found',
+      }
+    }
+
+    const userData = user[0]
+
+    if (userData.emailVerified) {
+      return {
+        success: false,
+        message: 'Email already verified',
+      }
+    }
+
+    // Rate limiting: don't allow resending within 1 minute
+    if (
+      userData.lastVerificationEmailSent &&
+      Date.now() - userData.lastVerificationEmailSent.getTime() < 60000
+    ) {
+      return {
+        success: false,
+        message:
+          'Please wait at least 1 minute before requesting another email',
+      }
+    }
+
+    // Generate new verification token
+    const verificationToken = this.emailService.generateVerificationToken()
+    const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000)
+
+    // Update user with new token
+    await db
+      .update(saasUsers)
+      .set({
+        verificationToken,
+        verificationTokenExpiry,
+        lastVerificationEmailSent: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(saasUsers.id, userData.id))
+
+    // Send verification email
+    const emailResult = await this.emailService.sendVerificationEmail({
+      email: userData.email,
+      name: userData.name,
+      verificationToken,
+    })
+
+    if (!emailResult.success) {
+      return {
+        success: false,
+        message: emailResult.error || 'Failed to send verification email',
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Verification email sent successfully',
+    }
   }
 
   async login(email: string, password: string): Promise<LoginResult> {
@@ -60,6 +234,7 @@ export class AuthService {
       .limit(1)
 
     if (!user.length) {
+      console.log('User not found:', email)
       throw new Error('Invalid credentials')
     }
 
@@ -70,8 +245,14 @@ export class AuthService {
     )
 
     if (!isValidPassword) {
+      console.log('Invalid password for user:', email)
       throw new Error('Invalid credentials')
     }
+
+    // Check if email is verified
+    // if (!userData.emailVerified) {
+    //   throw new Error('Please verify your email before logging in')
+    // }
 
     // Create token payload
     const tokenPayload = {

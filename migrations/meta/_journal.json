@@ -64,6 +64,13 @@
       "when": 1704067208000,
       "tag": "009_add_tool_call_id",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1704067209000,
+      "tag": "010_email_verification",
+      "breakpoints": true
     }
   ]
 }

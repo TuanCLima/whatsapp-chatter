@@ -1,0 +1,14 @@
+{
+  "id": "010_email_verification",
+  "prevId": "009_add_tool_call_id",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {},
+  "enums": {},
+  "schemas": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
+}

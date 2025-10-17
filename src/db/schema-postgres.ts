@@ -37,6 +37,12 @@ export const saasUsers = pgTable('saas_users', {
     .default('user')
     .notNull(),
 
+  // Email verification
+  emailVerified: boolean('email_verified').default(false).notNull(),
+  verificationToken: text('verification_token'),
+  verificationTokenExpiry: timestamp('verification_token_expiry'),
+  lastVerificationEmailSent: timestamp('last_verification_email_sent'),
+
   // Twilio credentials (encrypted)
   twilioAccountSid: text('twilio_account_sid'),
   twilioAuthToken: text('twilio_auth_token'), // This will be encrypted

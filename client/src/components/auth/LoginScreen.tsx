@@ -11,19 +11,25 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { API_BASE_URL } from '@/config/api'
 import { useAuth } from '@/context/AuthContext'
+import { useToast } from '@/hooks/use-toast'
 import RegistrationPage from './RegistrationPage'
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [showVerificationPrompt, setShowVerificationPrompt] = useState(false)
   const [showRegistration, setShowRegistration] = useState(false)
+  const [isResending, setIsResending] = useState(false)
   const { login, isLoading } = useAuth()
+  const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setShowVerificationPrompt(false)
 
     if (!email || !password) {
       setError('Please fill in all fields')
@@ -33,22 +39,66 @@ export default function LoginScreen() {
     try {
       await login(email, password)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+      const errorMessage = err instanceof Error ? err.message : 'Login failed'
+
+      // Check if error is due to unverified email
+      if (errorMessage.includes('verify your email')) {
+        setShowVerificationPrompt(true)
+      }
+
+      setError(errorMessage)
     }
   }
 
-  const handleRegistrationSuccess = () => {
-    setShowRegistration(false)
-    setError('')
+  const handleResendVerification = async () => {
+    if (!email) {
+      toast({
+        title: 'Error',
+        description: 'Please enter your email address',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsResending(true)
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/resend-verification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        toast({
+          title: 'Success!',
+          description: 'Verification email sent. Please check your inbox.',
+        })
+        setShowVerificationPrompt(false)
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to resend email',
+          variant: 'destructive',
+        })
+      }
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to resend email. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsResending(false)
+    }
   }
 
   if (showRegistration) {
-    return (
-      <RegistrationPage
-        onSuccess={handleRegistrationSuccess}
-        onBackToLogin={() => setShowRegistration(false)}
-      />
-    )
+    return <RegistrationPage onBackToLogin={() => setShowRegistration(false)} />
   }
 
   return (
@@ -77,6 +127,23 @@ export default function LoginScreen() {
                 >
                   <AlertDescription className="text-red-200">
                     {error}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {showVerificationPrompt && (
+                <Alert className="border-yellow-600 bg-yellow-900/20">
+                  <AlertDescription className="text-yellow-200">
+                    Your email is not verified.
+                    <Button
+                      type="button"
+                      variant="link"
+                      onClick={handleResendVerification}
+                      disabled={isResending}
+                      className="text-yellow-100 hover:text-white underline p-0 ml-1 h-auto"
+                    >
+                      {isResending ? 'Sending...' : 'Resend verification email'}
+                    </Button>
                   </AlertDescription>
                 </Alert>
               )}

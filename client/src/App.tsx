@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import DataPage from '@/components/auth/DataPage'
+import EmailVerificationPage from '@/components/auth/EmailVerificationPage'
 import Header from '@/components/auth/Header'
 import LoadingScreen from '@/components/auth/LoadingScreen'
 import LoginScreen from '@/components/auth/LoginScreen'
@@ -97,6 +98,7 @@ function App() {
         <BrowserRouter>
           <ChatProvider>
             <Routes>
+              <Route path="/verify-email" element={<EmailVerificationPage />} />
               <Route path="/data" element={<ProtectedDataLayout />} />
               <Route path="/config" element={<ProtectedConfigLayout />} />
               <Route
