@@ -50,6 +50,20 @@
       "when": 1704067206000,
       "tag": "007_add_message_sid",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1704067207000,
+      "tag": "008_pending_referee_questions",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1704067208000,
+      "tag": "009_add_tool_call_id",
+      "breakpoints": true
     }
   ]
 }

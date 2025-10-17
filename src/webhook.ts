@@ -12,9 +12,7 @@ import {
 } from './db/schema-postgres'
 import { getNextMessages } from './getNextMessages'
 import { twilioClientPool } from './services/TwilioClientPool'
-import type { ChatMessage } from './types/types'
 import { logError, twilioLogger, webhookLogger } from './utils/logger'
-import { parseLLMMessages } from './utils/parseLLMMessages'
 
 const IS_DEV_OTHER = process.env.NODE_ENV === 'development'
 
@@ -22,6 +20,14 @@ const API_KEY = process.env.LLM_API_KEY
 
 import { getSaoPauloDate } from './mcp/mcpService'
 import { sseService } from './services/SSEService'
+import {
+  checkAndRejectMultimedia,
+  convertToLLMMessages,
+  ensureUserExists,
+  handleRefereeQuestions,
+  saveAssistantMessages,
+  sendTwilioMessages,
+} from './services/WebhookHelpers'
 import { QUESTION_SENT_TO_REFEREE } from './utils/contants'
 import { getInitialPromptForPhoneNumber } from './utils/utils'
 
@@ -285,59 +291,36 @@ export async function whatsappSaasWebhook(
       'SaaS user found',
     )
 
+    // Check if this message is from a referee and send pending questions
+    const isRefereeHandled = await handleRefereeQuestions(
+      saasUser[0].id,
+      from,
+      name,
+      message,
+      body.MessageSid,
+      res,
+    )
+
+    if (isRefereeHandled) {
+      return
+    }
+
     // Get user-specific Twilio client and credentials using the SaaS user ID
     const { client: userClient, credentials } =
       await twilioClientPool.getClientBySaasUserId(saasUser[0].id)
 
     // --- Early exit for multimedia messages ---
-    try {
-      const numMediaRaw = body.NumMedia
-      const numMedia = numMediaRaw ? parseInt(numMediaRaw, 10) : 0
-      if (numMedia > 0) {
-        webhookLogger.debug({ numMedia, from }, 'Checking multimedia content')
+    const isMultimediaRejected = await checkAndRejectMultimedia(
+      body as Record<string, string | undefined>,
+      from,
+      _from,
+      userClient,
+      credentials.whatsappNumber,
+      res,
+    )
 
-        // Check if there's any multimedia content
-        let hasMultimedia = false
-        for (let i = 0; i < numMedia; i++) {
-          const contentType: string | undefined = body[`MediaContentType${i}`]
-          if (contentType) {
-            hasMultimedia = true
-            webhookLogger.info(
-              {
-                from,
-                contentType,
-                mediaIndex: i,
-              },
-              'Multimedia message detected',
-            )
-            break
-          }
-        }
-        if (hasMultimedia) {
-          webhookLogger.info(
-            { from },
-            'Rejecting multimedia message - not supported',
-          )
-
-          // Inform user that multimedia messages are not supported and exit early
-          await userClient.messages.create({
-            from: credentials.whatsappNumber,
-            to: _from,
-            body: 'Nosso sistema não é capaz de ler essa mensagem por enquanto, favor utilizar texto.',
-          })
-          res.json({
-            status: 'Rejected multimedia message',
-            from,
-            reason: 'multimedia_not_supported',
-          })
-          return
-        }
-      }
-    } catch (e) {
-      logError(webhookLogger, e, {
-        context: 'multimedia_check',
-        from,
-      })
+    if (isMultimediaRejected) {
+      return
     }
 
     const messagesFeed: InsertMessage[] = await db
@@ -368,51 +351,8 @@ export async function whatsappSaasWebhook(
       toolCalls: null,
     })
 
-    const existingUser = await db
-      .select()
-      .from(users)
-      .where(eq(users.phoneNumber, from))
-      .limit(1)
-
-    if (existingUser.length === 0) {
-      webhookLogger.info(
-        {
-          from,
-          profileName: name,
-        },
-        'Creating new user',
-      )
-
-      await db.insert(users).values({
-        phoneNumber: from,
-        profileName: name,
-        conversationDisabled: false,
-      })
-
-      // Notify all clients about the new contact
-      sseService.notifyContactUpdate(from, name)
-    } else if (existingUser[0].profileName !== name) {
-      webhookLogger.debug(
-        {
-          from,
-          oldName: existingUser[0].profileName,
-          newName: name,
-        },
-        'Updating user profile name',
-      )
-
-      await db
-        .update(users)
-        .set({ profileName: name })
-        .where(eq(users.phoneNumber, from))
-
-      // Notify about profile name update
-      sseService.notifyContactUpdate(from, name)
-    }
-
-    // Check if conversation is disabled for this user
-    const isConversationDisabled =
-      existingUser.length > 0 && existingUser[0].conversationDisabled
+    // Ensure user exists and get conversation status
+    const { conversationDisabled } = await ensureUserExists(from, name)
 
     // Check if this message is a reply to a contactReferee message
     const refereeToolAnswerMessage = OriginalRepliedMessageSid
@@ -461,7 +401,7 @@ export async function whatsappSaasWebhook(
     })
 
     // If conversation is disabled, just acknowledge receipt without processing
-    if (isConversationDisabled) {
+    if (conversationDisabled) {
       webhookLogger.info(
         { from },
         'Conversation disabled - skipping processing',
@@ -491,18 +431,7 @@ export async function whatsappSaasWebhook(
     const abortController = new AbortController()
     abortControllers[from] = abortController
 
-    const chatMessages = messagesFeed.map((m) => {
-      return {
-        role: m.role,
-        content: m.content,
-        tool_calls: m.toolCalls
-          ? (JSON.parse(
-              m.toolCalls,
-            ) as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[])
-          : undefined,
-        tool_call_id: m.toolCallId,
-      } as ChatMessage
-    })
+    const chatMessages = convertToLLMMessages(messagesFeed)
 
     webhookLogger.debug(
       {
@@ -517,6 +446,7 @@ export async function whatsappSaasWebhook(
       chatMessages,
       To,
       from,
+      ProfileName,
       abortController.signal,
     )
 
@@ -535,128 +465,29 @@ export async function whatsappSaasWebhook(
       'New messages generated successfully',
     )
 
-    const newMessagesForDB = newMessagesForFeed
-      .filter((m) => !m.doNotAddToHistory)
-      .map((m, index) => {
-        let toolCallId: string | null = null
-        let toolCalls: string | null = null
-
-        if (m.role === 'tool') {
-          toolCallId = m.tool_call_id
-        }
-
-        if (m.role === 'assistant') {
-          toolCalls = JSON.stringify(m.tool_calls)
-        }
-
-        const timestamp = new Date(Date.now() + index)
-
-        return {
-          phoneNumber: from,
-          role: m.role,
-          content: m.content,
-          profileName: name,
-          toolCallId,
-          toolCalls,
-          timestamp,
-        }
-      })
-
-    await db.insert(messages).values(newMessagesForDB)
-
-    webhookLogger.debug(
-      {
-        from,
-        savedMessageCount: newMessagesForDB.length,
-      },
-      'Assistant messages saved to database',
-    )
-
-    // Emit SSE notifications for new assistant messages
-    newMessagesForDB
-      .filter((m) => m.role === 'assistant' && m.content)
-      .forEach((m) => {
-        sseService.notifyNewMessage(from, {
-          id: `${m.timestamp?.getTime() || Date.now()}`,
-          content: m.content!,
-          role: 'assistant',
-          timestamp: m.timestamp?.toISOString() || new Date().toISOString(),
-          profileName: name,
-        })
-      })
+    await saveAssistantMessages(newMessagesForFeed, from, name)
 
     // Send messages using user's Twilio credentials
     const assistantMessages = newMessagesForFeed.filter(
       (m) => m.role === 'assistant',
     )
 
-    webhookLogger.info(
-      {
-        from,
-        assistantMessageCount: assistantMessages.length,
-      },
-      'Sending messages via Twilio',
-    )
-
-    assistantMessages.forEach(async (m) => {
-      if (!m.content) {
-        return
-      }
-
-      const toSendMessages = parseLLMMessages(m.content)
-      try {
-        for (const toSendMessage of toSendMessages) {
-          if (toSendMessage.isContactLink) {
-            twilioLogger.debug(
-              {
-                from: _from,
-                messageType: 'contact',
-              },
-              'Sending contact card via Twilio',
-            )
-
-            await userClient.messages.create({
-              from: credentials.whatsappNumber,
-              to: _from,
-              mediaUrl: [toSendMessage.text],
-              body: 'Contato compartilhado',
-            })
-            await new Promise((resolve) => setTimeout(resolve, 700))
-          } else {
-            const body = toSendMessage.text.replace(/\*\*/g, '*')
-            if (!body) {
-              webhookLogger.warn(
-                { from: _from },
-                '⚠️ Empty message detected, skipping',
-              )
-              continue
-            }
-
-            twilioLogger.debug(
-              {
-                from: _from,
-                messageLength: body.length,
-              },
-              'Sending text message via Twilio',
-            )
-
-            await userClient.messages.create({
-              from: credentials.whatsappNumber,
-              to: _from,
-              body: body,
-            })
-          }
-        }
-      } catch (error) {
-        logError(twilioLogger, error, {
-          context: 'twilio_send',
-          from: _from,
-        })
-        abortControllers[from] = undefined
-        res.status(500).json({ error: 'Error sending message' })
-        return
-      }
-    })
+    try {
+      await sendTwilioMessages(
+        assistantMessages,
+        userClient,
+        credentials.whatsappNumber,
+        _from,
+      )
+    } catch (error) {
+      logError(twilioLogger, error, {
+        context: 'twilio_send',
+        from: _from,
+      })
+      abortControllers[from] = undefined
+      res.status(500).json({ error: 'Error sending message' })
+      return
+    }
 
     abortControllers[from] = undefined
     webhookLogger.info(

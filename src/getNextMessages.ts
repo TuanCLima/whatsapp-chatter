@@ -1,4 +1,3 @@
-import { inspect } from 'node:util'
 import { eq } from 'drizzle-orm'
 import { db } from './db'
 import { saasUsers } from './db/schema-postgres'
@@ -18,7 +17,7 @@ import { LLM_MODEL, openai } from './webhook'
 /**
  * Get SaaS user ID from phone number using the user mapping table
  */
-async function getSaasUserIdFromPhoneNumber(
+export async function getSaasUserIdFromPhoneNumber(
   phoneNumber: string,
 ): Promise<string | null> {
   try {
@@ -49,6 +48,7 @@ export async function getNextMessages(
   messagesFeed: GetNextMessage[],
   phoneNumber: string,
   callersPhoneNumber: string,
+  profileName: string,
   signal?: AbortSignal,
   depth = 0,
 ) {
@@ -267,6 +267,8 @@ export async function getNextMessages(
             phoneNumber,
             callersPhoneNumber,
             userId,
+            profileName,
+            tool_call.id,
           )
 
           toolLogger.debug(
@@ -347,6 +349,7 @@ export async function getNextMessages(
         [...messagesFeed, ...newMessagesForFeed],
         phoneNumber,
         callersPhoneNumber,
+        profileName,
         signal,
         depth + 1,
       )

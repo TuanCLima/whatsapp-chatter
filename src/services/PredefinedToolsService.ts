@@ -1,6 +1,11 @@
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq, isNull } from 'drizzle-orm'
 import { db } from '../db'
-import { predefinedToolsConfig, saasUsers } from '../db/schema-postgres'
+import {
+  messages,
+  pendingRefereeQuestions,
+  predefinedToolsConfig,
+  saasUsers,
+} from '../db/schema-postgres'
 import { forwardContact } from '../mcp/mcpService'
 import { QUESTION_SENT_TO_REFEREE } from '../utils/contants'
 import { noWhatsPhoneNumber } from '../utils/utils'
@@ -746,6 +751,8 @@ export class PredefinedToolsService {
     question: string,
     twilioSenderNumber: string,
     userId: string,
+    profileName: string,
+    toolCallId?: string,
   ): Promise<{ success: boolean; message: string; data?: string }> {
     try {
       // Get the referee contact configuration
@@ -762,20 +769,74 @@ export class PredefinedToolsService {
         throw new Error('Referee phone number is not configured')
       }
 
+      // Check if there's been recent communication with the referee (within 24 hours)
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+
+      const recentRefereeMessage = await db
+        .select()
+        .from(messages)
+        .where(
+          and(
+            eq(
+              messages.phoneNumber,
+              `whatsapp:${noWhatsPhoneNumber(config.refereePhoneNumber)}`,
+            ),
+            eq(messages.role, 'user'),
+          ),
+        )
+        .orderBy(desc(messages.timestamp))
+        .limit(1)
+
+      const hasRecentCommunication =
+        recentRefereeMessage.length > 0 &&
+        new Date(recentRefereeMessage[0].timestamp) > twentyFourHoursAgo
+
       // Get Twilio client for this user
       const twilioClient = await twilioClientPool.getClient(userId)
 
-      // Send message to referee
-      const message = await twilioClient.messages.create({
-        from: `whatsapp:${noWhatsPhoneNumber(twilioSenderNumber)}`,
-        to: `whatsapp:${noWhatsPhoneNumber(config.refereePhoneNumber)}`,
-        body: question,
-      })
+      if (hasRecentCommunication) {
+        // Channel is open, send message directly
+        const message = await twilioClient.messages.create({
+          from: `whatsapp:${noWhatsPhoneNumber(twilioSenderNumber)}`,
+          to: `whatsapp:${noWhatsPhoneNumber(config.refereePhoneNumber)}`,
+          body: question,
+        })
 
-      return {
-        success: true,
-        message: QUESTION_SENT_TO_REFEREE,
-        data: message.sid, // Optionally return the MessageSid if needed
+        return {
+          success: true,
+          message: QUESTION_SENT_TO_REFEREE,
+          data: message.sid,
+        }
+      } else {
+        // No recent communication - send template message first
+        console.log(
+          'No recent communication with referee (>24h), sending template message first',
+        )
+
+        // Send template message to open the channel
+        await twilioClient.messages.create({
+          from: `whatsapp:${noWhatsPhoneNumber(twilioSenderNumber)}`,
+          to: `whatsapp:${noWhatsPhoneNumber(config.refereePhoneNumber)}`,
+          contentSid: 'HX255a8812bf1df06b57ba7d30a19e9db9',
+          contentVariables: JSON.stringify({
+            '1': profileName,
+          }),
+        })
+
+        // Store the pending question in the database
+        await db.insert(pendingRefereeQuestions).values({
+          saasUserId,
+          question,
+          fromNumber: twilioSenderNumber,
+          toNumber: config.refereePhoneNumber,
+          userProfileName: profileName,
+          toolCallId,
+        })
+
+        return {
+          success: true,
+          message: QUESTION_SENT_TO_REFEREE,
+        }
       }
     } catch (error) {
       console.error('Error executing referee contact:', error)
@@ -787,6 +848,97 @@ export class PredefinedToolsService {
   }
 
   /**
+   * Send pending questions to a referee when they respond
+   * This should be called when a message is received from the referee number
+   */
+  async sendPendingQuestions(
+    refereePhoneNumber: string,
+    saasUserId: string,
+  ): Promise<{
+    success: boolean
+    sentCount: number
+    questions: Array<{
+      id: number
+      question: string
+      sid: string
+      toolCallId: string | null
+    }>
+  }> {
+    try {
+      // Get all pending questions for this referee
+      const pendingQuestions = await db
+        .select()
+        .from(pendingRefereeQuestions)
+        .where(
+          and(
+            eq(pendingRefereeQuestions.toNumber, refereePhoneNumber),
+            eq(pendingRefereeQuestions.saasUserId, saasUserId),
+            isNull(pendingRefereeQuestions.sentAt),
+          ),
+        )
+        .orderBy(pendingRefereeQuestions.createdAt)
+
+      if (pendingQuestions.length === 0) {
+        return {
+          success: true,
+          sentCount: 0,
+          questions: [],
+        }
+      }
+
+      // Get Twilio client for this user
+      const twilioClient = await twilioClientPool.getClient(saasUserId)
+
+      const sentQuestions: Array<{
+        id: number
+        question: string
+        sid: string
+        toolCallId: string | null
+      }> = []
+
+      // Send each pending question
+      for (const pending of pendingQuestions) {
+        try {
+          const message = await twilioClient.messages.create({
+            from: `whatsapp:${noWhatsPhoneNumber(pending.fromNumber)}`,
+            to: `whatsapp:${noWhatsPhoneNumber(pending.toNumber)}`,
+            body: pending.question,
+          })
+
+          await db
+            .delete(pendingRefereeQuestions)
+            .where(eq(pendingRefereeQuestions.id, pending.id))
+
+          sentQuestions.push({
+            id: pending.id,
+            question: pending.question,
+            sid: message.sid,
+            toolCallId: pending.toolCallId,
+          })
+        } catch (error) {
+          console.error(`Error sending pending question ${pending.id}:`, error)
+          // Continue with other questions even if one fails
+        }
+      }
+
+      return {
+        success: true,
+        sentCount: sentQuestions.length,
+        questions: sentQuestions,
+      }
+    } catch (error) {
+      console.error('Error sending pending questions:', error)
+      return {
+        success: false,
+        sentCount: 0,
+        questions: [],
+      }
+    }
+  }
+
+  /**
+   * Execute calendar tool function
+   */ /**
    * Execute calendar tool function
    */
   async executeCalendarFunction(
@@ -796,6 +948,8 @@ export class PredefinedToolsService {
     twilioSenderNumber: string,
     callersPhoneNumber: string,
     userId: string,
+    profileName: string,
+    toolCallId: string,
   ): Promise<unknown> {
     const status = await this.isCalendarToolReady(saasUserId)
 
@@ -911,6 +1065,8 @@ export class PredefinedToolsService {
             parameters.question!,
             twilioSenderNumber,
             userId,
+            profileName,
+            toolCallId,
           )
 
         default:

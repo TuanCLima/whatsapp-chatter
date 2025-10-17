@@ -352,6 +352,8 @@ export async function executePredefinedTool(
   _phoneNumber: string,
   callersPhoneNumber: string,
   userId: string,
+  profileName: string,
+  toolCallId: string,
 ): Promise<unknown | null> {
   try {
     if (!predefinedToolNames.includes(toolName)) {
@@ -373,6 +375,8 @@ export async function executePredefinedTool(
       _phoneNumber,
       callersPhoneNumber,
       userId,
+      profileName,
+      toolCallId,
     )
   } catch (error) {
     console.error('Error executing predefined tool:', error)

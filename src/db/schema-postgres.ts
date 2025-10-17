@@ -154,3 +154,22 @@ export const contacts = pgTable('contacts', {
 
 export type InsertContact = typeof contacts.$inferInsert
 export type Contact = typeof contacts.$inferSelect
+
+// Pending referee questions table
+export const pendingRefereeQuestions = pgTable('pending_referee_questions', {
+  id: serial('id').primaryKey(),
+  saasUserId: text('saas_user_id')
+    .notNull()
+    .references(() => saasUsers.id, { onDelete: 'cascade' }),
+  question: text('question').notNull(),
+  fromNumber: text('from_number').notNull(),
+  toNumber: text('to_number').notNull(),
+  userProfileName: text('user_profile_name').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  sentAt: timestamp('sent_at'),
+  toolCallId: text('tool_call_id'),
+})
+
+export type InsertPendingRefereeQuestion =
+  typeof pendingRefereeQuestions.$inferInsert
+export type PendingRefereeQuestion = typeof pendingRefereeQuestions.$inferSelect
