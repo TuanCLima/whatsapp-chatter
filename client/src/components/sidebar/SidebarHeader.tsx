@@ -16,10 +16,7 @@ export default function SidebarHeader({
 
   return (
     <div className="p-2 bg-card border-b border-border flex flex-col space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <h1 className="text-lg font-semibold">WhatsApp</h1>
-        </div>
+      <div className="flex items-center justify-end">
         <div className="flex items-center space-x-1">
           <ModeToggle />
           <Button

@@ -1,5 +1,5 @@
 import { Bot, LogOut, Settings } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -14,6 +14,7 @@ import { useAuth } from '@/context/AuthContext'
 
 export default function Header() {
   const { user, logout } = useAuth()
+  const location = useLocation()
 
   if (!user) return null
 
@@ -35,14 +36,35 @@ export default function Header() {
             <Database className="h-4 w-4" /> Data
           </Link> */}
           <Link
+            to="/"
+            className={`text-xs flex items-center gap-1 ${
+              location.pathname === '/'
+                ? 'text-white pointer-events-none cursor-default'
+                : 'text-slate-300 hover:text-white'
+            }`}
+            aria-disabled={location.pathname === '/'}
+          >
+            <Bot className="h-4 w-4" /> Chat
+          </Link>
+          <Link
             to="/config"
-            className="text-xs text-slate-300 hover:text-white flex items-center gap-1"
+            className={`text-xs flex items-center gap-1 ${
+              location.pathname === '/config'
+                ? 'text-white pointer-events-none cursor-default'
+                : 'text-slate-300 hover:text-white'
+            }`}
+            aria-disabled={location.pathname === '/config'}
           >
             <Settings className="h-4 w-4" /> Config
           </Link>
           <Link
             to="/assistant-config"
-            className="text-xs text-slate-300 hover:text-white flex items-center gap-1"
+            className={`text-xs flex items-center gap-1 ${
+              location.pathname === '/assistant-config'
+                ? 'text-white pointer-events-none cursor-default'
+                : 'text-slate-300 hover:text-white'
+            }`}
+            aria-disabled={location.pathname === '/assistant-config'}
           >
             <Bot className="h-4 w-4" /> Assistant
           </Link>
