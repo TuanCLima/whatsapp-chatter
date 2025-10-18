@@ -1,8 +1,6 @@
 import {
   AlertTriangle,
   CheckCircle,
-  Copy,
-  ExternalLink,
   Loader2,
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
@@ -106,6 +104,11 @@ export default function TwilioConfigPage() {
           description: 'Twilio credentials saved successfully',
         })
         await fetchCredentials() // Refresh the data
+        
+        // Refresh the page to reload with new configuration
+        setTimeout(() => {
+          window.location.href = '/'
+        }, 1000) // Give the toast time to be visible
       } else {
         const error = await response.json()
         throw new Error(error.error || 'Failed to save credentials')
@@ -120,17 +123,6 @@ export default function TwilioConfigPage() {
       })
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  const copyWebhookUrl = () => {
-    if (credentials.webhookPath) {
-      const webhookUrl = `${window.location.origin}${credentials.webhookPath}`
-      navigator.clipboard.writeText(webhookUrl)
-      toast({
-        title: 'Copied!',
-        description: 'Webhook URL copied to clipboard',
-      })
     }
   }
 
@@ -178,47 +170,6 @@ export default function TwilioConfigPage() {
           </Alert>
         </CardContent>
       </Card>
-
-      {/* Webhook URL Card */}
-      {credentials.webhookPath && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Webhook URL</CardTitle>
-            <CardDescription>
-              Use this URL in your Twilio WhatsApp Sandbox webhook
-              configuration.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Input
-                value={`${window.location.origin}${credentials.webhookPath}`}
-                readOnly
-                className="font-mono text-sm"
-              />
-              <Button variant="outline" size="sm" onClick={copyWebhookUrl}>
-                <Copy className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  window.open(
-                    'https://console.twilio.com/us1/develop/sms/settings/whatsapp-sandbox',
-                    '_blank',
-                  )
-                }
-              >
-                <ExternalLink className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">
-              Copy this URL and paste it in your Twilio Console → WhatsApp
-              Sandbox Settings → Webhook URL
-            </p>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Configuration Form */}
       <Card>
@@ -292,64 +243,6 @@ export default function TwilioConfigPage() {
               'Save Credentials'
             )}
           </Button>
-        </CardContent>
-      </Card>
-
-      {/* Instructions Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Setup Instructions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <div>
-              <h4 className="font-medium">1. Get your Twilio credentials</h4>
-              <p className="text-sm text-muted-foreground">
-                Visit your{' '}
-                <a
-                  href="https://console.twilio.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  Twilio Console
-                </a>{' '}
-                and copy your Account SID and Auth Token.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-medium">2. Set up WhatsApp Sandbox</h4>
-              <p className="text-sm text-muted-foreground">
-                Go to{' '}
-                <a
-                  href="https://console.twilio.com/us1/develop/sms/settings/whatsapp-sandbox"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  WhatsApp Sandbox Settings
-                </a>{' '}
-                and configure your webhook URL.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-medium">3. Configure webhook</h4>
-              <p className="text-sm text-muted-foreground">
-                Copy the webhook URL from above and paste it in the "When a
-                message comes in" field.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-medium">4. Test your setup</h4>
-              <p className="text-sm text-muted-foreground">
-                Send a message to your WhatsApp Sandbox number to test the
-                integration.
-              </p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>

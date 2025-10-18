@@ -213,16 +213,6 @@ export default function ContactsManagementPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h3 className="text-2xl font-semibold mb-2">Contact Management</h3>
-        <p className="text-muted-foreground">
-          Manage contacts that can be shared through the forwardContact tool.
-          When enabled, the assistant can share contact information as VCF
-          files.
-        </p>
-      </div>
-
       {/* Tool Status */}
       <Card>
         <CardHeader>

@@ -39,7 +39,11 @@ import {
 import ContactsManagementPage from './ContactsManagementPage'
 import WeeklyScheduler from './WeeklyScheduler'
 
-export default function PredefinedToolsPage() {
+interface PredefinedToolsPageProps {
+  selectedToolType?: string
+}
+
+export default function PredefinedToolsPage({ selectedToolType }: PredefinedToolsPageProps) {
   const [calendarStatus, setCalendarStatus] = useState<CalendarToolStatus>({
     ready: false,
     hasAuth: false,
@@ -430,18 +434,9 @@ export default function PredefinedToolsPage() {
     )
   }
 
-  return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Predefined Tools</h1>
-          <p className="text-muted-foreground">
-            Enable and configure powerful predefined tools for your assistant
-          </p>
-        </div>
-      </div>
-
-      {/* Calendar Management Tool */}
+  // If a specific tool is selected, only show that tool's configuration
+  if (selectedToolType === 'calendar_management') {
+    return (
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -666,9 +661,81 @@ export default function PredefinedToolsPage() {
             </>
           )}
         </CardContent>
-      </Card>
 
-      {/* Referee Contact Tool */}
+        {/* Calendar Selection Dialog */}
+        <Dialog
+          open={showCalendarSelector}
+          onOpenChange={setShowCalendarSelector}
+        >
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Select a Calendar</DialogTitle>
+              <DialogDescription>
+                Choose which calendar you want to use for managing events
+              </DialogDescription>
+            </DialogHeader>
+
+            {loadingCalendars ? (
+              <div className="flex items-center justify-center py-8">
+                <p className="text-muted-foreground">Loading calendars...</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {availableCalendars.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No calendars found</p>
+                  </div>
+                ) : (
+                  availableCalendars.map((calendar) => (
+                    <button
+                      key={calendar.id}
+                      type="button"
+                      className={`w-full p-4 border rounded-lg cursor-pointer hover:bg-accent transition-colors text-left ${
+                        calendarConfig.defaultCalendarId === calendar.id
+                          ? 'border-primary bg-accent'
+                          : ''
+                      }`}
+                      onClick={() => handleSelectCalendar(calendar.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-semibold">{calendar.summary}</h4>
+                            {calendar.primary && (
+                              <Badge variant="default" className="text-xs">
+                                Primary
+                              </Badge>
+                            )}
+                          </div>
+                          {calendar.description && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {calendar.description}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Access: {calendar.accessRole || 'N/A'}
+                          </p>
+                        </div>
+                        {calendar.backgroundColor && (
+                          <div
+                            className="w-6 h-6 rounded-full border"
+                            style={{ backgroundColor: calendar.backgroundColor }}
+                          />
+                        )}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </Card>
+    )
+  }
+
+  if (selectedToolType === 'referee_contact') {
+    return (
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -737,93 +804,13 @@ export default function PredefinedToolsPage() {
           )}
         </CardContent>
       </Card>
+    )
+  }
 
-      {/* Contact Management Tool */}
-      <ContactsManagementPage />
+  if (selectedToolType === 'contact_management') {
+    return <ContactsManagementPage />
+  }
 
-      {/* Future tools can be added here */}
-      <Card className="border-dashed">
-        <CardContent className="flex items-center justify-center py-8">
-          <div className="text-center space-y-2">
-            <h3 className="font-semibold text-muted-foreground">
-              More Tools Coming Soon
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Additional predefined tools like email automation, CRM
-              integration, and more will be available soon.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Calendar Selection Dialog */}
-      <Dialog
-        open={showCalendarSelector}
-        onOpenChange={setShowCalendarSelector}
-      >
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Select a Calendar</DialogTitle>
-            <DialogDescription>
-              Choose which calendar you want to use for managing events
-            </DialogDescription>
-          </DialogHeader>
-
-          {loadingCalendars ? (
-            <div className="flex items-center justify-center py-8">
-              <p className="text-muted-foreground">Loading calendars...</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {availableCalendars.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No calendars found</p>
-                </div>
-              ) : (
-                availableCalendars.map((calendar) => (
-                  <button
-                    key={calendar.id}
-                    type="button"
-                    className={`w-full p-4 border rounded-lg cursor-pointer hover:bg-accent transition-colors text-left ${
-                      calendarConfig.defaultCalendarId === calendar.id
-                        ? 'border-primary bg-accent'
-                        : ''
-                    }`}
-                    onClick={() => handleSelectCalendar(calendar.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-semibold">{calendar.summary}</h4>
-                          {calendar.primary && (
-                            <Badge variant="default" className="text-xs">
-                              Primary
-                            </Badge>
-                          )}
-                        </div>
-                        {calendar.description && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {calendar.description}
-                          </p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Access: {calendar.accessRole || 'N/A'}
-                        </p>
-                      </div>
-                      {calendar.backgroundColor && (
-                        <div
-                          className="w-6 h-6 rounded-full border"
-                          style={{ backgroundColor: calendar.backgroundColor }}
-                        />
-                      )}
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
-  )
+  // If no specific tool is selected, show overview (shouldn't happen with new design)
+  return null
 }

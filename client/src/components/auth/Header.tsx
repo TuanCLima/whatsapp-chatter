@@ -1,4 +1,4 @@
-import { Bot, Database, LogOut, Settings } from 'lucide-react'
+import { Bot, LogOut, Settings } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -28,12 +28,12 @@ export default function Header() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <h1 className="text-lg font-semibold text-white">Chat Dashboard</h1>
-          <Link
+          {/* <Link
             to="/data"
             className="text-xs text-slate-300 hover:text-white flex items-center gap-1"
           >
             <Database className="h-4 w-4" /> Data
-          </Link>
+          </Link> */}
           <Link
             to="/config"
             className="text-xs text-slate-300 hover:text-white flex items-center gap-1"

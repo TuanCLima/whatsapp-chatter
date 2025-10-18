@@ -1,7 +1,9 @@
 import {
   Bot,
   Calendar,
+  ChevronRight,
   Code,
+  MessageSquare,
   Plus,
   Save,
   Settings,
@@ -273,6 +275,8 @@ export default function AssistantConfigPage() {
         return 'Google Calendar'
       case 'contact_management':
         return 'Contact Management'
+      case 'referee_contact':
+        return 'Referee Contact'
       default:
         return toolType
           .replace(/_/g, ' ')
@@ -286,6 +290,8 @@ export default function AssistantConfigPage() {
         return Calendar
       case 'contact_management':
         return Users
+      case 'referee_contact':
+        return MessageSquare
       default:
         return Settings
     }
@@ -883,6 +889,87 @@ export default function AssistantConfigPage() {
     </div>
   )
 
+  const renderPredefinedToolsOverview = () => (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-2xl font-semibold mb-2">Predefined Tools</h3>
+        <p className="text-muted-foreground">
+          Enable and configure powerful predefined tools for your WhatsApp assistant. 
+          Click on a tool in the sidebar to configure it.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {predefinedTools.map((tool) => {
+          const IconComponent = getPredefinedToolIcon(tool.toolType)
+          return (
+            <Card
+              key={tool.id || tool.toolType}
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => selectPredefinedTool(tool)}
+            >
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <IconComponent className="h-6 w-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg">
+                      {getPredefinedToolDisplayName(tool.toolType)}
+                    </CardTitle>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    {tool.toolType === 'calendar_management' &&
+                      'Manage Google Calendar events, check availability, and schedule meetings.'}
+                    {tool.toolType === 'contact_management' &&
+                      'Store and manage contact information for users.'}
+                    {tool.toolType === 'referee_contact' &&
+                      'Forward questions to a designated referee when the assistant needs help.'}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      Status:
+                    </span>
+                    {tool.enabled ? (
+                      <span className="flex items-center gap-1 text-xs text-green-600">
+                        <div className="h-2 w-2 bg-green-500 rounded-full" />
+                        Enabled
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <div className="h-2 w-2 bg-gray-400 rounded-full" />
+                        Disabled
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })}
+      </div>
+
+      {predefinedTools.length === 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <Settings className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h4 className="text-lg font-medium mb-2">No Tools Available</h4>
+              <p className="text-muted-foreground">
+                No predefined tools are currently available.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+
   return (
     <div className="h-full flex bg-background">
       {renderSidebar()}
@@ -890,10 +977,22 @@ export default function AssistantConfigPage() {
         {activeSection === 'prompt' && renderPromptConfig()}
         {activeSection === 'tools' && renderToolConfig()}
         {activeSection === 'predefined-tools' && !selectedPredefinedTool && (
-          <PredefinedToolsPage />
+          renderPredefinedToolsOverview()
         )}
         {activeSection === 'predefined-tools' && selectedPredefinedTool && (
           <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedPredefinedTool(null)
+                }}
+                className="gap-2"
+              >
+                ← Back to Overview
+              </Button>
+            </div>
             <div>
               <h3 className="text-2xl font-semibold mb-2">
                 {getPredefinedToolDisplayName(selectedPredefinedTool.toolType)}
@@ -904,7 +1003,7 @@ export default function AssistantConfigPage() {
                 integration.
               </p>
             </div>
-            <PredefinedToolsPage />
+            <PredefinedToolsPage selectedToolType={selectedPredefinedTool.toolType} />
           </div>
         )}
         {activeSection === 'settings' && renderSettingsConfig()}

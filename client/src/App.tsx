@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import DataPage from '@/components/auth/DataPage'
+// import DataPage from '@/components/auth/DataPage'
 import EmailVerificationPage from '@/components/auth/EmailVerificationPage'
 import Header from '@/components/auth/Header'
 import LoadingScreen from '@/components/auth/LoadingScreen'
@@ -45,21 +45,21 @@ function ProtectedChatLayout() {
   )
 }
 
-function ProtectedDataLayout() {
-  const { isAuthenticated, isLoading } = useAuth()
-  if (isLoading) return <LoadingScreen />
-  if (!isAuthenticated) return <LoginScreen />
-  return (
-    <TwilioGuard>
-      <div className="h-screen flex flex-col bg-background">
-        <Header />
-        <div className="flex-1 overflow-hidden">
-          <DataPage />
-        </div>
-      </div>
-    </TwilioGuard>
-  )
-}
+// function ProtectedDataLayout() {
+//   const { isAuthenticated, isLoading } = useAuth()
+//   if (isLoading) return <LoadingScreen />
+//   if (!isAuthenticated) return <LoginScreen />
+//   return (
+//     <TwilioGuard>
+//       <div className="h-screen flex flex-col bg-background">
+//         <Header />
+//         <div className="flex-1 overflow-hidden">
+//           <DataPage />
+//         </div>
+//       </div>
+//     </TwilioGuard>
+//   )
+// }
 
 function ProtectedConfigLayout() {
   const { isAuthenticated, isLoading } = useAuth()
@@ -99,7 +99,7 @@ function App() {
           <ChatProvider>
             <Routes>
               <Route path="/verify-email" element={<EmailVerificationPage />} />
-              <Route path="/data" element={<ProtectedDataLayout />} />
+              {/* <Route path="/data" element={<ProtectedDataLayout />} /> */}
               <Route path="/config" element={<ProtectedConfigLayout />} />
               <Route
                 path="/assistant-config"
