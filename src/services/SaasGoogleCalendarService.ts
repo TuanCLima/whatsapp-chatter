@@ -55,6 +55,7 @@ function coalesceBlocks(
 interface CalendarConfig {
   defaultCalendarId: string
   bufferTimeBetweenEvents: number // in minutes
+  minimumNoticeHours: number // Minimum hours of advance notice required before an event can be scheduled
   timeZone: string
   weeklySchedule?: {
     monday: {
@@ -298,7 +299,12 @@ export class SaasGoogleCalendarService {
       console.log('Calendar config found:', config[0].configData)
 
       if (config.length > 0 && config[0].configData) {
+        
         const parsedConfig = JSON.parse(config[0].configData)
+        let minimumNoticeHours = 6
+        if (typeof parsedConfig.minimumNoticeHours === 'number') {
+          minimumNoticeHours = parsedConfig.minimumNoticeHours
+        }
         const configuredCalendarId =
           decodeURIComponent(parsedConfig.defaultCalendarId) || 'primary'
         const result = {
@@ -308,6 +314,7 @@ export class SaasGoogleCalendarService {
           timeZone:
             parsedConfig.timeZone ||
             Intl.DateTimeFormat().resolvedOptions().timeZone,
+          minimumNoticeHours,
         }
         console.log('Retrieved user calendar config from DB:', result)
         return result
@@ -321,6 +328,7 @@ export class SaasGoogleCalendarService {
       defaultCalendarId: 'primary',
       bufferTimeBetweenEvents: 0,
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      minimumNoticeHours: 6,
     }
     console.log('Using default calendar config:', defaultConfig)
     return defaultConfig
@@ -541,21 +549,27 @@ export class SaasGoogleCalendarService {
         }
       }
 
-      // Check if event starts at least 1 hour from now
+      // Check if event starts with minimum advance notice
       const now = new Date()
-      const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000)
+      const minimumNoticeHours = userConfig.minimumNoticeHours
+      const minimumNoticeTime = new Date(
+        now.getTime() + minimumNoticeHours * 60 * 60 * 1000,
+      )
 
-      if (startDate < oneHourFromNow) {
+      if (startDate < minimumNoticeTime) {
         const minutesFromNow = Math.round(
           (startDate.getTime() - now.getTime()) / (60 * 1000),
         )
+        const hoursFromNow = Math.round(minutesFromNow / 60)
 
         return {
           available: false,
           message:
             minutesFromNow < 0
-              ? `Este horário já passou. Por favor, escolha um horário futuro (pelo menos 1 hora a partir de agora).`
-              : `O agendamento deve ser feito com pelo menos 1 hora de antecedência`,
+              ? `Este horário já passou. Por favor, escolha um horário futuro (pelo menos ${minimumNoticeHours} hora(s) a partir de agora).`
+              : hoursFromNow < minimumNoticeHours
+                ? `O agendamento deve ser feito com pelo menos ${minimumNoticeHours} hora(s) de antecedência. Você tentou agendar com apenas ${hoursFromNow} hora(s) de antecedência.`
+                : `O agendamento deve ser feito com pelo menos ${minimumNoticeHours} hora(s) de antecedência`,
           conflicts: ['minimum_advance_time'],
         }
       }
@@ -877,6 +891,10 @@ export class SaasGoogleCalendarService {
 
         // Get current time in user's timezone
         const nowInUserTZ = moment.tz(userConfig.timeZone)
+        
+        // Calculate minimum notice time (current time + minimum notice hours)
+        const minimumNoticeHours = userConfig.minimumNoticeHours
+        const minimumNoticeTime = nowInUserTZ.clone().add(minimumNoticeHours, 'hours')
 
         // Group events by date for processing
         const eventsByDate: Record<string, unknown[]> = {}
@@ -939,6 +957,7 @@ export class SaasGoogleCalendarService {
             daySchedule.blocks,
             userConfig.bufferTimeBetweenEvents,
             userConfig.timeZone,
+            userConfig.minimumNoticeHours,
           )
 
           // Add to overall available chunks
@@ -985,7 +1004,7 @@ export class SaasGoogleCalendarService {
                 if (
                   afterEvent.isSameOrAfter(spanStart) &&
                   afterEventEnd.isSameOrBefore(spanEnd) &&
-                  afterEvent.isAfter(nowInUserTZ)
+                  afterEvent.isSameOrAfter(minimumNoticeTime)
                 ) {
                   suggestions.push({
                     startTime: afterEvent.toISOString(),
@@ -1005,7 +1024,7 @@ export class SaasGoogleCalendarService {
                 if (
                   beforeEvent.isSameOrAfter(spanStart) &&
                   beforeEventEnd.isSameOrBefore(spanEnd) &&
-                  beforeEvent.isAfter(nowInUserTZ)
+                  beforeEvent.isSameOrAfter(minimumNoticeTime)
                 ) {
                   suggestions.push({
                     startTime: beforeEvent.toISOString(),
@@ -1018,13 +1037,13 @@ export class SaasGoogleCalendarService {
               }
             }
 
-            // Always suggest the earliest available time in the span (if it's in the future)
+            // Always suggest the earliest available time in the span (if it meets minimum notice requirement)
             const earliestEnd = spanStart
               .clone()
               .add(serviceDurationMinutes, 'minutes')
             if (
               earliestEnd.isSameOrBefore(spanEnd) &&
-              spanStart.isAfter(nowInUserTZ)
+              spanStart.isSameOrAfter(minimumNoticeTime)
             ) {
               suggestions.push({
                 startTime: spanStart.toISOString(),

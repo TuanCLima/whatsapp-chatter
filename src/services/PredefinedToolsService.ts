@@ -26,6 +26,7 @@ export interface CalendarToolConfig {
     end: string
   }
   timeZone?: string
+  minimumNoticeHours?: number // Minimum hours of advance notice required before an event can be scheduled
 }
 
 export interface RefereeContactToolConfig {

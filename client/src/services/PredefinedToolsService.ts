@@ -28,6 +28,7 @@ export interface CalendarToolConfig {
   }
   bufferTimeBetweenEvents?: number // in minutes
   timeZone?: string
+  minimumNoticeHours?: number // Minimum hours of advance notice required before an event can be scheduled
   weeklySchedule?: {
     monday: {
       enabled: boolean

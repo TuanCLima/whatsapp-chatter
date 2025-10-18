@@ -166,11 +166,15 @@ export function findAvailableTimeSpans(
   configuredBlocks: TimeBlock[],
   bufferMinutes: number = 0,
   timeZone: string = 'America/Sao_Paulo',
+  minimumNoticeHours: number,
 ): AvailableTimeSpan[] {
   const availableSpans: AvailableTimeSpan[] = []
 
-  // Get current time in the configured timezone
-  const currentTime = moment.tz(timeZone).toDate()
+  // Get current time in the configured timezone, plus minimum notice time
+  const now = moment.tz(timeZone).toDate()
+  const minimumNoticeTime = new Date(
+    now.getTime() + minimumNoticeHours * 60 * 60 * 1000,
+  )
 
   // If no configured blocks, return empty array
   if (!configuredBlocks || configuredBlocks.length === 0) {
@@ -237,14 +241,16 @@ export function findAvailableTimeSpans(
           (blockedPeriod.start.getTime() - currentTimeInBlock.getTime()) /
           (1000 * 60)
 
-        // Only add the span if it's long enough AND starts after current time
+        // Only add the span if it's long enough AND starts after minimum notice time
         if (
           gapDuration >= serviceDurationMinutes &&
-          blockedPeriod.start > currentTime
+          blockedPeriod.start > minimumNoticeTime
         ) {
-          // If the gap starts before current time, adjust it to start from current time
+          // If the gap starts before minimum notice time, adjust it to start from minimum notice time
           const adjustedStartTime =
-            currentTimeInBlock > currentTime ? currentTimeInBlock : currentTime
+            currentTimeInBlock > minimumNoticeTime
+              ? currentTimeInBlock
+              : minimumNoticeTime
           const adjustedGapDuration =
             (blockedPeriod.start.getTime() - adjustedStartTime.getTime()) /
             (1000 * 60)
@@ -270,11 +276,13 @@ export function findAvailableTimeSpans(
       const gapDuration =
         (blockEnd.getTime() - currentTimeInBlock.getTime()) / (1000 * 60)
 
-      // Only add the span if it's long enough AND starts after current time
-      if (gapDuration >= serviceDurationMinutes && blockEnd > currentTime) {
-        // If the gap starts before current time, adjust it to start from current time
+      // Only add the span if it's long enough AND starts after minimum notice time
+      if (gapDuration >= serviceDurationMinutes && blockEnd > minimumNoticeTime) {
+        // If the gap starts before minimum notice time, adjust it to start from minimum notice time
         const adjustedStartTime =
-          currentTimeInBlock > currentTime ? currentTimeInBlock : currentTime
+          currentTimeInBlock > minimumNoticeTime
+            ? currentTimeInBlock
+            : minimumNoticeTime
         const adjustedGapDuration =
           (blockEnd.getTime() - adjustedStartTime.getTime()) / (1000 * 60)
 

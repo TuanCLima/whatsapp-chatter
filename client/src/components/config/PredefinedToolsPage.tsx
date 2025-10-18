@@ -48,6 +48,7 @@ export default function PredefinedToolsPage() {
   const [calendarConfig, setCalendarConfig] = useState<CalendarToolConfig>({
     defaultCalendarId: 'primary',
     bufferTimeBetweenEvents: 0,
+    minimumNoticeHours: 12,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     weeklySchedule: {
       monday: {
@@ -575,6 +576,29 @@ export default function PredefinedToolsPage() {
                     />
                     <p className="text-xs text-muted-foreground">
                       Buffer time to leave between scheduled events
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="minimumNotice">
+                      Minimum Advance Notice (hours)
+                    </Label>
+                    <Input
+                      id="minimumNotice"
+                      type="number"
+                      min="0"
+                      value={calendarConfig.minimumNoticeHours || 0}
+                      onChange={(e) =>
+                        setCalendarConfig((prev) => ({
+                          ...prev,
+                          minimumNoticeHours:
+                            parseInt(e.target.value) || 0,
+                        }))
+                      }
+                      placeholder="12"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Minimum hours required between now and when events can be scheduled (preparation time)
                     </p>
                   </div>
                 </div>
