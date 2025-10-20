@@ -58,6 +58,7 @@ export interface Message {
   isMedia?: boolean
   mediaUrl?: string
   mediaType?: 'image' | 'document' | 'audio'
+  isForwardedContact?: boolean
 }
 
 export interface Conversation {

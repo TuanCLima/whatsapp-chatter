@@ -3,7 +3,6 @@ import type { Contact, Conversation, Maybe } from '@/types'
 
 interface ChatContextType {
   contacts: Contact[]
-  conversations: Conversation[]
   conversation: Maybe<Conversation>
   activeContactId: string | null
   setActiveContactId: (id: string | null) => void

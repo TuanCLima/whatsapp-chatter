@@ -41,7 +41,6 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
     enabled: !!activeContactId, // Only fetch when activeContactId is not null
   })
 
-  const [conversations] = useState<Conversation[]>([])
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>(contacts)
 
   // Initialize SSE connection
@@ -188,7 +187,6 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
       value={useMemo(
         () => ({
           contacts,
-          conversations,
           activeContactId,
           setActiveContactId,
           sendMessage,
@@ -208,7 +206,6 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
         }),
         [
           contacts,
-          conversations,
           activeContactId,
           filteredContacts,
           conversation,

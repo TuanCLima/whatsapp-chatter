@@ -1,8 +1,8 @@
-import { Message } from '@/types'
-import { CheckCheck, Check } from 'lucide-react'
-import { formatMessageTime } from '@/lib/utils'
+import { Check, CheckCheck, Link } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useChat } from '@/context/ChatContext'
+import { formatMessageTime } from '@/lib/utils'
+import type { Message } from '@/types'
 
 interface MessageBubbleProps {
   message: Message
@@ -47,6 +47,13 @@ export default function MessageBubble({
             : 'bg-card text-foreground'
         }`}
       >
+        {message.isForwardedContact && (
+          <div className="flex items-center space-x-1 mb-2 text-muted-foreground">
+            <Link className="h-3 w-3" />
+            <span className="text-xs italic">Forwarded Contact</span>
+          </div>
+        )}
+
         {message.isMedia && message.mediaType === 'image' && (
           <div className="mb-2 rounded-md overflow-hidden">
             <img src={message.mediaUrl} alt="Media" className="w-full h-auto" />

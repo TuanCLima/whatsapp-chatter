@@ -688,19 +688,52 @@ app.get('/db/conversations/:contactId', async (req, res) => {
           or(
             eq(messages.role, 'user'),
             and(eq(messages.role, 'assistant'), ne(messages.content, '')),
+            eq(messages.role, 'tool'),
           ),
         ),
       )
       .orderBy(messages.timestamp)
 
     // Convert database messages to frontend format
-    const conversationMessages: Message[] = userMessages.map((msg) => ({
-      id: msg.id.toString(),
-      text: msg.content || '',
-      sender: msg.role === 'user' ? contactId : 'assistant',
-      timestamp: msg.timestamp.toISOString(),
-      status: 'delivered' as const,
-    }))
+    const conversationMessages: Message[] = userMessages
+      .filter((msg) => {
+        if (msg.role !== 'tool') {
+          return true
+        }
+
+        try {
+          const contact = msg.content ? JSON.parse(msg.content).contact : null
+          if (contact?.phoneNumber && contact.name) {
+            return true
+          }
+        } catch {
+          return false
+        }
+
+        return false
+      })
+      .map((msg) => {
+        if (msg.role === 'tool') {
+          // Extract contact info from tool message content
+          const toolData = JSON.parse(msg.content || '{}')
+          return {
+            id: msg.id.toString(),
+            text: `${toolData.contact.name} ${toolData.contact.phoneNumber}`,
+            sender: 'assistant',
+            isForwardedContact: true,
+            timestamp: msg.timestamp.toISOString(),
+            status: 'delivered' as const,
+          }
+        }
+
+        return {
+          id: msg.id.toString(),
+          text: msg.content || '',
+          sender: msg.role === 'user' ? contactId : 'assistant',
+          timestamp: msg.timestamp.toISOString(),
+          status: 'delivered' as const,
+        }
+      })
 
     const conversation: Conversation = {
       id: contactId,

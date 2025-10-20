@@ -1,6 +1,6 @@
-import { Message } from '@/types'
-import MessageBubble from './MessageBubble'
 import { AnimatePresence, motion } from 'framer-motion'
+import type { Message } from '@/types'
+import MessageBubble from './MessageBubble'
 
 interface MessageListProps {
   messages: Message[]
@@ -58,7 +58,7 @@ export default function MessageList({ messages, contactId }: MessageListProps) {
               >
                 <MessageBubble
                   message={message}
-                  isSent={message.sender === 'user'}
+                  isSent={message.sender === 'assistant'}
                   contactId={contactId}
                 />
               </motion.div>
