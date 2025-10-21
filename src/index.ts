@@ -20,6 +20,7 @@ import {
   users,
 } from './db/schema-postgres'
 import { authenticateUser } from './middleware/authenticateUser'
+import { getMedia } from './routes/mediaProxy'
 import { authService } from './services/AuthService'
 import { twilioClientPool } from './services/TwilioClientPool'
 import type { Contact, Conversation, Message } from './types/types'
@@ -542,6 +543,9 @@ app.post('/api/twilio/credentials', authenticateUser, async (req, res) => {
   }
 })
 
+// Add media proxy endpoint
+app.get('/api/media/:messageSid/:mediaSid', getMedia)
+
 // Serve React UI for all other routes
 
 app.get('/contacts', async (_req, res) => {
@@ -746,6 +750,7 @@ app.get('/db/conversations/:contactId', async (req, res) => {
           sender: msg.role === 'user' ? contactId : 'assistant',
           timestamp: msg.timestamp.toISOString(),
           status: 'delivered' as const,
+          metadata: msg.metadata,
         }
       })
 

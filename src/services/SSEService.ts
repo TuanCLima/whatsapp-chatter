@@ -16,6 +16,7 @@ interface MessageNotification {
     role: 'user' | 'assistant'
     timestamp: string
     profileName?: string
+    metadata?: string | undefined
   }
 }
 

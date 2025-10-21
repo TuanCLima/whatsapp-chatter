@@ -22,10 +22,21 @@ export interface Message {
   sender: string
   timestamp: string
   status?: 'sent' | 'delivered' | 'read'
-  isMedia?: boolean
-  mediaUrl?: string
-  mediaType?: 'image' | 'document' | 'audio'
   isForwardedContact?: boolean
+  isMedia?: boolean
+  mediaType?: 'image' | 'audio' | 'video' | 'document'
+  mediaUrl?: string
+  metadata?: {
+    type: 'media'
+    media: Array<{
+      url: string
+      contentType: string
+      index: number
+      mediaSid: string | null
+    }>
+    messageSid: string
+    timestamp: string
+  }
 }
 
 export interface Conversation {

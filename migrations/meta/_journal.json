@@ -71,6 +71,13 @@
       "when": 1704067209000,
       "tag": "010_email_verification",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1704067210000,
+      "tag": "011_add_metadata",
+      "breakpoints": true
     }
   ]
 }

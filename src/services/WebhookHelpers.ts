@@ -123,7 +123,15 @@ export async function handleRefereeQuestions(
 }
 
 /**
- * Check for multimedia content and reject if present
+ * Extract media SID from Twilio media URL
+ */
+function extractMediaSid(url: string): string | null {
+  const match = url.match(/\/Media\/([^/]+)$/)
+  return match ? match[1] : null
+}
+
+/**
+ * Check for multimedia content and save to database
  */
 export async function checkAndRejectMultimedia(
   body: Record<string, string | undefined>,
@@ -143,35 +151,103 @@ export async function checkAndRejectMultimedia(
 
     webhookLogger.debug({ numMedia, from }, 'Checking multimedia content')
 
-    let hasMultimedia = false
+    const mediaItems: Array<{
+      url: string
+      contentType: string
+      index: number
+      mediaSid: string | null
+    }> = []
+
     for (let i = 0; i < numMedia; i++) {
       const contentType = body[`MediaContentType${i}`]
-      if (contentType) {
-        hasMultimedia = true
+      const mediaUrl = body[`MediaUrl${i}`]
+
+      if (contentType && mediaUrl) {
+        mediaItems.push({
+          url: mediaUrl,
+          contentType,
+          index: i,
+          mediaSid: extractMediaSid(mediaUrl),
+        })
         webhookLogger.info(
-          { from, contentType, mediaIndex: i },
+          { from, contentType, mediaIndex: i, mediaUrl },
           'Multimedia message detected',
         )
-        break
       }
     }
 
-    if (!hasMultimedia) {
+    if (mediaItems.length === 0) {
       return false
     }
 
-    webhookLogger.info({ from }, 'Rejecting multimedia message - not supported')
+    // Save multimedia message to database
+    const metadata = {
+      type: 'media',
+      media: mediaItems,
+      messageSid: body.MessageSid,
+      timestamp: new Date().toISOString(),
+    }
+
+    await db.insert(messages).values({
+      phoneNumber: from,
+      role: 'user',
+      content: body.Body || '[Media message]',
+      profileName: body.ProfileName || 'Unknown',
+      toolCallId: null,
+      toolCalls: null,
+      messageSid: body.MessageSid,
+      metadata: JSON.stringify(metadata),
+    } as InsertMessage)
+
+    webhookLogger.info(
+      { from, mediaCount: mediaItems.length },
+      'Multimedia message saved to database',
+    )
+
+    // Notify via SSE for user message
+    sseService.notifyNewMessage(from, {
+      id: body.MessageSid || `${Date.now()}`,
+      content: body.Body || '[Media message]',
+      role: 'user',
+      timestamp: new Date().toISOString(),
+      profileName: body.ProfileName || 'Unknown',
+      metadata: JSON.stringify(metadata),
+    })
+
+    // Send acknowledgment message
+    const acknowledgmentText =
+      'Recebi sua mídia! Por enquanto não consigo processar imagens ou áudios.'
 
     await userClient.messages.create({
       from: whatsappNumber,
       to: _from,
-      body: 'Nosso sistema não é capaz de ler essa mensagem por enquanto, favor utilizar texto.',
+      body: acknowledgmentText,
+    })
+
+    // Save assistant acknowledgment message to database
+    await db.insert(messages).values({
+      phoneNumber: from,
+      role: 'assistant',
+      content: acknowledgmentText,
+      profileName: body.ProfileName || 'Unknown',
+      toolCallId: null,
+      toolCalls: null,
+      timestamp: new Date(),
+    } as InsertMessage)
+
+    // Notify via SSE for assistant message
+    sseService.notifyNewMessage(from, {
+      id: `${Date.now() + 1}`,
+      content: acknowledgmentText,
+      role: 'assistant',
+      timestamp: new Date().toISOString(),
+      profileName: body.ProfileName || 'Unknown',
     })
 
     res.json({
-      status: 'Rejected multimedia message',
+      status: 'Media message saved',
       from,
-      reason: 'multimedia_not_supported',
+      mediaCount: mediaItems.length,
     })
 
     return true
