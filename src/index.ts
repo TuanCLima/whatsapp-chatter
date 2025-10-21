@@ -706,6 +706,12 @@ app.get('/db/conversations/:contactId', async (req, res) => {
           if (contact?.phoneNumber && contact.name) {
             return true
           }
+
+          const imageContent = msg.content ? JSON.parse(msg.content) : null
+
+          if (imageContent.success === true && imageContent.mediaUrl) {
+            return true
+          }
         } catch {
           return false
         }
@@ -716,13 +722,21 @@ app.get('/db/conversations/:contactId', async (req, res) => {
         if (msg.role === 'tool') {
           // Extract contact info from tool message content
           const toolData = JSON.parse(msg.content || '{}')
+
+          const isForwardedContact = toolData.contact?.phoneNumber
+
           return {
             id: msg.id.toString(),
-            text: `${toolData.contact.name} ${toolData.contact.phoneNumber}`,
+            text: isForwardedContact
+              ? `${toolData.contact.name} ${toolData.contact.phoneNumber}`
+              : '',
             sender: 'assistant',
-            isForwardedContact: true,
+            isForwardedContact: !!isForwardedContact,
             timestamp: msg.timestamp.toISOString(),
             status: 'delivered' as const,
+            mediaType: isForwardedContact ? undefined : 'image',
+            mediaUrl: isForwardedContact ? undefined : toolData.mediaUrl,
+            isMedia: !isForwardedContact,
           }
         }
 

@@ -74,7 +74,7 @@ export async function executeImageTool(
   tool: AssistantTool,
   callersPhoneNumber: string,
   userId: string,
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; mediaUrl?: string }> {
   try {
     if (!tool.imageUrl) {
       throw new Error('Image tool has no image URL')
@@ -110,6 +110,7 @@ export async function executeImageTool(
     return {
       success: true,
       message: `Image sent successfully. Message SID: ${message.sid}`,
+      mediaUrl: fullImageUrl,
     }
   } catch (error) {
     console.error(`Error executing image tool ${tool.name}:`, error)

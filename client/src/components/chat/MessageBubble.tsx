@@ -38,9 +38,8 @@ export default function MessageBubble({
           </Avatar>
         </div>
       )}
-
       <div
-        className={`relative min-w-[70%] max-w-[70%] px-3 py-2 rounded-lg 
+        className={`relative max-w-[65%] px-3 py-2 rounded-lg 
         ${
           isSent
             ? 'bg-green-500/20 dark:bg-green-900/30 text-foreground'
@@ -56,7 +55,11 @@ export default function MessageBubble({
 
         {message.isMedia && message.mediaType === 'image' && (
           <div className="mb-2 rounded-md overflow-hidden">
-            <img src={message.mediaUrl} alt="Media" className="w-full h-auto" />
+            <img
+              src={message.mediaUrl}
+              alt="Media"
+              className="max-w-[300px] max-h-[400px]"
+            />
           </div>
         )}
 
