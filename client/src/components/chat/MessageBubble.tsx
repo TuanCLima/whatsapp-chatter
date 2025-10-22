@@ -88,16 +88,8 @@ export default function MessageBubble({
         <div className="flex flex-col justify-center">
           <Avatar className="h-6 w-6">
             <AvatarImage src={contact?.avatar} alt={contact?.name} />
-            <AvatarFallback
-              className={
-                message.sender === 'whatsapp:+5511966443841'
-                  ? 'bg-blue-700'
-                  : ''
-              }
-            >
-              {message.sender === 'whatsapp:+5511966443841'
-                ? 'H'
-                : contact?.name.charAt(0)}
+            <AvatarFallback className={isSent ? 'bg-blue-700' : ''}>
+              {isSent ? 'A' : contact?.name.charAt(0)}
             </AvatarFallback>
           </Avatar>
         </div>
