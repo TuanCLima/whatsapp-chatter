@@ -1,6 +1,6 @@
 import OpenAI from 'openai'
 import 'dotenv/config'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, gt } from 'drizzle-orm'
 import type { Request, Response } from 'express'
 import { db } from './db'
 import {
@@ -326,7 +326,12 @@ export async function whatsappSaasWebhook(
     const messagesFeed: InsertMessage[] = await db
       .select()
       .from(messages)
-      .where(eq(messages.phoneNumber, from))
+      .where(
+        and(
+          eq(messages.phoneNumber, from),
+          gt(messages.timestamp, new Date(Date.now() - 24 * 60 * 60 * 1000)),
+        ),
+      ) // Last 24 hours
       .orderBy(messages.timestamp)
 
     webhookLogger.debug(
