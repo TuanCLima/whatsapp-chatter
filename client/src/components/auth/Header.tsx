@@ -36,13 +36,13 @@ export default function Header() {
             <Database className="h-4 w-4" /> Data
           </Link> */}
           <Link
-            to="/"
+            to="/app"
             className={`text-xs flex items-center gap-1 ${
-              location.pathname === '/'
+              location.pathname === '/app'
                 ? 'text-white pointer-events-none cursor-default'
                 : 'text-slate-300 hover:text-white'
             }`}
-            aria-disabled={location.pathname === '/'}
+            aria-disabled={location.pathname === '/app'}
           >
             <Bot className="h-4 w-4" /> Chat
           </Link>
