@@ -11,7 +11,7 @@ import { whatsappSaasWebhook } from './webhook'
 import 'dotenv/config'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
-import { and, desc, eq, ne, or } from 'drizzle-orm'
+import { and, desc, eq, gt, ne, or } from 'drizzle-orm'
 import { db } from './db'
 import {
   messages,
@@ -574,6 +574,37 @@ app.get('/db/contacts', async (_req, res) => {
           .orderBy(desc(messages.timestamp))
           .limit(1)
 
+        // Calculate unread count: count user messages after the last time operator viewed this conversation
+        let unreadCount = 0
+        if (latestMessage.length > 0) {
+          if (user.lastViewedAt) {
+            // Count only USER messages after lastViewedAt
+            const unreadMessages = await db
+              .select()
+              .from(messages)
+              .where(
+                and(
+                  eq(messages.phoneNumber, user.phoneNumber),
+                  eq(messages.role, 'user'),
+                  gt(messages.timestamp, user.lastViewedAt),
+                ),
+              )
+            unreadCount = unreadMessages.length
+          } else {
+            // If never viewed, count all user messages
+            const allUserMessages = await db
+              .select()
+              .from(messages)
+              .where(
+                and(
+                  eq(messages.phoneNumber, user.phoneNumber),
+                  eq(messages.role, 'user'),
+                ),
+              )
+            unreadCount = allUserMessages.length
+          }
+        }
+
         const contact: Contact = {
           id: user.phoneNumber,
           name: user.profileName || user.phoneNumber,
@@ -586,6 +617,7 @@ app.get('/db/contacts', async (_req, res) => {
                   text: latestMessage[0].content || '',
                   timestamp: latestMessage[0].timestamp.toISOString(),
                   status: 'delivered' as const,
+                  unread: unreadCount,
                 }
               : undefined,
           online: false, // You might want to add online status to your schema
@@ -810,6 +842,45 @@ app.post('/send-message', async (req, res) => {
   } catch (error) {
     console.error('Error sending message:', error)
     res.status(500).json({ error: 'Failed to send message' })
+  }
+})
+
+// Mark conversation as viewed (updates lastViewedAt timestamp)
+app.post('/users/:phoneNumber/mark-viewed', async (req, res) => {
+  const { phoneNumber } = req.params
+
+  try {
+    // Check if user exists
+    const existingUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.phoneNumber, phoneNumber))
+      .limit(1)
+
+    if (existingUser.length === 0) {
+      res.status(404).json({ error: 'User not found' })
+      return
+    }
+
+    const now = new Date()
+    
+    // Update lastViewedAt timestamp
+    await db
+      .update(users)
+      .set({
+        lastViewedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(users.phoneNumber, phoneNumber))
+
+    res.json({
+      success: true,
+      phoneNumber,
+      lastViewedAt: now,
+    })
+  } catch (error) {
+    console.error('Error marking conversation as viewed:', error)
+    res.status(500).json({ error: 'Failed to mark conversation as viewed' })
   }
 })
 

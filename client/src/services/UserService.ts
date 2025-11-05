@@ -8,6 +8,37 @@ class UserService {
     this.apiUrl = API_BASE_URL
   }
 
+  async markConversationViewed(
+    phoneNumber: string,
+  ): Promise<{
+    success: boolean
+    phoneNumber: string
+    lastViewedAt: string
+  }> {
+    try {
+      const response = await fetch(
+        `${this.apiUrl}/users/${encodeURIComponent(phoneNumber)}/mark-viewed`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+
+      if (!response.ok) {
+        console.error('Mark viewed failed with status:', response.status)
+        throw new Error('Failed to mark conversation as viewed')
+      }
+
+      const result = await response.json()
+      return result
+    } catch (error) {
+      console.error('Error marking conversation as viewed:', error)
+      throw error
+    }
+  }
+
   async toggleConversation(
     phoneNumber: string,
     disabled: boolean,

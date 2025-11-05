@@ -25,7 +25,31 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
       return response.json()
     },
   })
-  const [activeContactId, setActiveContactId] = useState<string | null>(null)
+  const [activeContactId, setActiveContactIdState] =
+    useState<string | null>(null)
+
+  // Custom setter that marks conversation as viewed
+  const setActiveContactId = useCallback(
+    (contactId: string | null) => {
+      setActiveContactIdState(contactId)
+
+      // Mark conversation as viewed when selecting a contact
+      if (contactId) {
+        // Fire-and-forget API call to mark as viewed
+        userService
+          .markConversationViewed(contactId)
+          .then(() => {
+            // Invalidate contacts to refresh unread counts
+            queryClient.invalidateQueries({ queryKey: ['contacts'] })
+          })
+          .catch((error) => {
+            console.error('Failed to mark conversation as viewed:', error)
+          })
+      }
+    },
+    [queryClient],
+  )
+
   const { data: conversation } = useQuery<Maybe<Conversation>>({
     queryKey: ['conversation', activeContactId],
     queryFn: async () => {
@@ -207,6 +231,7 @@ export function ChatProvider({ children }: Readonly<{ children: ReactNode }>) {
         [
           contacts,
           activeContactId,
+          setActiveContactId,
           filteredContacts,
           conversation,
           sendMessage,

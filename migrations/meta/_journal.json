@@ -78,6 +78,13 @@
       "when": 1704067210000,
       "tag": "011_add_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1704067211000,
+      "tag": "012_add_last_viewed_at",
+      "breakpoints": true
     }
   ]
 }

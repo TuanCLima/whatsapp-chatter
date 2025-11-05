@@ -30,6 +30,13 @@ export default function ContactList({
       return true
     })
     .sort((a, b) => {
+      // Prioritize unread messages
+      const aHasUnread = a.lastMessage?.unread && a.lastMessage.unread > 0
+      const bHasUnread = b.lastMessage?.unread && b.lastMessage.unread > 0
+
+      if (aHasUnread && !bHasUnread) return -1
+      if (!aHasUnread && bHasUnread) return 1
+
       const aTimestamp = a.lastMessage?.timestamp
       const bTimestamp = b.lastMessage?.timestamp
 
@@ -42,82 +49,113 @@ export default function ContactList({
       return 0
     })
 
+
   return (
     <div className="flex-1 overflow-y-auto">
       <AnimatePresence>
-        {displayedContacts.map((contact) => (
-          <motion.div
-            key={contact.id}
-            initial={{ opacity: 0.8 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={() => handleContactClick(contact.id)}
-            className={`px-3 py-3 flex items-start space-x-3 cursor-pointer hover:bg-secondary ${
-              activeContactId === contact.id ? 'bg-secondary' : ''
-            } border-b border-border last:border-b-0`}
-          >
-            <div className="relative">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={contact.avatar} alt={contact.name} />
-                <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              {contact.online && (
-                <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-card"></div>
-              )}
-            </div>
+        {displayedContacts.map((contact) => {
+          const hasUnread =
+            contact.lastMessage?.unread && contact.lastMessage.unread > 0
 
-            <div className="flex-1 min-w-0">
-              <div className="flex justify-between items-baseline">
-                <h3 className="font-medium text-sm truncate">{contact.name}</h3>
-                {contact.lastMessage && (
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(contact.lastMessage.timestamp).toLocaleString(
-                      'pt-BR',
-                      {
-                        timeZone: 'America/Sao_Paulo',
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      },
-                    )}
-                  </span>
+          return (
+            <motion.div
+              key={contact.id}
+              initial={{ opacity: 0.8 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => handleContactClick(contact.id)}
+              className={`px-3 py-3 flex items-start space-x-3 cursor-pointer hover:bg-secondary ${
+                activeContactId === contact.id ? 'bg-secondary' : ''
+              } ${
+                hasUnread ? 'bg-accent/30 hover:bg-accent/50' : ''
+              } border-b border-border last:border-b-0 transition-colors duration-200`}
+            >
+              <div className="relative">
+                <Avatar
+                  className={`h-10 w-10 ${hasUnread ? 'ring-2 ring-green-500/50' : ''}`}
+                >
+                  <AvatarImage src={contact.avatar} alt={contact.name} />
+                  <AvatarFallback>{contact.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                {contact.online && (
+                  <div className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-card"></div>
                 )}
               </div>
 
-              <div className="flex justify-between items-center mt-1">
-                <p className="text-xs text-muted-foreground truncate mr-2">
-                  {contact.typing ? (
-                    <span className="text-green-500">digitando...</span>
-                  ) : (
-                    contact.lastMessage?.text
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-baseline">
+                  <h3
+                    className={`text-sm truncate ${
+                      hasUnread
+                        ? 'font-semibold text-foreground'
+                        : 'font-medium'
+                    }`}
+                  >
+                    {contact.name}
+                  </h3>
+                  {contact.lastMessage && (
+                    <span
+                      className={`text-xs ${
+                        hasUnread
+                          ? 'text-foreground font-medium'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      {new Date(contact.lastMessage.timestamp).toLocaleString(
+                        'pt-BR',
+                        {
+                          timeZone: 'America/Sao_Paulo',
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        },
+                      )}
+                    </span>
                   )}
-                </p>
+                </div>
 
-                <div className="flex items-center space-x-1">
-                  {contact.lastMessage?.status === 'sent' && (
-                    <Check className="h-3 w-3 text-muted-foreground" />
-                  )}
-                  {contact.lastMessage?.status === 'delivered' && (
-                    <CheckCheck className="h-3 w-3 text-muted-foreground" />
-                  )}
-                  {contact.lastMessage?.status === 'read' && (
-                    <CheckCheck className="h-3 w-3 text-blue-500" />
-                  )}
+                <div className="flex justify-between items-center mt-1">
+                  <p
+                    className={`text-xs truncate mr-2 ${
+                      hasUnread
+                        ? 'text-foreground font-medium'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    {contact.typing ? (
+                      <span className="text-green-500">digitando...</span>
+                    ) : (
+                      contact.lastMessage?.text
+                    )}
+                  </p>
 
-                  {contact.lastMessage?.unread &&
-                    contact.lastMessage.unread > 0 && (
-                      <div className="bg-green-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs">
-                        {contact.lastMessage.unread}
+                  <div className="flex items-center space-x-1 flex-shrink-0">
+                    {contact.lastMessage?.status === 'sent' && (
+                      <Check className="h-3 w-3 text-muted-foreground" />
+                    )}
+                    {contact.lastMessage?.status === 'delivered' && (
+                      <CheckCheck className="h-3 w-3 text-muted-foreground" />
+                    )}
+                    {contact.lastMessage?.status === 'read' && (
+                      <CheckCheck className="h-3 w-3 text-blue-500" />
+                    )}
+
+                    {(typeof hasUnread === 'number' ? hasUnread > 0 : hasUnread) && (
+                      <div className="bg-green-500 text-white rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center text-xs font-semibold shadow-md">
+                        {contact.lastMessage?.unread && contact.lastMessage.unread > 99
+                          ? '99+'
+                          : contact.lastMessage?.unread}
                       </div>
                     )}
+                  </div>
                 </div>
               </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          )
+        })}
       </AnimatePresence>
     </div>
   )

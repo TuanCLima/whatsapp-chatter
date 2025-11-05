@@ -26,6 +26,7 @@ export const users = pgTable('users', {
     .notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at'),
+  lastViewedAt: timestamp('last_viewed_at'), // Track when operator last viewed this conversation
 })
 
 // New table for SaaS users (app users who configure Twilio)
