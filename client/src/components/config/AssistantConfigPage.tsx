@@ -11,6 +11,10 @@ import {
   Users,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import Editor from 'react-simple-code-editor'
+import { highlight, languages } from 'prismjs'
+import 'prismjs/components/prism-typescript'
+import 'prismjs/themes/prism-tomorrow.css'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -766,18 +770,27 @@ export default function AssistantConfigPage() {
             {newTool.toolType === 'implementation' ? (
               <div>
                 <Label htmlFor="tool-implementation">Implementation</Label>
-                <Textarea
-                  id="tool-implementation"
-                  value={newTool.implementation || ''}
-                  onChange={(e) =>
-                    setNewTool((prev) => ({
-                      ...prev,
-                      implementation: e.target.value,
-                    }))
-                  }
-                  placeholder="Enter the JavaScript/TypeScript code for your tool implementation..."
-                  className="min-h-[200px] mt-2 font-mono"
-                />
+                <div className="mt-2 border border-input rounded-md overflow-hidden">
+                  <Editor
+                    value={newTool.implementation || ''}
+                    onValueChange={(code) =>
+                      setNewTool((prev) => ({
+                        ...prev,
+                        implementation: code,
+                      }))
+                    }
+                    highlight={(code) => highlight(code, languages.typescript, 'typescript')}
+                    padding={12}
+                    placeholder="Enter the JavaScript/TypeScript code for your tool implementation..."
+                    style={{
+                      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+                      fontSize: 14,
+                      minHeight: '200px',
+                      backgroundColor: 'hsl(var(--background))',
+                    }}
+                    textareaClassName="focus:outline-none"
+                  />
+                </div>
               </div>
             ) : (
               <div>
