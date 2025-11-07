@@ -10,11 +10,12 @@ import {
   Trash2,
   Users,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Editor from 'react-simple-code-editor'
 import { highlight, languages } from 'prismjs'
 import 'prismjs/components/prism-typescript'
 import 'prismjs/themes/prism-tomorrow.css'
+import * as esprima from 'esprima'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -43,6 +44,13 @@ import PredefinedToolsPage from './PredefinedToolsPage'
 
 type ConfigSection = 'prompt' | 'tools' | 'predefined-tools' | 'settings'
 
+const implementationFunctionWrapper = (code: string) => {
+  return `function implementation() {
+     ${code}
+  }
+  `
+}
+
 export default function AssistantConfigPage() {
   const [activeSection, setActiveSection] = useState<ConfigSection>('prompt')
   const [prompt, setPrompt] = useState('')
@@ -66,6 +74,55 @@ export default function AssistantConfigPage() {
     implementation: '',
   })
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
+  const [syntaxErrors, setSyntaxErrors] = useState<Array<{
+    line: number
+    message: string
+  }>>([])
+  const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Validate TypeScript/JavaScript syntax
+  const validateSyntax = (code: string) => {
+    if (!code.trim()) {
+      setSyntaxErrors([])
+      return
+    }
+
+    try {
+      esprima.parseScript(code, { 
+        tolerant: false,
+        loc: true,
+        range: true,
+      })
+      setSyntaxErrors([])
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'lineNumber' in error && 'description' in error) {
+        const esprimaError = error as { lineNumber: number; description: string; index: number }
+        setSyntaxErrors([
+          {
+            line: esprimaError.lineNumber - 2,
+            message: esprimaError.description,
+          },
+        ])
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        // Try to extract line number from message if available
+        const message = (error as { message: string }).message
+        const lineMatch = message.match(/Line (\d+):/)
+        setSyntaxErrors([
+          {
+            line: lineMatch ? parseInt(lineMatch[1]) - 2 : 1,
+            message: message,
+          },
+        ])
+      } else {
+        setSyntaxErrors([
+          {
+            line: 1,
+            message: String(error),
+          },
+        ])
+      }
+    }
+  }
 
   // Load data on component mount
   useEffect(() => {
@@ -205,6 +262,7 @@ export default function AssistantConfigPage() {
         implementation: '',
       })
       setSelectedImage(null)
+      setSyntaxErrors([])
       setIsCreatingTool(false)
 
       toast({
@@ -262,8 +320,13 @@ export default function AssistantConfigPage() {
       implementation: tool.implementation,
     })
     setSelectedImage(null) // Reset selected image when editing
+    setSyntaxErrors([]) // Clear syntax errors
     setIsCreatingTool(true)
     setActiveSection('tools')
+    // Validate the existing implementation
+    if (tool.implementation) {
+      validateSyntax(implementationFunctionWrapper(tool.implementation))
+    }
   }
 
   const selectPredefinedTool = (tool: PredefinedToolConfig) => {
@@ -341,6 +404,7 @@ export default function AssistantConfigPage() {
                 setIsCreatingTool(false)
                 setSelectedTool(null)
                 setSelectedPredefinedTool(null)
+                setSyntaxErrors([])
               }}
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${
                 activeSection === 'prompt' && !isCreatingTool
@@ -359,6 +423,7 @@ export default function AssistantConfigPage() {
                 setIsCreatingTool(false)
                 setSelectedTool(null)
                 setSelectedPredefinedTool(null)
+                setSyntaxErrors([])
               }}
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${
                 activeSection === 'tools' && !isCreatingTool && !selectedTool
@@ -377,6 +442,7 @@ export default function AssistantConfigPage() {
                 setIsCreatingTool(false)
                 setSelectedTool(null)
                 setSelectedPredefinedTool(null)
+                setSyntaxErrors([])
               }}
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${
                 activeSection === 'predefined-tools' && !selectedPredefinedTool
@@ -395,6 +461,7 @@ export default function AssistantConfigPage() {
                 setIsCreatingTool(false)
                 setSelectedTool(null)
                 setSelectedPredefinedTool(null)
+                setSyntaxErrors([])
               }}
               className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors ${
                 activeSection === 'settings' && !isCreatingTool
@@ -423,6 +490,7 @@ export default function AssistantConfigPage() {
                       setIsCreatingTool(true)
                       setSelectedTool(null)
                       setSelectedPredefinedTool(null)
+                      setSyntaxErrors([])
                       setNewTool({
                         name: '',
                         description: '',
@@ -437,7 +505,7 @@ export default function AssistantConfigPage() {
                 </div>
 
                 {tools.map((tool) => (
-                  <div key={tool.id} className="group">
+                  <div key={tool.id} className="group relative">
                     <button
                       type="button"
                       onClick={() => editTool(tool)}
@@ -447,18 +515,18 @@ export default function AssistantConfigPage() {
                           : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
                       }`}
                     >
-                      <span className="truncate">{tool.name}</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          deleteTool(tool.id)
-                        }}
-                        className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      <span className="truncate pr-8">{tool.name}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteTool(tool.id)
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 transition-opacity"
+                      aria-label={`Delete ${tool.name}`}
+                    >
+                      <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
                     </button>
                   </div>
                 ))}
@@ -584,6 +652,7 @@ export default function AssistantConfigPage() {
                   setSelectedTool(null)
                   setSelectedPredefinedTool(null)
                   setSelectedImage(null)
+                  setSyntaxErrors([])
                   setNewTool({
                     name: '',
                     description: '',
@@ -770,27 +839,85 @@ export default function AssistantConfigPage() {
             {newTool.toolType === 'implementation' ? (
               <div>
                 <Label htmlFor="tool-implementation">Implementation</Label>
-                <div className="mt-2 border border-input rounded-md overflow-hidden">
-                  <Editor
-                    value={newTool.implementation || ''}
-                    onValueChange={(code) =>
-                      setNewTool((prev) => ({
-                        ...prev,
-                        implementation: code,
-                      }))
-                    }
-                    highlight={(code) => highlight(code, languages.typescript, 'typescript')}
-                    padding={12}
-                    placeholder="Enter the JavaScript/TypeScript code for your tool implementation..."
-                    style={{
-                      fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
-                      fontSize: 14,
-                      minHeight: '200px',
-                      backgroundColor: 'hsl(var(--background))',
-                    }}
-                    textareaClassName="focus:outline-none"
-                  />
+                <div className={`mt-2 border rounded-md overflow-hidden ${
+                  syntaxErrors.length > 0 ? 'border-red-500' : 'border-input'
+                }`}>
+                  <div className="flex">
+                    {/* Line numbers gutter */}
+                    <div className="bg-muted/50 px-3 py-3 select-none border-r border-border">
+                      <div
+                        style={{
+                          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+                          fontSize: 14,
+                          lineHeight: '1.5',
+                          color: 'hsl(var(--muted-foreground))',
+                        }}
+                      >
+                        {(newTool.implementation ? implementationFunctionWrapper(newTool.implementation) : '')
+                          .split('\n').slice(3)
+                          .map((_, i) => (
+                            <div
+                              key={i}
+                              className={`text-right ${
+                                syntaxErrors.some((err) => err.line === i + 1)
+                                  ? 'text-red-500 font-semibold'
+                                  : ''
+                              }`}
+                              style={{ minHeight: '21px' }}
+                            >
+                              {i + 1}
+                            </div>
+                          ))}
+                        {(!newTool.implementation || newTool.implementation === '') && (
+                          <div style={{ minHeight: '21px' }}>1</div>
+                        )}
+                      </div>
+                    </div>
+                    {/* Code editor */}
+                    <div className="flex-1">
+                      <Editor
+                        value={newTool.implementation || ''}
+                        onValueChange={(code) => {
+                          setNewTool((prev) => ({
+                            ...prev,
+                            implementation: code,
+                          }))
+                          // Debounce validation to avoid performance issues
+                          if (validationTimeoutRef.current) {
+                            clearTimeout(validationTimeoutRef.current)
+                          }
+                          validationTimeoutRef.current = setTimeout(() => validateSyntax(implementationFunctionWrapper(code)), 300)
+                        }}
+                        highlight={(code) => highlight(code, languages.typescript, 'typescript')}
+                        padding={12}
+                        placeholder="Enter the JavaScript/TypeScript code for your tool implementation..."
+                        style={{
+                          fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+                          fontSize: 14,
+                          minHeight: '200px',
+                          backgroundColor: 'hsl(var(--background))',
+                          lineHeight: '1.5',
+                        }}
+                        textareaClassName="focus:outline-none"
+                      />
+                    </div>
+                  </div>
                 </div>
+                {syntaxErrors.length > 0 && (
+                  <div className="mt-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-md">
+                    <div className="flex items-start gap-2">
+                      <div className="text-red-600 dark:text-red-400 font-semibold text-sm">
+                        Syntax Error{syntaxErrors.length > 1 ? 's' : ''}:
+                      </div>
+                    </div>
+                    {syntaxErrors.map((error, index) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: errors are transient
+                      <div key={index} className="mt-1 text-sm text-red-600 dark:text-red-400">
+                        <span className="font-mono">Line {error.line}:</span> {error.message}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <div>
@@ -861,6 +988,7 @@ export default function AssistantConfigPage() {
                   setSelectedTool(null)
                   setSelectedPredefinedTool(null)
                   setSelectedImage(null)
+                  setSyntaxErrors([])
                   setNewTool({
                     name: '',
                     description: '',
