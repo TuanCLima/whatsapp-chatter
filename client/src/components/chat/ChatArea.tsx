@@ -31,7 +31,7 @@ export default function ChatArea({ setMobileMenuOpen }: ChatAreaProps) {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-background relative">
+    <div className="h-full flex flex-col bg-background relative">
       <ChatHeader
         contact={activeContact}
         setMobileMenuOpen={setMobileMenuOpen}

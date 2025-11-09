@@ -16,6 +16,7 @@ export default function ChatHeader({
   setMobileMenuOpen,
   onToggleConversation,
 }: ChatHeaderProps) {
+  const toggleId = `conversation-toggle-${contact.id}`
   const handleConversationToggle = (checked: boolean) => {
     if (onToggleConversation && contact.phoneNumber) {
       onToggleConversation(contact.phoneNumber, !checked)
@@ -23,18 +24,19 @@ export default function ChatHeader({
   }
 
   return (
-    <div className="p-3 bg-card border-b border-border flex items-center justify-between">
-      <div className="flex items-center space-x-3">
+    <div className="p-3 bg-card border-b border-border flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
           className="md:hidden"
           onClick={() => setMobileMenuOpen(true)}
+          aria-label="Abrir lista de contatos"
         >
           <Menu className="h-5 w-5" />
         </Button>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-3">
           <div className="relative">
             <Avatar>
               <AvatarImage src={contact.avatar} alt={contact.name} />
@@ -65,23 +67,22 @@ export default function ChatHeader({
         </div>
       </div>
 
-      <div className="flex items-center space-x-3">
-        {/* Conversation Toggle Switch */}
-        <div className="flex items-center space-x-2">
+      <div className="flex flex-wrap items-center gap-3 justify-between sm:justify-end">
+        <div className="flex items-center gap-2">
           <Label
-            htmlFor="conversation-toggle"
+            htmlFor={toggleId}
             className="text-xs text-muted-foreground"
           >
             Chat AI
           </Label>
           <Switch
-            id="conversation-toggle"
+            id={toggleId}
             checked={!contact.conversationDisabled}
             onCheckedChange={handleConversationToggle}
           />
         </div>
 
-        <div className="flex items-center space-x-1">
+        <div className="hidden sm:flex items-center space-x-1">
           <Button
             variant="ghost"
             size="icon"
@@ -111,6 +112,15 @@ export default function ChatHeader({
             <MoreVertical className="h-5 w-5" />
           </Button>
         </div>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground hover:text-foreground sm:hidden"
+          aria-label="Mais opções"
+        >
+          <MoreVertical className="h-5 w-5" />
+        </Button>
       </div>
     </div>
   )

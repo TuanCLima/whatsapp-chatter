@@ -385,7 +385,7 @@ export default function AssistantConfigPage() {
   }
 
   const renderSidebar = () => (
-    <div className="w-80 bg-card border-r border-border h-full flex flex-col">
+    <div className="w-full lg:w-80 bg-card border-b border-border lg:border-b-0 lg:border-r flex flex-col lg:h-full">
       <div className="p-4 border-b border-border">
         <h2 className="text-lg font-semibold">Assistant Configuration</h2>
         <p className="text-sm text-muted-foreground">
@@ -393,7 +393,7 @@ export default function AssistantConfigPage() {
         </p>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="lg:flex-1 max-h-[60vh] lg:max-h-none">
         <div className="p-4 space-y-2">
           {/* Main sections */}
           <div className="space-y-1">
@@ -1112,9 +1112,9 @@ export default function AssistantConfigPage() {
   )
 
   return (
-    <div className="h-full flex bg-background">
+    <div className="h-full flex flex-col lg:flex-row bg-background">
       {renderSidebar()}
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 p-4 sm:p-6 overflow-auto min-h-0">
         {activeSection === 'prompt' && renderPromptConfig()}
         {activeSection === 'tools' && renderToolConfig()}
         {activeSection === 'predefined-tools' && !selectedPredefinedTool && (

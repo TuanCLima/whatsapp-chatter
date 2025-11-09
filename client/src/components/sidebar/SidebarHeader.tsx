@@ -1,32 +1,36 @@
 import { useState } from 'react'
-import { Menu, Search, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ModeToggle } from '@/components/theme/ModeToggle'
 
 interface SidebarHeaderProps {
   searchQuery: string
   onSearch: (query: string) => void
+  onClose?: () => void
 }
 
 export default function SidebarHeader({
   searchQuery,
   onSearch,
+  onClose,
 }: SidebarHeaderProps) {
   const [isSearchFocused, setIsSearchFocused] = useState(false)
 
   return (
     <div className="p-2 bg-card border-b border-border flex flex-col space-y-2">
-      <div className="flex items-center justify-end">
-        <div className="flex items-center space-x-1">
-          <ModeToggle />
+      <div className="flex items-center justify-between">
+        <ModeToggle />
+        {onClose && (
           <Button
             variant="ghost"
             size="icon"
-            className="text-muted-foreground hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground md:hidden"
+            onClick={onClose}
+            aria-label="Fechar contatos"
           >
-            <Menu className="h-5 w-5" />
+            <X className="h-5 w-5" />
           </Button>
-        </div>
+        )}
       </div>
 
       <div className="relative">

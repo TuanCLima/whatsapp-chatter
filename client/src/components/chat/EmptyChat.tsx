@@ -2,8 +2,8 @@ import { LucideMessageSquare } from 'lucide-react'
 
 export default function EmptyChat() {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center bg-background border-l border-border">
-      <div className="text-center max-w-md p-6">
+    <div className="flex-1 bg-background border-t border-border md:border-t-0 md:border-l">
+      <div className="mx-auto flex min-h-[70dvh] w-full max-w-md flex-col items-center justify-center p-6 text-center">
         <div className="bg-secondary w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
           <LucideMessageSquare className="h-8 w-8 text-primary" />
         </div>

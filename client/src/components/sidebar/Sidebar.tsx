@@ -27,9 +27,13 @@ export default function Sidebar({
     <div
       className={`${
         mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-      } transition-transform duration-300 ease-in-out md:w-[30%] lg:w-[25%] xl:w-[20%] bg-card border-r border-border h-full flex flex-col z-10 absolute md:relative w-full`}
+      } transition-transform duration-300 ease-in-out bg-card border-r border-border flex flex-col z-30 absolute inset-y-0 left-0 md:relative md:inset-auto w-full max-w-sm md:max-w-none md:w-[30%] lg:w-[25%] xl:w-[20%] shadow-xl md:shadow-none h-full`}
     >
-      <SidebarHeader searchQuery={searchQuery} onSearch={handleSearch} />
+      <SidebarHeader
+        searchQuery={searchQuery}
+        onSearch={handleSearch}
+        onClose={() => setMobileMenuOpen(false)}
+      />
 
       <div className="px-2 py-2 border-b border-border">
         <div className="flex space-x-1 bg-secondary rounded-md p-0.5">

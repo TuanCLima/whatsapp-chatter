@@ -32,14 +32,23 @@ function ProtectedChatLayout() {
 
   return (
     <TwilioGuard>
-      <div className="h-screen flex flex-col bg-background">
-        <Header />
-        <div className="flex-1 flex overflow-hidden">
+      <div className="h-[100dvh] flex flex-col bg-background overflow-hidden">
+        <Header onMenuClick={() => setMobileMenuOpen(true)} />
+        <div className="flex-1 relative flex flex-col md:flex-row overflow-hidden">
+          {mobileMenuOpen && (
+            <div
+              className="absolute inset-0 z-20 bg-black/60 backdrop-blur-sm md:hidden"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-hidden="true"
+            />
+          )}
           <Sidebar
             mobileMenuOpen={mobileMenuOpen}
             setMobileMenuOpen={setMobileMenuOpen}
           />
-          <ChatArea setMobileMenuOpen={setMobileMenuOpen} />
+          <div className="flex-1 h-full overflow-hidden w-full md:w-auto">
+            <ChatArea setMobileMenuOpen={setMobileMenuOpen} />
+          </div>
         </div>
       </div>
     </TwilioGuard>
@@ -68,7 +77,7 @@ function ProtectedConfigLayout() {
   if (isLoading) return <LoadingScreen />
   if (!isAuthenticated) return <LoginScreen />
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="min-h-[100dvh] flex flex-col bg-background">
       <Header />
       <div className="flex-1 overflow-hidden">
         <TwilioConfigPage />
@@ -83,7 +92,7 @@ function ProtectedAssistantConfigLayout() {
   if (isLoading) return <LoadingScreen />
   if (!isAuthenticated) return <LoginScreen />
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="min-h-[100dvh] flex flex-col bg-background">
       <Header />
       <div className="flex-1 overflow-hidden">
         <AssistantConfigPage />
