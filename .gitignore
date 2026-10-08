@@ -1,0 +1,19 @@
+node_modules
+.env
+PROMPT.txt
+dist
+*.ipynb
+backlog_notes.txt
+credentials.json
+token.json
+.vscode
+backup/**
+prompts_backup
+sqlite.db
+*.sh
+.drizzle
+
+public
+# Keep the client favicon available in a fresh clone.
+!client/public/
+!client/public/favicon.svg

@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: whatsapp-chatter-fullstack
+    env: node
+    plan: free
+    buildCommand: pnpm install && pnpm db:migrate && pnpm predeploy && pnpm build
+    startCommand: pnpm serve
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_NUMBER
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        sync: false
+      - key: GOOGLE_CREDENTIALS
+        sync: false
+      - key: DEPLOYMENT_URL
+        sync: false
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_S3_BUCKET
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: LOGFLARE_SOURCE_TOKEN
+        sync: false
+      - key: LOGFLARE_API_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        sync: false

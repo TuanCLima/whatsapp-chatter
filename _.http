@@ -1,0 +1,215 @@
+### Fetch Twilio Messages
+GET https://api.twilio.com/2010-04-01/Accounts/[sid]/Messages.json
+Authorization: Basic [token]
+
+### Send WhatsApp Message
+#POST https://d9miv23p28.execute-api.us-east-1.amazonaws.com/send-message
+POST http://localhost:3000/send-message
+Content-Type: application/json
+
+{
+  "to": "+5511999999999",
+  "message": "Hello from Twilio WhatsApp API!"
+}
+
+### get image
+GET http://localhost:3000/api/assistant/tool-images/1758305704899-183000614-tabela_de_servicos_2.jpeg
+
+
+###
+### url encoded webhook post (Emulating Twilio)
+POST https://[url].ngrok-free.app/webhook/
+Content-Type: application/x-www-form-urlencoded
+
+From=whatsapp:%2B5511999999999&To=whatsapp:%2B14199999999&Body=Bom dia&ProfileName=Tuan&MessageSid=SM1234567890abcdef1234567890abcdef&NumMedia=0
+
+
+
+
+### contact card
+GET http://localhost:3000/CONTACT_1.vcf
+
+
+### get mcp functions
+GET http://localhost:3000/api/mcp/functions
+
+### get mcp date
+POST http://localhost:3001/api/mcp/execute
+Content-Type: application/json
+
+{
+  "functionName": "getSaoPauloDate",
+  "parameters": {}
+}
+
+### get events through execute
+POST http://localhost:3000/api/mcp/execute
+Content-Type: application/json
+
+{
+  "functionName": "fetchCalendarEvents",
+  "parameters": {
+    "timeMin": "2024-01-01T00:00:00Z",
+    "timeMax": "2025-12-31T23:59:59Z",
+    "maxResults": 10,
+    "singleEvents": true,
+    "orderBy": "startTime"
+  }
+}
+
+### Check event cancellation eligibility
+POST http://localhost:3000/api/mcp/execute
+Content-Type: application/json
+
+{
+  "functionName": "checkEventCancellationEligibility",
+  "parameters": {
+    "eventId": "81g7k00d2oe73eflsmnti07jdc",
+    "userPhone": "+5511944444444"
+  }
+}
+
+### Check and cancel event if eligible
+POST http://localhost:3000/api/mcp/execute
+Content-Type: application/json
+
+{
+  "functionName": "checkAndCancelEventIfEligible",
+  "parameters": {
+    "eventId": "81g7k00d2oe73eflsmnti07jdc",
+    "userPhone": "+5511966666666"
+  }
+}
+
+### Check event availability
+POST http://localhost:3000/api/mcp/execute
+Content-Type: application/json
+
+{
+  "functionName": "checkEventAvailability",
+  "parameters": {
+    "proposedStartTime": "2025-08-06T10:30:00-03:00",
+    "proposedEndTime": "2025-08-06T12:00:00-03:00",
+    "serviceDurationMinutes": 90
+  }
+}
+
+### Test fetch events
+POST http://localhost:3000/api/mcp/fetch-events
+Content-Type: application/json
+
+{
+    "calendarId": "canlendarId",
+    "timeMin": "2025-08-06T00:00:00Z",
+    "timeMax": "2025-08-06T23:59:59Z",
+    "maxResults": 10,
+    "singleEvents": true,
+    "orderBy": "startTime"
+  }
+
+
+### Test creating an event
+POST http://localhost:3000/api/mcp/create-event
+Content-Type: application/json
+
+{
+  "event": {
+    "summary": "Meeting with Team",
+    "location": "123 Main St",
+    "description": "Discuss project updates",
+    "start": {
+      "dateTime": "2025-05-08T13:00:00-03:00",
+      "timeZone": "America/Sao_Paulo"
+    },
+    "end": {
+      "dateTime": "2025-05-08T14:00:00-03:00",
+      "timeZone": "America/Sao_Paulo"
+    },
+    "attendees": [
+      { "email": "example1@gmail.com" }
+    ]
+  }
+}
+
+### Get date
+GET http://localhost:3000/api/mcp/date
+
+### Test creating a calendar
+POST http://localhost:3000/api/mcp/create-calendar
+Content-Type: application/json
+
+{
+  "calendar": {
+    "summary": "Gabe",
+    "description": "Calendário da Gabe",
+    "timeZone": "America/Sao_Paulo"
+  }
+}
+
+### Toggle conversation
+PUT http://localhost:3000/users/whatsapp%3A%2B5511933333333/conversation
+Content-Type: application/json
+
+{
+  "disabled": true
+}
+
+
+### Test cancelling event
+POST http://localhost:3000/api/mcp/cancel-event
+Content-Type: application/json
+
+{
+  "eventId": "kc0kd5m3m48kqcg80sjucp6q78"
+}
+
+### Test creating a calendar
+POST http://localhost:3000/api/mcp/create-calendar
+Content-Type: application/json
+
+{
+  "calendar": {
+    "summary": "Gabe",
+    "description": "Calendário da Gabe",
+    "timeZone": "America/Sao_Paulo"
+  }
+}
+
+### Test suggest event times (Development only)
+POST http://localhost:3000/api/test/suggest-event-times
+Content-Type: application/json
+Authorization: Bearer [token]
+
+{
+  "serviceDurationMinutes": 90,
+  "startDate": "2025-10-09",
+  "endDate": "2025-10-13"
+}
+
+### Test check event availability (Development only)
+POST http://localhost:3000/api/test/check-event-availability
+Content-Type: application/json
+Authorization: Bearer [token]
+
+{
+  "proposedStartTime": "2025-10-09T09:00:00-03:00",
+  "proposedEndTime": "2025-10-09T11:01:00-03:00",
+  "serviceDurationMinutes": 90
+}
+
+### fetch contacts
+GET http://localhost:3000/contacts
+Content-Type: application/json
+
+### fetch conversations
+GET http://localhost:3000/conversations
+Content-Type: application/json
+
+### fetch conversation
+GET http://localhost:3000/conversations/whatsapp:+5511999999999
+Content-Type: application/json
+
+
+### fetch messages from db
+GET http://localhost:3000/admin/db/messages?limit=500
+Authorization: Bearer [token]

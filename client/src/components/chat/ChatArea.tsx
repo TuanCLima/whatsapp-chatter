@@ -1,0 +1,52 @@
+import { useEffect, useRef } from 'react'
+import { useChat } from '@/context/ChatContext'
+import ChatHeader from './ChatHeader'
+import EmptyChat from './EmptyChat'
+import MessageInput from './MessageInput'
+import MessageList from './MessageList'
+
+interface ChatAreaProps {
+  setMobileMenuOpen: (open: boolean) => void
+}
+
+export default function ChatArea({ setMobileMenuOpen }: ChatAreaProps) {
+  const { activeContactId, contacts, conversation, toggleConversation } =
+    useChat()
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Find active contact and conversation
+  const activeContact = activeContactId
+    ? contacts.find((contact) => contact.id === activeContactId)
+    : null
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [conversation?.messages])
+
+  if (!activeContact || !conversation) {
+    return <EmptyChat />
+  }
+
+  return (
+    <div className="h-full flex flex-col bg-background relative">
+      <ChatHeader
+        contact={activeContact}
+        setMobileMenuOpen={setMobileMenuOpen}
+        onToggleConversation={toggleConversation}
+      />
+
+      <div className="chat-message-background flex-1 overflow-y-auto p-4">
+        <MessageList
+          messages={conversation.messages}
+          contactId={activeContact.id}
+        />
+        <div ref={messagesEndRef} />
+      </div>
+
+      <MessageInput />
+    </div>
+  )
+}
