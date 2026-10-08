@@ -74,7 +74,7 @@ export default function LandingPage() {
           <ConversationPreview />
         </section>
 
-        <div
+        <section
           className="landing-integrations landing-shell"
           aria-label="Project integrations"
         >
@@ -87,7 +87,7 @@ export default function LandingPage() {
           <a href="#features" aria-label="Explore capabilities">
             <ArrowDown size={19} />
           </a>
-        </div>
+        </section>
 
         <section id="features" className="landing-section landing-shell">
           <div className="landing-section-heading">
